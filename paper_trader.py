@@ -138,6 +138,7 @@ _hb_state: Dict[str, Any] = {
     "bars": 0,
     "rt_enabled": False,
     "rt_status": "disabled",
+    "rt_mode": "disabled",
     "rt_age_sec": None,
     "rt_queue_len": 0,
     "in_session_window": False,
@@ -551,7 +552,7 @@ def main():
     # Start HB immediately, watchdog will see reasons during boot
     start_heartbeat_thread()
     hb_update(state="-", idle_reason="booting", rt_enabled=False, rt_status="disabled",
-              rt_age_sec=None, rt_queue_len=0, bars=0, net_qty=0)
+              rt_mode="disabled", rt_age_sec=None, rt_queue_len=0, bars=0, net_qty=0)
 
     # Connect (with retries)
     ib = IB()
@@ -622,7 +623,9 @@ def main():
     try:
         ib.reqMarketDataType(3 if args.force_delayed else 1)
         print("[MD] DELAYED (3)." if args.force_delayed else "[MD] LIVE (1).")
-        hb_update(rt_enabled=not args.force_delayed, rt_status=("booting" if not args.force_delayed else "disabled"))
+        hb_update(rt_enabled=not args.force_delayed,
+                  rt_status=("booting" if not args.force_delayed else "disabled"),
+                  rt_mode=("disabled" if args.force_delayed else ("MIDPOINT" if args.force_midpoint_rt else "TRADES")))
     except Exception as e:
         print("[MD] marketDataType failed:", repr(e))
 
@@ -740,13 +743,14 @@ def main():
         rt_mode = mode
         _rt_last_seen = None
         rt_subscribed_at = time.time()
-        log(evt, what=mode, ok=bool(rt))
+        log(evt, what=mode)
         if rt is not None:
             note_rt_status("booting")
         else:
             note_rt_status("disabled")
         hb_update(rt_enabled=(rt is not None),
                   rt_status=rt_status_current,
+                  rt_mode=rt_mode,
                   rt_age_sec=None,
                   rt_queue_len=(len(rt) if rt else 0))
         return rt
@@ -1157,6 +1161,7 @@ def main():
             note_rt_status(status)
             hb_update(rt_enabled=(rt is not None),
                       rt_status=rt_status_current,
+                      rt_mode=rt_mode,
                       rt_age_sec=(rt_seen_age if _rt_last_seen else None),
                       rt_queue_len=(len(rt) if rt else 0))
 
