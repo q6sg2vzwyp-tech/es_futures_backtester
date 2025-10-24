@@ -138,6 +138,7 @@ _hb_state: Dict[str, Any] = {
     "bars": 0,
     "rt_enabled": False,
     "rt_status": "disabled",
+    "rt_mode": "disabled",
     "rt_age_sec": None,
     "rt_queue_len": 0,
     "in_session_window": False,
@@ -149,8 +150,16 @@ _hb_state: Dict[str, Any] = {
     "orders_disabled_paper_safety": False,
 }
 def hb_update(**kv):
+    reason_changed = False
+    new_reason = None
     with _hb_lock:
+        if "idle_reason" in kv:
+            new_reason = kv.get("idle_reason")
+            if new_reason != _hb_state.get("idle_reason"):
+                reason_changed = True
         _hb_state.update(kv)
+    if reason_changed:
+        log("gate_reason", reason=new_reason)
 def _hb_loop():
     while True:
         with _hb_lock:
@@ -543,7 +552,7 @@ def main():
     # Start HB immediately, watchdog will see reasons during boot
     start_heartbeat_thread()
     hb_update(state="-", idle_reason="booting", rt_enabled=False, rt_status="disabled",
-              rt_age_sec=None, rt_queue_len=0, bars=0, net_qty=0)
+              rt_mode="disabled", rt_age_sec=None, rt_queue_len=0, bars=0, net_qty=0)
 
     # Connect (with retries)
     ib = IB()
@@ -614,7 +623,9 @@ def main():
     try:
         ib.reqMarketDataType(3 if args.force_delayed else 1)
         print("[MD] DELAYED (3)." if args.force_delayed else "[MD] LIVE (1).")
-        hb_update(rt_enabled=not args.force_delayed, rt_status=("booting" if not args.force_delayed else "disabled"))
+        hb_update(rt_enabled=not args.force_delayed,
+                  rt_status=("booting" if not args.force_delayed else "disabled"),
+                  rt_mode=("disabled" if args.force_delayed else ("MIDPOINT" if args.force_midpoint_rt else "TRADES")))
     except Exception as e:
         print("[MD] marketDataType failed:", repr(e))
 
@@ -701,17 +712,50 @@ def main():
     rt = None
     rt_mode = "MIDPOINT" if args.force_midpoint_rt else "TRADES"
     rt_subscribed_at = time.time()
-    try:
-        rt = ib.reqRealTimeBars(con, 5, rt_mode, False)
-        if rt is None:
-            log("rt_subscribe_warn", msg="reqRealTimeBars returned None; polling may be used")
-        else:
-            hb_update(rt_enabled=True, rt_status="booting")
-    except Exception as e:
-        rt = None
-        log("rt_subscribe_err", err=repr(e))
+    _rt_last_seen: Optional[float] = None
 
-    _rt_last_seen = None
+    rt_status_current = "disabled"
+    rt_status_since = time.time()
+
+    def note_rt_status(new_status: str):
+        nonlocal rt_status_current, rt_status_since
+        if new_status != rt_status_current:
+            age = time.time() - rt_status_since
+            log("rt_status", **{"from": rt_status_current, "to": new_status, "age_sec": round(age, 3)})
+            rt_status_current = new_status
+            rt_status_since = time.time()
+
+    def set_rt_subscription(mode: str, evt: str):
+        nonlocal rt, rt_mode, _rt_last_seen, rt_subscribed_at
+        had_rt = rt is not None
+        if had_rt:
+            try:
+                ib.cancelRealTimeBars(rt)
+            except Exception:
+                pass
+            ib.sleep(0.2)
+        try:
+            new_rt = ib.reqRealTimeBars(con, 5, mode, False)
+        except Exception as e:
+            log("rt_subscribe_err", err=repr(e), what=mode, during=evt)
+            new_rt = None
+        rt = new_rt
+        rt_mode = mode
+        _rt_last_seen = None
+        rt_subscribed_at = time.time()
+        log(evt, what=mode)
+        if rt is not None:
+            note_rt_status("booting")
+        else:
+            note_rt_status("disabled")
+        hb_update(rt_enabled=(rt is not None),
+                  rt_status=rt_status_current,
+                  rt_mode=rt_mode,
+                  rt_age_sec=None,
+                  rt_queue_len=(len(rt) if rt else 0))
+        return rt
+
+    set_rt_subscription(rt_mode, "rt_subscribe")
     poll_enabled_cfg = bool(args.poll_hist_when_no_rt)
     poll_iv = max(5, int(args.poll_interval_sec)) if poll_enabled_cfg else 999999
     _last_poll = 0.0  # first forced poll is handled below
@@ -980,6 +1024,9 @@ def main():
             startup_bar_ts = getattr(hist_last[-1], "time", None) or getattr(hist_last[-1], "date", None)
     except Exception: pass
 
+    if args.require_new_bar_after_start and startup_bar_ts is None:
+        startup_bar_ts = last_bar_ts
+
     # --- IBKR News Bulletins (optional) ---
     news_kill_until_ref: Optional[dt.datetime] = None
     def _arm_news_kill(reason: str, minutes: float):
@@ -1085,10 +1132,12 @@ def main():
                         # Only feed VWAP with TRADES bars
                         if rt_mode == "TRADES":
                             vwap.update_bar(b.close, vol)
+                            if (startup_bar_ts is None) or (ts != startup_bar_ts):
+                                startup_bar_seen = True
                         last_bar_ts = ts; _rt_last_seen = time.time()
                         hb_update(bars=len(C))
-                        if startup_bar_ts is not None and ts != startup_bar_ts: startup_bar_seen = True
-            except Exception: pass
+            except Exception:
+                pass
 
             # --- Determine RT freshness / starvation ---
             _now = time.time()
@@ -1109,15 +1158,25 @@ def main():
                     status = "stale"
                 else:
                     status = "booting"
+            note_rt_status(status)
             hb_update(rt_enabled=(rt is not None),
-                      rt_status=status,
+                      rt_status=rt_status_current,
+                      rt_mode=rt_mode,
                       rt_age_sec=(rt_seen_age if _rt_last_seen else None),
                       rt_queue_len=(len(rt) if rt else 0))
 
+            if status == "starved" and rt_mode == "TRADES":
+                set_rt_subscription("MIDPOINT", "rt_resubscribe")
+                _now = time.time()
+                rt_seen_age = None
+                rt_starved = False
+                rt_fresh = False
+                rt_stale = False
+
             # --- Polling fallback ---
             force_no_bar_poll = (len(C) == 0) and ((_now - start_ts) > 3.0)
-            poll_active = bool(poll_enabled_cfg) or rt_starved or rt_stale or force_no_bar_poll
-            dynamic_poll_iv = 3 if (rt_starved or force_no_bar_poll) else poll_iv
+            poll_active = bool(poll_enabled_cfg) or rt_starved or rt_stale or force_no_bar_poll or (rt_mode == "MIDPOINT")
+            dynamic_poll_iv = 3 if (rt_starved or force_no_bar_poll or rt_mode == "MIDPOINT") else poll_iv
 
             if _last_poll <= 0 and poll_active:
                 _last_poll = _now - dynamic_poll_iv
@@ -1128,7 +1187,6 @@ def main():
                     what_primary = 'TRADES' if rt_mode == 'TRADES' else 'MIDPOINT'
                     what_alt     = 'MIDPOINT' if what_primary == 'TRADES' else 'TRADES'
 
-                    polled_any = False
                     for what in (what_primary, what_alt):
                         hist = ib.reqHistoricalData(con, endDateTime='', durationStr='60 S', barSizeSetting='5 secs',
                                                     whatToShow=what, useRTH=False, keepUpToDate=False)
@@ -1140,41 +1198,19 @@ def main():
                                 # Only TRADES bars update VWAP
                                 if what == "TRADES":
                                     vwap.update_bar(last.close, vol)
+                                    if (startup_bar_ts is None) or (ts != startup_bar_ts):
+                                        startup_bar_seen = True
                                 last_bar_ts = ts
                                 hb_update(bars=len(C))
-                                if startup_bar_ts is not None and ts != startup_bar_ts: startup_bar_seen = True
-                                log("poll_bar", time=str(ts), close=last.close, total=len(C), mode=what)
-                                polled_any = True
+                                log("poll_bar", mode=what, close=float(last.close), time=str(ts))
 
                                 # If RT was MIDPOINT but TRADES is polling fine, flip RT back to TRADES
                                 if rt_mode == "MIDPOINT" and what == "TRADES":
-                                    try:
-                                        ib.cancelRealTimeBars(rt)
-                                    except Exception:
-                                        pass
-                                    ib.sleep(0.2)
-                                    rt = ib.reqRealTimeBars(con, 5, 'TRADES', False)
-                                    rt_mode = "TRADES"
-                                    _rt_last_seen = None
-                                    rt_subscribed_at = time.time()
-                                    log("rt_resubscribe", what="TRADES")
+                                    set_rt_subscription('TRADES', 'rt_resubscribe')
+                                    _now = time.time()
                                 break
                         else:
                             log("poll_bar_empty", note="historical returned 0 bars", mode=what)
-
-                    # If still starved on TRADES, try one-time MIDPOINT fallback
-                    if not polled_any and rt_starved and rt_mode == "TRADES":
-                        try:
-                            try: ib.cancelRealTimeBars(rt)
-                            except Exception: pass
-                            ib.sleep(0.2)
-                            rt = ib.reqRealTimeBars(con, 5, 'MIDPOINT', False)
-                            rt_mode = "MIDPOINT"
-                            _rt_last_seen = None
-                            rt_subscribed_at = time.time()
-                            log("rt_resubscribe", what="MIDPOINT")
-                        except Exception as e:
-                            log("rt_resubscribe_err", err=str(e))
                 except Exception as e:
                     log("poll_bar_err", err=str(e))
 
