@@ -1,0 +1,9 @@
+2025-09-29 19:23:31 INFO Starting ES paper bot...
+2025-09-29 19:23:31 INFO [CONNECT] 127.0.0.1:7497 clientId=19
+2025-09-29 19:23:31 INFO Connecting to 127.0.0.1:7497 with clientId 19...
+2025-09-29 19:23:31 INFO Connected
+2025-09-29 19:23:31 INFO Logged on to server version 176
+2025-09-29 19:23:31 ERROR Error 326, reqId -1: Unable to connect as the client id is already in use. Retry with a unique client id.
+2025-09-29 19:23:32 ERROR Peer closed connection. clientId 19 already in use?
+2025-09-29 19:23:35 INFO Disconnecting
+2025-09-29 19:23:35 ERROR API connection failed: TimeoutError()

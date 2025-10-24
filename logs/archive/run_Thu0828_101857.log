@@ -1,0 +1,25 @@
+2025-08-28 10:18:57,867 ================== PAPER MODE ==================
+2025-08-28 10:18:57,868 Host:127.0.0.1  Port:7497  ClientId:0
+2025-08-28 10:18:57,869 Paper account required (TWS/Gateway set to Paper). Orders WILL be sent (paper).
+2025-08-28 10:18:57,869 Writing log to logs\run_Thu0828_101857.log
+2025-08-28 10:18:57,873 [CONNECT] Attempt 1/10 to 127.0.0.1:7497 (clientId=0, timeout=90s)
+2025-08-28 10:20:27,886 API connection failed: TimeoutError(())
+2025-08-28 10:20:27,886 [HINT] If the TWS 'Settings' dialog is open or TWS isn't in PAPER, the API handshake can time out. Close the dialog and try again.
+2025-08-28 10:20:29,929 [CONNECT] Attempt 2/10 to 127.0.0.1:7497 (clientId=0, timeout=90s)
+2025-08-28 10:21:59,941 API connection failed: TimeoutError(())
+2025-08-28 10:22:03,943 [CONNECT] Attempt 3/10 to 127.0.0.1:7497 (clientId=0, timeout=90s)
+2025-08-28 10:23:33,952 API connection failed: TimeoutError(())
+2025-08-28 10:23:39,953 [CONNECT] Attempt 4/10 to 127.0.0.1:7497 (clientId=0, timeout=90s)
+2025-08-28 10:23:40,618 Connected 127.0.0.1:7497 clientId=0 | Market data type: LIVE (1)
+2025-08-28 10:23:40,619 [AUTO] Selecting front quarter for ES/CME ...
+2025-08-28 10:23:40,772 [AUTO] Front month chosen: ESU5 exp=20250919
+2025-08-28 10:23:40,776 Using contract: ESU5  (conId=637533641)
+2025-08-28 10:23:40,777 [RISK] Daily loss cap: $1,250.00
+2025-08-28 10:23:41,269 [WARMUP] Loaded 6564 historical 1m bars.
+2025-08-28 10:23:41,408 >> LIVE paper trading with stop-entry + OCO. Ctrl+C to stop.
+2025-08-28 10:24:05,500 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=8.2 | Sprd=1.0
+2025-08-28 10:25:05,910 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=8.0 | Sprd=1.0
+2025-08-28 10:26:05,389 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=8.3 | Sprd=1.0
+2025-08-28 10:27:05,797 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=8.1 | Sprd=1.0
+2025-08-28 10:28:06,489 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=7.7 | Sprd=1.0
+2025-08-28 10:29:06,324 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=8.0 | Sprd=1.0

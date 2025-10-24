@@ -1,0 +1,1 @@
+--place-orders --use-ib-pnl --bandit thompson --learn-mode advisory --risk-profile balanced --local-symbol ESZ5 --news-bulletin-listen --news-kill-minutes 10 --news-cancel-only --news-blackouts "08:28-08:36,09:58-10:03,13:59-14:06" --news-file-kill ".\data\kill\news_kill.json"

@@ -1,0 +1,4 @@
+  File "C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py", line 815
+    if args.one_tr
+                  ^
+SyntaxError: expected ':'

@@ -1,0 +1,14 @@
+[CLI] Ignoring unknown args: ['--min-hold-sec', '60', '--breakeven-after-R', '2.2', '--trail-atr-mult', '3.2', '--trail-delay-sec', '240', '--trail-on-bar-close']
+Error 326, reqId -1: Unable to connect as the client id is already in use. Retry with a unique client id.
+Peer closed connection. clientId 111 already in use?
+API connection failed: TimeoutError()
+Error 161, reqId 792: Cancel attempted when order is not in a cancellable state.  Order permId =717114892
+Error 161, reqId 794: Cancel attempted when order is not in a cancellable state.  Order permId =717114898
+Error 161, reqId 796: Cancel attempted when order is not in a cancellable state.  Order permId =717114902
+Error 161, reqId 798: Cancel attempted when order is not in a cancellable state.  Order permId =717114906
+Error 161, reqId 800: Cancel attempted when order is not in a cancellable state.  Order permId =717114910
+Error 161, reqId 802: Cancel attempted when order is not in a cancellable state.  Order permId =717114912
+Error 161, reqId 804: Cancel attempted when order is not in a cancellable state.  Order permId =717114918
+Error 161, reqId 806: Cancel attempted when order is not in a cancellable state.  Order permId =717114920
+Error 161, reqId 809: Cancel attempted when order is not in a cancellable state.  Order permId =717114928
+Peer closed connection.

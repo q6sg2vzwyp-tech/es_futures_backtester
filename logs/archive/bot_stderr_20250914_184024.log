@@ -1,0 +1,5 @@
+Exception ignored on flushing sys.stdout:
+Traceback (most recent call last):
+  File "C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py", line 73, in flush
+    self.f.flush()
+ValueError: I/O operation on closed file.

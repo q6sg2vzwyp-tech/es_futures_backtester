@@ -1,0 +1,22 @@
+{
+  "orderId": 4819,
+  "arm": "trend",
+  "side": "LONG",
+  "qty": 1,
+  "entry_price": 6660.5,
+  "snap_price": 6660.5,
+  "entry_time": "2025-09-17T14:22:32.093102",
+  "hold_hours": 0.004710331111111111,
+  "realized_R": 1.0,
+  "max_adverse_R": 0.0,
+  "slip_R": 0.0,
+  "reward": 1.019528966888889,
+  "entry_regime": {
+    "atr_pct": 0.0004665833152470495,
+    "bb_bw": 0.0025634233094343098,
+    "adx": 21.327851556273778,
+    "spread": 1.0,
+    "ok": 1.0
+  },
+  "session_day": "2025-09-17"
+}

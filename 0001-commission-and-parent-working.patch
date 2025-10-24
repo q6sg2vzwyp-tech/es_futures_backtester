@@ -1,0 +1,64 @@
+﻿diff --git a/paper_trader.py b/paper_trader.py
+index 1111111..2222222 100644
+--- a/paper_trader.py
++++ b/paper_trader.py
+@@ -26,6 +26,7 @@ from ib_insync import IB, Future, Contract, LimitOrder, StopOrder, MarketOrder, Trade
+ from typing import Optional, List, Dict, Any, Tuple
+ 
+ # ---------- Utilities ----------
++COMMISSION_EPS = 1e-9
+ def utc_now_str(): return dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+ def ct_now() -> dt.datetime: return dt.datetime.now()
+ def parse_hhmm(s: str) -> dt.time: h,m = s.split(":"); return dt.time(int(h), int(m))
+@@ -618,6 +619,39 @@ def main():
+     orphan_sweep_needed = False
+ 
+     def _on_exec(trade, fill):
++        # NOTE: record last exec px and trigger deferred sibling/orphan cleanup
+         nonlocal last_exec_price, sibling_cancel_needed, orphan_sweep_needed
+         try: last_exec_price = float(fill.price)
+         except Exception: pass
+@@ -635,6 +669,47 @@ def main():
+                 orphan_sweep_needed = True
+         except Exception: pass
+     ib.orderStatusEvent += _on_status
++
++    # --- Commission accumulation (fixes TypeError on commissionReportEvent) ---
++    #
++    # In some ib_insync versions, commissionReportEvent may emit (trade, fill, report).
++    # Accept *args and use the last arg as the report to avoid signature mismatches.
++    cycle_commission = 0.0
++    def _on_commission(*args):
++        nonlocal cycle_commission
++        try:
++            report = args[-1]  # CommissionReport
++            com = float(getattr(report, "commission", 0.0) or 0.0)
++            if abs(com) > COMMISSION_EPS:
++                cycle_commission += abs(com)
++                log("commission_accum", add=round(abs(com), 4), cycle_commission=round(cycle_commission,4))
++        except Exception as e:
++            log("commission_evt_warn", err=str(e))
++    try:
++        ib.commissionReportEvent += _on_commission
++    except Exception as e:
++        log("commission_hook_warn", err=str(e))
++
++    # --- Optional: log when parent is actually working (not just inactive) ---
++    def _on_open_order(trade: Trade):
++        try:
++            st = (trade.orderStatus.status or "").strip()
++            if st in ("Submitted","PreSubmitted"):
++                pid = getattr(trade.order, "orderId", None)
++                log("parent_working", orderId=pid, trades_today=int(risk.trades))
++            elif st == "Inactive":
++                pid = getattr(trade.order, "orderId", None)
++                log("parent_not_working", orderId=pid, status=st)
++        except Exception:
++            pass
++    try:
++        ib.openOrderEvent += _on_open_order
++    except Exception as e:
++        log("openorder_hook_warn", err=str(e))
+ 
+     # Day guard persistence
+     DAY_STATE_PATH = r".\data\state\day_guard.json"

@@ -1,0 +1,83 @@
+
+[2025-10-08 17:36:43] CMD: C:\Users\owner\AppData\Local\Programs\Python\Python313\python.exe -X faulthandler -u C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py --local-symbol ESZ5 --host 127.0.0.1 --port 7497 --clientId 111 --symbol ES --entry-slippage-ticks 2 --atomic-bracket --qty 1 --risk-ticks 12 --tick-size 0.25 --tp-R 1.0 --enable-arms trend,breakout --gate-adx 19 --gate-bbbw 0.00020 --gate-atrp 0.000055 --min-hold-sec 60 --breakeven-after-R 2.2 --trail-atr-mult 3.2 --trail-delay-sec 240 --trail-on-bar-close --max-trades-per-day 12 --day-loss-cap-R 3 --strategy-cooldown-sec 150 --trade-start-ct 00:00 --trade-end-ct 23:59 --tif GTC --outsideRth --require-new-bar-after-start --startup-delay-sec 10 --debounce-one-bar --duration "1 D" --connect-timeout-sec 300 --timeout-sec 300 --chooser bandit_hybrid --bandit ucb --bandit-state .\data\learn\bandit_state.json --learn-log --learn-log-dir .\logs\learn --place-orders -v
+[2025-10-08 17:36:48] [WD] hb uptime=5s restarts=0 child_alive=True
+[2025-10-08 17:36:53] [WD] hb uptime=10s restarts=0 child_alive=True
+[2025-10-08 17:36:58] [WD] hb uptime=15s restarts=0 child_alive=True
+[2025-10-08 17:37:03] [WD] hb uptime=20s restarts=0 child_alive=True
+[2025-10-08 17:37:08] [WD] hb uptime=25s restarts=0 child_alive=True
+[2025-10-08 17:37:13] [WD] hb uptime=30s restarts=0 child_alive=True
+[2025-10-08 17:37:18] [WD] hb uptime=35s restarts=0 child_alive=True
+[2025-10-08 17:37:23] [WD] hb uptime=40s restarts=0 child_alive=True
+[CLI] Ignoring unknown args: ['--bandit-state', '.\\data\\learn\\bandit_state.json', '--learn-log', '--learn-log-dir', '.\\logs\\learn']
+Starting ES paper bot...
+[CONNECT] 127.0.0.1:7497 clientId=111
+Connected
+[MD] Market data type set to LIVE (1)
+[CONTRACT] Using localSymbol=ESZ5 conId=495512563 expiry=20251219
+[BOOT] Hist seed: 361 bars
+2025-10-08 17:36:54 INFO [HB] active | src=SEED dayR=0.00 open=0 tradesToday=0 bars=361 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 17:36:55 INFO [HB] active | src=SEED dayR=0.00 open=0 tradesToday=0 bars=361 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 17:36:55 INFO [HB] active | src=SEED dayR=0.00 open=0 tradesToday=0 bars=361 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 17:36:56 INFO [HB] active | src=SEED dayR=0.00 open=0 tradesToday=0 bars=361 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 17:36:56 INFO [HB] active | src=SEED dayR=0.00 open=0 tradesToday=0 bars=361 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 17:36:57 INFO [HB] active | src=SEED dayR=0.00 open=0 tradesToday=0 bars=361 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 17:36:57 INFO [HB] active | src=SEED dayR=0.00 open=0 tradesToday=0 bars=361 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 17:36:58 INFO [HB] active | src=SEED dayR=0.00 open=0 tradesToday=0 bars=361 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 17:36:58 INFO [HB] active | src=SEED dayR=0.00 open=0 tradesToday=0 bars=361 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 17:36:59 INFO [HB] active | src=SEED dayR=0.00 open=0 tradesToday=0 bars=361 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 17:36:59 INFO [HB] active | src=SEED dayR=0.00 open=0 tradesToday=0 bars=361 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 17:37:00 INFO [HB] active | src=SEED dayR=0.00 open=0 tradesToday=0 bars=361 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 17:37:00 INFO [HB] active | src=SEED dayR=0.00 open=0 tradesToday=0 bars=361 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 17:37:01 INFO [HB] active | src=SEED dayR=0.00 open=0 tradesToday=0 bars=361 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 17:37:01 INFO [HB] active | src=SEED dayR=0.00 open=0 tradesToday=0 bars=361 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 17:37:02 INFO [HB] active | src=SEED dayR=0.00 open=0 tradesToday=0 bars=361 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 17:37:02 INFO [HB] active | src=SEED dayR=0.00 open=0 tradesToday=0 bars=361 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 17:37:03 INFO [HB] active | src=SEED dayR=0.00 open=0 tradesToday=0 bars=361 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 17:37:03 INFO [HB] active | src=SEED dayR=0.00 open=0 tradesToday=0 bars=361 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 17:37:04 INFO [HB] active | src=SEED dayR=0.00 open=0 tradesToday=0 bars=361 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 17:37:04 INFO [HB] active | src=SEED dayR=0.00 open=0 tradesToday=0 bars=361 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 17:37:05 INFO [HB] active | src=SEED dayR=0.00 open=0 tradesToday=0 bars=361 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 17:37:05 INFO [HB] active | src=SEED dayR=0.00 open=0 tradesToday=0 bars=361 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 17:37:06 INFO [HB] active | src=SEED dayR=0.00 open=0 tradesToday=0 bars=361 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 17:37:06 INFO [HB] active | src=SEED dayR=0.00 open=0 tradesToday=0 bars=361 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 17:37:07 INFO [HB] active | src=SEED dayR=0.00 open=0 tradesToday=0 bars=361 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 17:37:07 INFO [HB] active | src=SEED dayR=0.00 open=0 tradesToday=0 bars=361 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 17:37:08 INFO [HB] active | src=SEED dayR=0.00 open=0 tradesToday=0 bars=361 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 17:37:08 INFO [HB] active | src=SEED dayR=0.00 open=0 tradesToday=0 bars=361 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 17:37:09 INFO [HB] active | src=SEED dayR=0.00 open=0 tradesToday=0 bars=361 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 17:37:09 INFO [HB] active | src=SEED dayR=0.00 open=0 tradesToday=0 bars=361 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 17:37:10 INFO [HB] active | src=SEED dayR=0.00 open=0 tradesToday=0 bars=361 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 17:37:10 INFO [HB] active | src=SEED dayR=0.00 open=0 tradesToday=0 bars=361 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 17:37:11 INFO [HB] active | src=SEED dayR=0.00 open=0 tradesToday=0 bars=361 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 17:37:11 INFO [HB] active | src=SEED dayR=0.00 open=0 tradesToday=0 bars=361 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 17:37:12 INFO [HB] active | src=SEED dayR=0.00 open=0 tradesToday=0 bars=361 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 17:37:12 INFO [HB] active | src=SEED dayR=0.00 open=0 tradesToday=0 bars=361 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 17:37:13 INFO [HB] active | src=SEED dayR=0.00 open=0 tradesToday=0 bars=361 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 17:37:13 INFO [HB] active | src=SEED dayR=0.00 open=0 tradesToday=0 bars=361 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 17:37:14 INFO [HB] active | src=SEED dayR=0.00 open=0 tradesToday=0 bars=361 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 17:37:14 INFO [HB] active | src=SEED dayR=0.00 open=0 tradesToday=0 bars=361 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 17:37:15 INFO [HB] active | src=SEED dayR=0.00 open=0 tradesToday=0 bars=361 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 17:37:15 INFO [HB] active | src=SEED dayR=0.00 open=0 tradesToday=0 bars=361 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 17:37:16 INFO [HB] active | src=SEED dayR=0.00 open=0 tradesToday=0 bars=361 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 17:37:16 INFO [HB] active | src=SEED dayR=0.00 open=0 tradesToday=0 bars=361 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 17:37:17 INFO [HB] active | src=SEED dayR=0.00 open=0 tradesToday=0 bars=361 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 17:37:17 INFO [HB] active | src=SEED dayR=0.00 open=0 tradesToday=0 bars=361 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 17:37:18 INFO [HB] active | src=SEED dayR=0.00 open=0 tradesToday=0 bars=361 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 17:37:18 INFO [HB] active | src=SEED dayR=0.00 open=0 tradesToday=0 bars=361 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 17:37:19 INFO [HB] active | src=SEED dayR=0.00 open=0 tradesToday=0 bars=361 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 17:37:19 INFO [HB] active | src=SEED dayR=0.00 open=0 tradesToday=0 bars=361 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 17:37:20 INFO [HB] active | src=SEED dayR=0.00 open=0 tradesToday=0 bars=361 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 17:37:20 INFO [HB] active | src=SEED dayR=0.00 open=0 tradesToday=0 bars=361 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 17:37:21 INFO [HB] active | src=SEED dayR=0.00 open=0 tradesToday=0 bars=361 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 17:37:21 INFO [HB] active | src=SEED dayR=0.00 open=0 tradesToday=0 bars=361 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 17:37:22 INFO [HB] active | src=SEED dayR=0.00 open=0 tradesToday=0 bars=361 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 17:37:22 INFO [HB] active | src=SEED dayR=0.00 open=0 tradesToday=0 bars=361 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 17:37:23 INFO [HB] active | src=SEED dayR=0.00 open=0 tradesToday=0 bars=361 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 17:37:23 INFO [HB] active | src=SEED dayR=0.00 open=0 tradesToday=0 bars=361 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 17:37:24 INFO [HB] active | src=SEED dayR=0.00 open=0 tradesToday=0 bars=361 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 17:37:24 INFO [HB] active | src=SEED dayR=0.00 open=0 tradesToday=0 bars=361 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 17:37:25 INFO [HB] active | src=SEED dayR=0.00 open=0 tradesToday=0 bars=361 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 17:37:25 INFO [HB] active | src=SEED dayR=0.00 open=0 tradesToday=0 bars=361 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 17:37:26 INFO [HB] active | src=SEED dayR=0.00 open=0 tradesToday=0 bars=361 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 17:37:26 INFO [HB] active | src=SEED dayR=0.00 open=0 tradesToday=0 bars=361 | arms=trend 0/0.00, breakout 0/0.00
+[2025-10-08 17:37:27] EXIT CODE: 1

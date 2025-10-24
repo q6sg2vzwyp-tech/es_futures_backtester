@@ -1,0 +1,7 @@
+2025-10-13 20:49:19 [WD] Launching child; log=C:\Users\owner\Desktop\es_futures_backtester\logs\run_20251013_204919.log
+2025-10-13 20:49:19 [WD] Command: C:\Users\owner\AppData\Local\Programs\Python\Python313\python.exe -X faulthandler -u C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py --host 127.0.0.1 --port 7497 --clientId 111 --place-orders --require-rt-before-trading --debounce-one-bar --reset-cancel-working
+2025-10-13 20:49:19 [WD] pid=4424
+  File "C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py", line 340
+    if self.trades >= self.max_trades: return False
+IndentationError: unexpected indent
+2025-10-13 20:49:19 [WD] Child exited: code=1

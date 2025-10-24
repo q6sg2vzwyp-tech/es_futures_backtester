@@ -1,0 +1,179 @@
+2025-09-02 12:29:14,089 ================== PAPER MODE ==================
+2025-09-02 12:29:14,090 Host:127.0.0.1  Port:7497  ClientId:19
+2025-09-02 12:29:14,090 Paper account required (TWS/Gateway set to Paper). Orders WILL be sent (paper).
+2025-09-02 12:29:14,090 Writing log to logs\run_Tue0902_122914.log
+2025-09-02 12:29:14,505 [PING 1] clientId=40154 connected: True
+2025-09-02 12:29:14,505 [CONNECT] Attempt 1/8 to 127.0.0.1:7497 (clientId=19, timeout=60s)
+2025-09-02 12:29:14,618 Connected 127.0.0.1:7497 clientId=19 | Market data type: LIVE (1)
+2025-09-02 12:29:14,624 Using contract: ESU5  (conId=637533641)
+2025-09-02 12:29:14,626 [AUTOROLL] Will warn 7 days before expiry (print-only).
+2025-09-02 12:29:14,627 [RISK] Daily loss cap: $1,250.00
+2025-09-02 12:29:14,967 [WARMUP] Loaded 7830 historical 1m bars.
+2025-09-02 12:29:15,050 >> LIVE paper trading with adaptive chooser + promotion ladder. Ctrl+C to stop.
+2025-09-02 12:30:05,974 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=8.3
+2025-09-02 12:30:05,975 [REGIME] ADX=32.2  BBbw=0.0025  ATR%=0.000323  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+2025-09-02 12:31:05,942 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=8.3
+2025-09-02 12:31:05,943 [REGIME] ADX=33.0  BBbw=0.0026  ATR%=0.000325  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+2025-09-02 12:32:05,853 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=8.1
+2025-09-02 12:32:05,853 [REGIME] ADX=33.0  BBbw=0.0026  ATR%=0.000316  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+2025-09-02 12:33:05,702 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=8.7
+2025-09-02 12:33:05,703 [REGIME] ADX=34.1  BBbw=0.0027  ATR%=0.000341  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+2025-09-02 12:34:06,198 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=8.3
+2025-09-02 12:34:06,198 [REGIME] ADX=35.0  BBbw=0.0028  ATR%=0.000325  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+2025-09-02 12:34:06,203 [ORDER] SHORT STP_LMT qty=1 stop=6402.50 sl=6406.25 TPx1 playbook=meanrev (parentId 394)
+2025-09-02 12:35:05,678 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=8.5
+2025-09-02 12:35:05,678 [REGIME] ADX=36.2  BBbw=0.0029  ATR%=0.000332  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+2025-09-02 12:36:05,532 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=8.1
+2025-09-02 12:36:05,533 [REGIME] ADX=37.3  BBbw=0.0029  ATR%=0.000317  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+2025-09-02 12:37:06,114 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=8.0
+2025-09-02 12:37:06,115 [REGIME] ADX=38.5  BBbw=0.0029  ATR%=0.000314  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+2025-09-02 12:38:05,864 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=7.7
+2025-09-02 12:38:05,864 [REGIME] ADX=39.6  BBbw=0.0030  ATR%=0.000302  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+2025-09-02 12:39:05,749 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=7.4
+2025-09-02 12:39:05,750 [REGIME] ADX=40.8  BBbw=0.0029  ATR%=0.000289  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+2025-09-02 12:40:05,620 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=7.7
+2025-09-02 12:40:05,620 [REGIME] ADX=42.4  BBbw=0.0029  ATR%=0.000299  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+2025-09-02 12:41:06,028 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=7.3
+2025-09-02 12:41:06,028 [REGIME] ADX=43.8  BBbw=0.0029  ATR%=0.000283  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+2025-09-02 12:42:05,762 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=7.0
+2025-09-02 12:42:05,762 [REGIME] ADX=45.3  BBbw=0.0029  ATR%=0.000274  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+2025-09-02 12:43:06,043 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=6.9
+2025-09-02 12:43:06,044 [REGIME] ADX=46.0  BBbw=0.0028  ATR%=0.000268  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+2025-09-02 12:44:06,062 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=7.0
+2025-09-02 12:44:06,062 [REGIME] ADX=46.8  BBbw=0.0027  ATR%=0.000274  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+2025-09-02 12:45:06,049 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=6.7
+2025-09-02 12:45:06,049 [REGIME] ADX=47.3  BBbw=0.0027  ATR%=0.000263  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+2025-09-02 12:46:06,357 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=6.5
+2025-09-02 12:46:06,357 [REGIME] ADX=47.6  BBbw=0.0027  ATR%=0.000253  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+2025-09-02 12:47:06,289 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=6.2
+2025-09-02 12:47:06,290 [REGIME] ADX=48.0  BBbw=0.0026  ATR%=0.000243  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+2025-09-02 12:48:06,126 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=6.1
+2025-09-02 12:48:06,127 [REGIME] ADX=48.6  BBbw=0.0025  ATR%=0.000239  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+2025-09-02 12:49:06,096 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=6.1
+2025-09-02 12:49:06,097 [REGIME] ADX=48.1  BBbw=0.0024  ATR%=0.000239  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+2025-09-02 12:50:06,497 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=6.1
+2025-09-02 12:50:06,498 [REGIME] ADX=47.6  BBbw=0.0022  ATR%=0.000236  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+2025-09-02 12:51:05,527 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=5.7
+2025-09-02 12:51:05,527 [REGIME] ADX=47.2  BBbw=0.0020  ATR%=0.000222  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+2025-09-02 12:52:06,207 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=5.6
+2025-09-02 12:52:06,210 [REGIME] ADX=45.8  BBbw=0.0017  ATR%=0.000220  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+2025-09-02 12:53:05,365 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=5.4
+2025-09-02 12:53:05,365 [REGIME] ADX=44.5  BBbw=0.0015  ATR%=0.000210  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+2025-09-02 12:54:05,861 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=5.3
+2025-09-02 12:54:05,861 [REGIME] ADX=42.7  BBbw=0.0012  ATR%=0.000206  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+2025-09-02 12:55:05,664 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=5.6
+2025-09-02 12:55:05,664 [REGIME] ADX=39.7  BBbw=0.0011  ATR%=0.000219  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+2025-09-02 12:56:06,090 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=5.5
+2025-09-02 12:56:06,090 [REGIME] ADX=37.4  BBbw=0.0009  ATR%=0.000215  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+2025-09-02 12:56:06,090 [Gate] Regime fail
+2025-09-02 12:57:05,652 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=5.3
+2025-09-02 12:57:05,653 [REGIME] ADX=35.0  BBbw=0.0009  ATR%=0.000208  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+2025-09-02 12:57:05,653 [Gate] Regime fail
+2025-09-02 12:58:06,159 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=5.2
+2025-09-02 12:58:06,159 [REGIME] ADX=32.5  BBbw=0.0008  ATR%=0.000201  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+2025-09-02 12:58:06,159 [Gate] Regime fail
+2025-09-02 12:59:05,921 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=5.1
+2025-09-02 12:59:05,922 [REGIME] ADX=30.8  BBbw=0.0008  ATR%=0.000198  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+2025-09-02 12:59:05,922 [Gate] Regime fail
+2025-09-02 13:00:05,825 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=5.2
+2025-09-02 13:00:05,826 [REGIME] ADX=29.8  BBbw=0.0010  ATR%=0.000203  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+2025-09-02 13:00:05,826 [Gate] Regime fail
+2025-09-02 13:01:05,923 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=6.1
+2025-09-02 13:01:05,924 [REGIME] ADX=28.6  BBbw=0.0010  ATR%=0.000236  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+2025-09-02 13:01:05,924 [Gate] Regime fail
+2025-09-02 13:02:05,893 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=5.9
+2025-09-02 13:02:05,893 [REGIME] ADX=27.0  BBbw=0.0010  ATR%=0.000230  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+2025-09-02 13:02:05,893 [Gate] Regime fail
+2025-09-02 13:03:05,686 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=5.7
+2025-09-02 13:03:05,686 [REGIME] ADX=25.5  BBbw=0.0010  ATR%=0.000222  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+2025-09-02 13:03:05,687 [Gate] Regime fail
+2025-09-02 13:04:05,417 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=5.8
+2025-09-02 13:04:05,418 [REGIME] ADX=23.9  BBbw=0.0010  ATR%=0.000226  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+2025-09-02 13:05:05,453 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=5.6
+2025-09-02 13:05:05,454 [REGIME] ADX=22.7  BBbw=0.0010  ATR%=0.000218  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+2025-09-02 13:05:05,459 [ORDER] SHORT STP_LMT qty=1 stop=6407.00 sl=6409.50 TPx1 playbook=trend (parentId 2823)
+2025-09-02 13:06:06,028 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=6.0
+2025-09-02 13:06:06,028 [REGIME] ADX=22.7  BBbw=0.0012  ATR%=0.000233  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+2025-09-02 13:07:05,886 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=6.0
+2025-09-02 13:07:05,886 [REGIME] ADX=22.0  BBbw=0.0012  ATR%=0.000233  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+2025-09-02 13:08:05,618 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=5.8
+2025-09-02 13:08:05,619 [REGIME] ADX=21.6  BBbw=0.0012  ATR%=0.000228  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+2025-09-02 13:09:05,558 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=5.8
+2025-09-02 13:09:05,558 [REGIME] ADX=21.6  BBbw=0.0013  ATR%=0.000226  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+2025-09-02 13:10:05,627 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=5.9
+2025-09-02 13:10:05,628 [REGIME] ADX=22.2  BBbw=0.0014  ATR%=0.000229  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+2025-09-02 13:11:06,103 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=6.1
+2025-09-02 13:11:06,104 [REGIME] ADX=21.9  BBbw=0.0014  ATR%=0.000238  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+2025-09-02 13:12:05,318 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=5.7
+2025-09-02 13:12:05,319 [REGIME] ADX=21.6  BBbw=0.0013  ATR%=0.000224  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+2025-09-02 13:13:05,948 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=5.7
+2025-09-02 13:13:05,949 [REGIME] ADX=21.8  BBbw=0.0013  ATR%=0.000224  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+2025-09-02 13:14:05,868 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=5.7
+2025-09-02 13:14:05,868 [REGIME] ADX=21.4  BBbw=0.0012  ATR%=0.000222  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+2025-09-02 13:15:06,392 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=5.6
+2025-09-02 13:15:06,392 [REGIME] ADX=21.5  BBbw=0.0012  ATR%=0.000220  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+2025-09-02 13:16:06,002 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=5.4
+2025-09-02 13:16:06,003 [REGIME] ADX=21.5  BBbw=0.0012  ATR%=0.000210  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+2025-09-02 13:17:06,389 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=5.3
+2025-09-02 13:17:06,391 [REGIME] ADX=21.9  BBbw=0.0013  ATR%=0.000206  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+2025-09-02 13:17:06,400 [ORDER] LONG STP_LMT qty=1 stop=6404.25 sl=6401.75 TPx1 playbook=meanrev (parentId 3790)
+2025-09-02 13:18:06,408 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=5.1
+2025-09-02 13:18:06,409 [REGIME] ADX=22.0  BBbw=0.0013  ATR%=0.000197  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+2025-09-02 13:18:06,415 [ORDER] LONG STP_LMT qty=1 stop=6404.00 sl=6401.75 TPx1 playbook=meanrev (parentId 3873)
+2025-09-02 13:19:05,642 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=5.1
+2025-09-02 13:19:05,643 [REGIME] ADX=22.8  BBbw=0.0014  ATR%=0.000200  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+2025-09-02 13:20:06,399 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=5.0
+2025-09-02 13:20:06,399 [REGIME] ADX=23.8  BBbw=0.0015  ATR%=0.000197  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+2025-09-02 13:21:06,062 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=5.3
+2025-09-02 13:21:06,062 [REGIME] ADX=23.3  BBbw=0.0014  ATR%=0.000208  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+2025-09-02 13:22:06,534 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=5.1
+2025-09-02 13:22:06,535 [REGIME] ADX=22.7  BBbw=0.0013  ATR%=0.000198  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+2025-09-02 13:23:06,627 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=4.9
+2025-09-02 13:23:06,627 [REGIME] ADX=21.8  BBbw=0.0011  ATR%=0.000190  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+2025-09-02 13:24:06,082 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=4.8
+2025-09-02 13:24:06,082 [REGIME] ADX=21.4  BBbw=0.0010  ATR%=0.000187  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+2025-09-02 13:24:06,083 [Gate] Regime fail
+2025-09-02 13:25:06,622 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=4.7
+2025-09-02 13:25:06,623 [REGIME] ADX=21.0  BBbw=0.0008  ATR%=0.000182  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+2025-09-02 13:25:06,626 [Gate] Regime fail
+2025-09-02 13:26:05,733 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=4.6
+2025-09-02 13:26:05,734 [REGIME] ADX=20.7  BBbw=0.0008  ATR%=0.000181  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+2025-09-02 13:26:05,734 [Gate] Regime fail
+2025-09-02 13:27:05,906 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=4.9
+2025-09-02 13:27:05,906 [REGIME] ADX=21.3  BBbw=0.0008  ATR%=0.000190  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+2025-09-02 13:27:05,907 [Gate] Regime fail
+2025-09-02 13:28:06,793 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=4.6
+2025-09-02 13:28:06,793 [REGIME] ADX=21.7  BBbw=0.0008  ATR%=0.000179  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+2025-09-02 13:28:06,793 [Gate] Regime fail
+2025-09-02 13:29:06,107 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=4.4
+2025-09-02 13:29:06,108 [REGIME] ADX=22.4  BBbw=0.0009  ATR%=0.000172  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+2025-09-02 13:29:06,108 [Gate] Regime fail
+2025-09-02 13:30:06,291 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=4.3
+2025-09-02 13:30:06,291 [REGIME] ADX=23.3  BBbw=0.0009  ATR%=0.000168  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+2025-09-02 13:30:06,292 [Gate] Regime fail
+2025-09-02 13:31:05,937 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=4.7
+2025-09-02 13:31:05,937 [REGIME] ADX=22.3  BBbw=0.0009  ATR%=0.000184  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+2025-09-02 13:31:05,938 [Gate] Regime fail
+2025-09-02 13:32:06,016 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=4.5
+2025-09-02 13:32:06,017 [REGIME] ADX=21.2  BBbw=0.0008  ATR%=0.000176  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+2025-09-02 13:32:06,017 [Gate] Regime fail
+2025-09-02 13:33:06,480 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=4.9
+2025-09-02 13:33:06,481 [REGIME] ADX=21.4  BBbw=0.0009  ATR%=0.000192  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+2025-09-02 13:33:06,481 [Gate] Regime fail
+2025-09-02 13:34:06,495 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=4.9
+2025-09-02 13:34:06,496 [REGIME] ADX=20.8  BBbw=0.0008  ATR%=0.000192  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+2025-09-02 13:34:06,496 [Gate] Regime fail
+2025-09-02 13:35:05,408 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=5.1
+2025-09-02 13:35:05,408 [REGIME] ADX=21.0  BBbw=0.0008  ATR%=0.000198  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+2025-09-02 13:35:05,408 [Gate] Regime fail
+2025-09-02 13:36:06,237 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=5.3
+2025-09-02 13:36:06,238 [REGIME] ADX=21.8  BBbw=0.0008  ATR%=0.000209  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+2025-09-02 13:36:06,238 [Gate] Regime fail
+2025-09-02 13:37:06,294 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=5.4
+2025-09-02 13:37:06,294 [REGIME] ADX=22.9  BBbw=0.0009  ATR%=0.000211  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+2025-09-02 13:37:06,294 [Gate] Regime fail
+2025-09-02 13:38:05,816 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=5.3
+2025-09-02 13:38:05,816 [REGIME] ADX=23.5  BBbw=0.0010  ATR%=0.000207  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+2025-09-02 13:38:05,817 [Gate] Regime fail
+2025-09-02 13:39:05,995 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=5.1
+2025-09-02 13:39:05,995 [REGIME] ADX=23.7  BBbw=0.0010  ATR%=0.000198  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)

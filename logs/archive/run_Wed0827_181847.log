@@ -1,0 +1,21 @@
+2025-08-27 18:18:47,549 ================== PAPER MODE ==================
+2025-08-27 18:18:47,550 Host:127.0.0.1  Port:7497  ClientId:9145
+2025-08-27 18:18:47,550 Paper account required (TWS/Gateway set to Paper). Orders WILL be sent (paper).
+2025-08-27 18:18:47,550 Writing log to logs\run_Wed0827_181847.log
+2025-08-27 18:18:47,551 [CONNECT] Attempt 1/8 to 127.0.0.1:7497 (clientId=9145, timeout=60s)
+2025-08-27 18:19:47,559 [CONNECT] attempt 1 failed: 
+2025-08-27 18:19:49,560 [CONNECT] Attempt 2/8 to 127.0.0.1:7497 (clientId=9145, timeout=60s)
+2025-08-27 18:20:49,578 [CONNECT] attempt 2 failed: 
+2025-08-27 18:20:53,592 [CONNECT] Attempt 3/8 to 127.0.0.1:7497 (clientId=9145, timeout=60s)
+2025-08-27 18:21:53,610 [CONNECT] attempt 3 failed: 
+2025-08-27 18:21:59,611 [CONNECT] Attempt 4/8 to 127.0.0.1:7497 (clientId=9145, timeout=60s)
+2025-08-27 18:22:59,616 [CONNECT] attempt 4 failed: 
+2025-08-27 18:23:07,617 [CONNECT] Attempt 5/8 to 127.0.0.1:7497 (clientId=9145, timeout=60s)
+2025-08-27 18:24:07,630 [CONNECT] attempt 5 failed: 
+2025-08-27 18:24:17,632 [CONNECT] Attempt 6/8 to 127.0.0.1:7497 (clientId=9145, timeout=60s)
+2025-08-27 18:25:17,642 [CONNECT] attempt 6 failed: 
+2025-08-27 18:25:29,650 [CONNECT] Attempt 7/8 to 127.0.0.1:7497 (clientId=9145, timeout=60s)
+2025-08-27 18:26:29,663 [CONNECT] attempt 7 failed: 
+2025-08-27 18:26:43,824 [CONNECT] Attempt 8/8 to 127.0.0.1:7497 (clientId=9145, timeout=60s)
+2025-08-27 18:27:43,838 [CONNECT] attempt 8 failed: 
+2025-08-27 18:27:43,992 [CRASH] Saved traceback to: results/ib_session_20250827_231847/crash_20250827_232743.log

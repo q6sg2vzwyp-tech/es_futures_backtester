@@ -1,0 +1,55 @@
+﻿diff --git a/start_watchdog.bat b/start_watchdog.bat
+new file mode 100644
+index 0000000..aaaaaaa 100644
+--- /dev/null
++++ b/start_watchdog.bat
+@@ -0,0 +1,63 @@
++@echo off
++setlocal enabledelayedexpansion
++
++REM ================================
++REM  Start watchdog for paper_trader
++REM  - Reads PAPER_TRADER_ARGS from this .bat
++REM  - Uses .venv\Scripts\python.exe if present
++REM  - Writes logs via watchdog --tee
++REM ================================
++
++set "SCRIPT_DIR=%~dp0"
++set "SCRIPT_DIR=%SCRIPT_DIR:~0,-1%"
++
++REM Choose Python
++set "PY=%SCRIPT_DIR%\.venv\Scripts\python.exe"
++if not exist "%PY%" set "PY=python"
++
++REM Ensure logs dir exists
++if not exist "%SCRIPT_DIR%\logs" mkdir "%SCRIPT_DIR%\logs"
++
++REM ---------- Default runtime args for paper_trader.py ----------
++set "PAPER_TRADER_ARGS=^
++  --local-symbol ESZ5 ^
++  --place-orders ^
++  --use-ib-pnl ^
++  --learn-mode advisory ^
++  --risk-profile balanced ^
++  --trade-start-ct 00:00 --trade-end-ct 23:59 ^
++  --startup-delay-sec 0 ^
++  --gate-bbbw 0 ^
++  --poll-hist-when-no-rt --poll-interval-sec 10 --rt-staleness-sec 45 --rt-starve-sec 3 ^
++  --session-reset-cts 08:30,16:00,17:00 --vwap-reset-on-session ^
++  --short-guard-vwap --short-guard-lower-high ^
++  --pos-age-cap-sec 1200 --pos-age-minR 0.5 ^
++  --hwm-stepdown --hwm-stepdown-dollars 5000 ^
++  --day-guard-pct 0.025 --day-loss-cap-R 3 --max-trades-per-day 12 --max-consec-losses 3 ^
++  --tick-size 0.25 --risk-ticks 12 --tp-R 1.0 --entry-slippage-ticks 2 ^
++  --risk-includes-slippage ^
++  --commission-per-contract 2.25 ^
++  --margin-per-contract 13200 --margin-reserve-pct 0.10"
++
++echo [RUN] PY=%PY%
++echo [RUN] SCRIPT_DIR=%SCRIPT_DIR%
++echo [RUN] PAPER_TRADER_ARGS=%PAPER_TRADER_ARGS%
++
++set "EXTRA=%*"
++"%PY%" -u "%SCRIPT_DIR%\watchdog_single.py" --cwd "%SCRIPT_DIR%" --target "%SCRIPT_DIR%\paper_trader.py" --tee %EXTRA%
++
++endlocal

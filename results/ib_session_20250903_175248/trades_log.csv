@@ -1,0 +1,2 @@
+TimeEntry,Playbook,Context,Side,Qty,EntryStop,EntryType,StopDist,ATRt,TPs,SL,Reason,ParentId,ParamTag,SizeLevel,AssumedSlipTicks,TimeExit,ExitPx,ExitReason,RealizedPnL,Rmultiple,EqAfter
+2025-09-03 18:04:05+0000,meanrev,trendH/volH/bandH|mid,LONG,1,6431.0,STP_LMT,3.9582285532516988,8.796063451670442,6439.0:1,6427.0,signal,4766,v1,0,0.6165026438196017,,,,,,

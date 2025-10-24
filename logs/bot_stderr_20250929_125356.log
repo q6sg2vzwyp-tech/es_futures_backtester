@@ -1,0 +1,20 @@
+C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py:36: SyntaxWarning: invalid escape sequence '\.'
+  Windows PowerShell uses ^ for line breaks; bash uses \.
+usage: paper_trader.py [-h] [--host HOST] [--port PORT] [--clientId CLIENTID]
+                       [--conId CONID] [--symbol SYMBOL] [--expiry EXPIRY]
+                       [--qty QTY] [--tick-size TICK_SIZE]
+                       [--point-value POINT_VALUE] [--risk-ticks RISK_TICKS]
+                       [--tp-R TP_R] [--tif TIF] [--outsideRth]
+                       [--timeout-sec TIMEOUT_SEC]
+                       [--chooser {trend,mean,auto}] [--gate-adx GATE_ADX]
+                       [--gate-bbbw GATE_BBBW] [--gate-atrp GATE_ATRP]
+                       [--bar-size BAR_SIZE] [--duration DURATION]
+                       [--loop-sec LOOP_SEC]
+                       [--max-open-trades MAX_OPEN_TRADES]
+                       [--day-loss-cap-R DAY_LOSS_CAP_R]
+                       [--week-loss-cap-R WEEK_LOSS_CAP_R]
+                       [--cooldown-minutes COOLDOWN_MINUTES]
+                       [--telegram-token TELEGRAM_TOKEN]
+                       [--telegram-chat-id TELEGRAM_CHAT_ID]
+                       [--logfile LOGFILE] [-v]
+paper_trader.py: error: unrecognized arguments: --trade-start-ct 00:00 --trade-end-ct 23:59 --one-trade-at-a-time --debounce-one-bar --max-daily-R-loss 3.0 --max-trades-per-day 8 --strategy-cooldown-sec 120 --min-hold-sec 60 --breakeven-after-R 2.0 --trail-atr-mult 3.2 --trail-delay-sec 180 --trail-on-bar-close --place-orders --one-trade-at-a-time --debounce-one-bar --trade-start-ct 07:00 --trade-morning-end-ct 11:00 --trade-lunch-resume-ct 12:45 --trade-end-ct 14:55 --enable-arms trend,breakout --adx-floor 19 --bbbw-floor 0.00022 --atrp-floor 0.000058 --trail-on-bar-close --epsilon 0.018 --epsilon-final 0.012 --epsilon-decay-min 90 --chooser-model-path .\models\linucb_es_day.json

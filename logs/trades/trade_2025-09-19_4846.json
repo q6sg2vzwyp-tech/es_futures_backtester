@@ -1,0 +1,23 @@
+{
+  "orderId": 4846,
+  "arm": "reversion",
+  "side": "LONG",
+  "qty": 1,
+  "entry_price": 6705.5,
+  "snap_price": 6705.5,
+  "entry_time": "2025-09-19T08:56:22.880905",
+  "hold_hours": 0.3614194130555556,
+  "realized_R": -1.0833333333333333,
+  "max_adverse_R": 0.9166666666666666,
+  "slip_R": 0.0,
+  "reward": -1.282808607972222,
+  "entry_regime": {
+    "atr_pct": 8.407484600121186e-05,
+    "bb_bw": 0.00021626956375193592,
+    "adx": 14.197528358562082,
+    "spread": 1.0,
+    "ok": 1.0,
+    "atr_points": 0.5639950856876295
+  },
+  "session_day": "2025-09-19"
+}

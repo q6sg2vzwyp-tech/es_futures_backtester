@@ -1,0 +1,158 @@
+============================================================
+[START] 2025-09-09 14:45:29
+[CMD] C:\Users\owner\AppData\Local\Programs\Python\Python313\python.exe -X faulthandler -u paper_trader.py --host 127.0.0.1 --port 7497 --clientId 19 --conId 637533641 --tp-ladder 1.0R:50,2.0R:50 --no-confirm --place-orders --debug-regime --persist-chooser --chooser-model-path C:\Users\owner\Desktop\es_futures_backtester\models\linucb_state.json
+============================================================
+[LOG] 2025-09-09 14:45:30 Loaded chooser state from C:\Users\owner\Desktop\es_futures_backtester\models\linucb_state.json
+[LOG] 2025-09-09 14:45:30 [PING 1] clientId=19 connected: False
+[LOG] 2025-09-09 14:45:30 Connected 127.0.0.1:7497 clientId=19 | Market data type: LIVE
+[LOG] 2025-09-09 14:45:30 Using contract: ESU5  (conId=637533641)
+[LOG] 2025-09-09 14:45:30 [WARMUP] Fetching 5d of 1m bars...
+[LOG] 2025-09-09 14:45:32 [WARMUP] Loaded 6826 historical 1m bars.
+[REGIME] ADX=19.7  BBbw=0.0005  ATR%=0.000107  (ok=False)
+[HB] 2025-09-09 14:46:07 CT DayPnL=$0.00 | ChooserArm=ema | Gate=no
+[REGIME] ADX=29.0  BBbw=0.0003  ATR%=0.000057  (ok=False)
+[HB] 2025-09-09 14:47:07 CT DayPnL=$0.00 | ChooserArm=ema | Gate=no
+[REGIME] ADX=26.7  BBbw=0.0002  ATR%=0.000065  (ok=False)
+[HB] 2025-09-09 14:48:06 CT DayPnL=$0.00 | ChooserArm=ema | Gate=no
+[REGIME] ADX=21.7  BBbw=0.0002  ATR%=0.000063  (ok=False)
+[HB] 2025-09-09 14:49:06 CT DayPnL=$0.00 | ChooserArm=ema | Gate=no
+[REGIME] ADX=22.9  BBbw=0.0004  ATR%=0.000102  (ok=False)
+[HB] 2025-09-09 14:50:06 CT DayPnL=$0.00 | ChooserArm=ema | Gate=no
+[REGIME] ADX=18.8  BBbw=0.0005  ATR%=0.000083  (ok=False)
+[HB] 2025-09-09 14:51:06 CT DayPnL=$0.00 | ChooserArm=ema | Gate=no
+[REGIME] ADX=22.7  BBbw=0.0002  ATR%=0.000082  (ok=False)
+[HB] 2025-09-09 14:52:06 CT DayPnL=$0.00 | ChooserArm=ema | Gate=no
+[REGIME] ADX=46.3  BBbw=0.0002  ATR%=0.000074  (ok=False)
+[HB] 2025-09-09 14:53:06 CT DayPnL=$0.00 | ChooserArm=ema | Gate=no
+[REGIME] ADX=59.2  BBbw=0.0003  ATR%=0.000082  (ok=False)
+[HB] 2025-09-09 14:54:07 CT DayPnL=$0.00 | ChooserArm=ema | Gate=no
+[REGIME] ADX=37.5  BBbw=0.0003  ATR%=0.000118  (ok=False)
+[HB] 2025-09-09 14:55:06 CT DayPnL=$0.00 | ChooserArm=ema | Gate=no
+[REGIME] ADX=48.5  BBbw=0.0011  ATR%=0.000139  (ok=True)
+[HB] 2025-09-09 14:56:06 CT DayPnL=$0.00 | ChooserArm=ema | Gate=yes
+[REGIME] ADX=35.9  BBbw=0.0007  ATR%=0.000108  (ok=False)
+[HB] 2025-09-09 14:57:06 CT DayPnL=$0.00 | ChooserArm=ema | Gate=no
+[REGIME] ADX=20.0  BBbw=0.0003  ATR%=0.000089  (ok=False)
+[HB] 2025-09-09 14:58:06 CT DayPnL=$0.00 | ChooserArm=ema | Gate=no
+[REGIME] ADX=37.1  BBbw=0.0005  ATR%=0.000109  (ok=False)
+[HB] 2025-09-09 14:59:06 CT DayPnL=$0.00 | ChooserArm=ema | Gate=no
+[REGIME] ADX=41.7  BBbw=0.0006  ATR%=0.000212  (ok=False)
+[HB] 2025-09-09 15:00:06 CT DayPnL=$0.00 | ChooserArm=ema | Gate=no
+[REGIME] ADX=50.0  BBbw=0.0012  ATR%=0.000122  (ok=True)
+[HB] 2025-09-09 15:01:06 CT DayPnL=$0.00 | ChooserArm=ema | Gate=yes
+[REGIME] ADX=28.1  BBbw=0.0003  ATR%=0.000077  (ok=False)
+[HB] 2025-09-09 15:02:06 CT DayPnL=$0.00 | ChooserArm=ema | Gate=no
+[REGIME] ADX=21.9  BBbw=0.0002  ATR%=0.000045  (ok=False)
+[HB] 2025-09-09 15:03:07 CT DayPnL=$0.00 | ChooserArm=ema | Gate=no
+[REGIME] ADX=17.3  BBbw=0.0001  ATR%=0.000052  (ok=False)
+[HB] 2025-09-09 15:04:07 CT DayPnL=$0.00 | ChooserArm=ema | Gate=no
+[REGIME] ADX=52.8  BBbw=0.0003  ATR%=0.000051  (ok=False)
+[HB] 2025-09-09 15:05:06 CT DayPnL=$0.00 | ChooserArm=ema | Gate=no
+[REGIME] ADX=40.1  BBbw=0.0006  ATR%=0.000106  (ok=False)
+[HB] 2025-09-09 15:06:06 CT DayPnL=$0.00 | ChooserArm=ema | Gate=no
+[REGIME] ADX=66.7  BBbw=0.0007  ATR%=0.000077  (ok=False)
+[HB] 2025-09-09 15:07:06 CT DayPnL=$0.00 | ChooserArm=ema | Gate=no
+[REGIME] ADX=75.7  BBbw=0.0009  ATR%=0.000092  (ok=False)
+[HB] 2025-09-09 15:08:06 CT DayPnL=$0.00 | ChooserArm=ema | Gate=no
+[REGIME] ADX=42.8  BBbw=0.0002  ATR%=0.000071  (ok=False)
+[HB] 2025-09-09 15:09:07 CT DayPnL=$0.00 | ChooserArm=ema | Gate=no
+[REGIME] ADX=33.8  BBbw=0.0002  ATR%=0.000062  (ok=False)
+[HB] 2025-09-09 15:10:07 CT DayPnL=$0.00 | ChooserArm=ema | Gate=no
+[REGIME] ADX=31.4  BBbw=0.0003  ATR%=0.000057  (ok=False)
+[HB] 2025-09-09 15:11:06 CT DayPnL=$0.00 | ChooserArm=ema | Gate=no
+[REGIME] ADX=43.2  BBbw=0.0003  ATR%=0.000045  (ok=False)
+[HB] 2025-09-09 15:12:06 CT DayPnL=$0.00 | ChooserArm=ema | Gate=no
+[REGIME] ADX=70.5  BBbw=0.0006  ATR%=0.000074  (ok=False)
+[HB] 2025-09-09 15:13:07 CT DayPnL=$0.00 | ChooserArm=ema | Gate=no
+[REGIME] ADX=87.9  BBbw=0.0004  ATR%=0.000049  (ok=False)
+[HB] 2025-09-09 15:14:07 CT DayPnL=$0.00 | ChooserArm=ema | Gate=no
+[REGIME] ADX=33.5  BBbw=0.0002  ATR%=0.000063  (ok=False)
+[HB] 2025-09-09 15:15:06 CT DayPnL=$0.00 | ChooserArm=ema | Gate=no
+[REGIME] ADX=40.0  BBbw=0.0003  ATR%=0.000054  (ok=False)
+[HB] 2025-09-09 15:16:07 CT DayPnL=$0.00 | ChooserArm=ema | Gate=no
+[REGIME] ADX=33.1  BBbw=0.0005  ATR%=0.000070  (ok=False)
+[HB] 2025-09-09 15:17:07 CT DayPnL=$0.00 | ChooserArm=ema | Gate=no
+[REGIME] ADX=19.9  BBbw=0.0005  ATR%=0.000058  (ok=False)
+[HB] 2025-09-09 15:18:06 CT DayPnL=$0.00 | ChooserArm=ema | Gate=no
+[REGIME] ADX=45.5  BBbw=0.0003  ATR%=0.000048  (ok=False)
+[HB] 2025-09-09 15:19:06 CT DayPnL=$0.00 | ChooserArm=ema | Gate=no
+[REGIME] ADX=72.5  BBbw=0.0005  ATR%=0.000063  (ok=False)
+[HB] 2025-09-09 15:20:07 CT DayPnL=$0.00 | ChooserArm=ema | Gate=no
+[REGIME] ADX=37.1  BBbw=0.0003  ATR%=0.000086  (ok=False)
+[HB] 2025-09-09 15:21:06 CT DayPnL=$0.00 | ChooserArm=ema | Gate=no
+[REGIME] ADX=24.1  BBbw=0.0003  ATR%=0.000063  (ok=False)
+[HB] 2025-09-09 15:22:06 CT DayPnL=$0.00 | ChooserArm=ema | Gate=no
+[REGIME] ADX=26.1  BBbw=0.0002  ATR%=0.000058  (ok=False)
+[HB] 2025-09-09 15:23:07 CT DayPnL=$0.00 | ChooserArm=ema | Gate=no
+[REGIME] ADX=45.1  BBbw=0.0003  ATR%=0.000068  (ok=False)
+[HB] 2025-09-09 15:24:06 CT DayPnL=$0.00 | ChooserArm=ema | Gate=no
+[REGIME] ADX=32.8  BBbw=0.0004  ATR%=0.000047  (ok=False)
+[HB] 2025-09-09 15:25:06 CT DayPnL=$0.00 | ChooserArm=ema | Gate=no
+[REGIME] ADX=34.4  BBbw=0.0002  ATR%=0.000040  (ok=False)
+[HB] 2025-09-09 15:26:06 CT DayPnL=$0.00 | ChooserArm=ema | Gate=no
+[REGIME] ADX=27.1  BBbw=0.0002  ATR%=0.000034  (ok=False)
+[HB] 2025-09-09 15:27:07 CT DayPnL=$0.00 | ChooserArm=ema | Gate=no
+[REGIME] ADX=43.6  BBbw=0.0003  ATR%=0.000046  (ok=False)
+[HB] 2025-09-09 15:28:06 CT DayPnL=$0.00 | ChooserArm=ema | Gate=no
+[REGIME] ADX=38.1  BBbw=0.0002  ATR%=0.000033  (ok=False)
+[HB] 2025-09-09 15:29:07 CT DayPnL=$0.00 | ChooserArm=ema | Gate=no
+[REGIME] ADX=31.1  BBbw=0.0002  ATR%=0.000044  (ok=False)
+[HB] 2025-09-09 15:30:07 CT DayPnL=$0.00 | ChooserArm=ema | Gate=no
+[REGIME] ADX=21.4  BBbw=0.0001  ATR%=0.000024  (ok=False)
+[HB] 2025-09-09 15:31:06 CT DayPnL=$0.00 | ChooserArm=ema | Gate=no
+[REGIME] ADX=23.3  BBbw=0.0002  ATR%=0.000045  (ok=False)
+[HB] 2025-09-09 15:32:06 CT DayPnL=$0.00 | ChooserArm=ema | Gate=no
+[REGIME] ADX=27.1  BBbw=0.0003  ATR%=0.000028  (ok=False)
+[HB] 2025-09-09 15:33:07 CT DayPnL=$0.00 | ChooserArm=ema | Gate=no
+[REGIME] ADX=34.7  BBbw=0.0001  ATR%=0.000031  (ok=False)
+[HB] 2025-09-09 15:34:07 CT DayPnL=$0.00 | ChooserArm=ema | Gate=no
+[REGIME] ADX=26.2  BBbw=0.0002  ATR%=0.000039  (ok=False)
+[HB] 2025-09-09 15:35:06 CT DayPnL=$0.00 | ChooserArm=ema | Gate=no
+[REGIME] ADX=29.7  BBbw=0.0002  ATR%=0.000037  (ok=False)
+[HB] 2025-09-09 15:36:07 CT DayPnL=$0.00 | ChooserArm=ema | Gate=no
+[REGIME] ADX=21.5  BBbw=0.0001  ATR%=0.000049  (ok=False)
+[HB] 2025-09-09 15:37:07 CT DayPnL=$0.00 | ChooserArm=ema | Gate=no
+[REGIME] ADX=22.7  BBbw=0.0002  ATR%=0.000032  (ok=False)
+[HB] 2025-09-09 15:38:06 CT DayPnL=$0.00 | ChooserArm=ema | Gate=no
+[REGIME] ADX=22.6  BBbw=0.0002  ATR%=0.000043  (ok=False)
+[HB] 2025-09-09 15:39:07 CT DayPnL=$0.00 | ChooserArm=ema | Gate=no
+[REGIME] ADX=18.8  BBbw=0.0002  ATR%=0.000030  (ok=False)
+[HB] 2025-09-09 15:40:07 CT DayPnL=$0.00 | ChooserArm=ema | Gate=no
+[REGIME] ADX=36.1  BBbw=0.0001  ATR%=0.000037  (ok=False)
+[HB] 2025-09-09 15:41:06 CT DayPnL=$0.00 | ChooserArm=ema | Gate=no
+[REGIME] ADX=55.5  BBbw=0.0002  ATR%=0.000038  (ok=False)
+[HB] 2025-09-09 15:42:06 CT DayPnL=$0.00 | ChooserArm=ema | Gate=no
+[REGIME] ADX=22.8  BBbw=0.0002  ATR%=0.000037  (ok=False)
+[HB] 2025-09-09 15:43:07 CT DayPnL=$0.00 | ChooserArm=ema | Gate=no
+[REGIME] ADX=51.7  BBbw=0.0002  ATR%=0.000035  (ok=False)
+[HB] 2025-09-09 15:44:06 CT DayPnL=$0.00 | ChooserArm=ema | Gate=no
+[REGIME] ADX=21.9  BBbw=0.0002  ATR%=0.000039  (ok=False)
+[HB] 2025-09-09 15:45:06 CT DayPnL=$0.00 | ChooserArm=ema | Gate=no
+[REGIME] ADX=30.7  BBbw=0.0002  ATR%=0.000035  (ok=False)
+[HB] 2025-09-09 15:46:07 CT DayPnL=$0.00 | ChooserArm=ema | Gate=no
+[REGIME] ADX=22.1  BBbw=0.0001  ATR%=0.000039  (ok=False)
+[HB] 2025-09-09 15:47:06 CT DayPnL=$0.00 | ChooserArm=ema | Gate=no
+[REGIME] ADX=27.4  BBbw=0.0002  ATR%=0.000026  (ok=False)
+[HB] 2025-09-09 15:48:07 CT DayPnL=$0.00 | ChooserArm=ema | Gate=no
+[REGIME] ADX=35.6  BBbw=0.0004  ATR%=0.000071  (ok=False)
+[HB] 2025-09-09 15:49:07 CT DayPnL=$0.00 | ChooserArm=ema | Gate=no
+[REGIME] ADX=17.9  BBbw=0.0001  ATR%=0.000052  (ok=False)
+[HB] 2025-09-09 15:50:06 CT DayPnL=$0.00 | ChooserArm=ema | Gate=no
+[REGIME] ADX=33.1  BBbw=0.0004  ATR%=0.000036  (ok=False)
+[HB] 2025-09-09 15:51:06 CT DayPnL=$0.00 | ChooserArm=ema | Gate=no
+[REGIME] ADX=56.4  BBbw=0.0004  ATR%=0.000045  (ok=False)
+[HB] 2025-09-09 15:52:07 CT DayPnL=$0.00 | ChooserArm=ema | Gate=no
+[REGIME] ADX=18.9  BBbw=0.0002  ATR%=0.000043  (ok=False)
+[HB] 2025-09-09 15:53:07 CT DayPnL=$0.00 | ChooserArm=ema | Gate=no
+[REGIME] ADX=17.1  BBbw=0.0002  ATR%=0.000028  (ok=False)
+[HB] 2025-09-09 15:54:06 CT DayPnL=$0.00 | ChooserArm=ema | Gate=no
+[REGIME] ADX=44.1  BBbw=0.0003  ATR%=0.000044  (ok=False)
+[HB] 2025-09-09 15:55:06 CT DayPnL=$0.00 | ChooserArm=ema | Gate=no
+[REGIME] ADX=59.1  BBbw=0.0001  ATR%=0.000032  (ok=False)
+[HB] 2025-09-09 15:56:06 CT DayPnL=$0.00 | ChooserArm=ema | Gate=no
+[REGIME] ADX=32.8  BBbw=0.0001  ATR%=0.000027  (ok=False)
+[HB] 2025-09-09 15:57:06 CT DayPnL=$0.00 | ChooserArm=ema | Gate=no
+[REGIME] ADX=20.3  BBbw=0.0001  ATR%=0.000030  (ok=False)
+[HB] 2025-09-09 15:58:06 CT DayPnL=$0.00 | ChooserArm=ema | Gate=no
+[REGIME] ADX=31.3  BBbw=0.0001  ATR%=0.000036  (ok=False)
+[HB] 2025-09-09 15:59:07 CT DayPnL=$0.00 | ChooserArm=ema | Gate=no

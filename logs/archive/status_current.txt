@@ -1,0 +1,1 @@
+[HB+] 2025-09-16 11:43:50 up=00:20:54 rest=0 sess=20250916  |  OT=0  arm=trend  gate=no  eps=0.045  R=0.00 N=0  stall=no  ADX=16.4  BBbw=0.0001  ATR%=0.000035  ESZ5  conId=495512563  cid=19

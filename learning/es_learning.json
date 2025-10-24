@@ -1,0 +1,7 @@
+{
+  "runs": 0,
+  "good_regimes": 135,
+  "bad_regimes": 93,
+  "adx_nudge": 0.0,
+  "bb_nudge": 0.0005
+}

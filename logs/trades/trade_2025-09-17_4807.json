@@ -1,0 +1,22 @@
+{
+  "orderId": 4807,
+  "arm": "reversion",
+  "side": "SHORT",
+  "qty": 1,
+  "entry_price": 6662.5,
+  "snap_price": 6662.5,
+  "entry_time": "2025-09-17T09:20:04.667461",
+  "hold_hours": 0.004918755555555555,
+  "realized_R": 0.25,
+  "max_adverse_R": 0.0,
+  "slip_R": 0.0,
+  "reward": 0.26950812444444444,
+  "entry_regime": {
+    "atr_pct": 7.340005106784587e-05,
+    "bb_bw": 0.00020244420355050935,
+    "adx": 13.978409723290826,
+    "spread": 1.0,
+    "ok": 1.0
+  },
+  "session_day": "2025-09-17"
+}

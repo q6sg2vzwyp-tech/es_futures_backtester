@@ -1,0 +1,12 @@
+2025-09-03 00:59:16,639 ================== PAPER MODE ==================
+2025-09-03 00:59:16,639 Host:127.0.0.1  Port:7497  ClientId:19
+2025-09-03 00:59:16,639 Paper account required (TWS/Gateway set to Paper). Orders WILL be sent (paper).
+2025-09-03 00:59:16,639 Writing log to logs\run_Wed0903_005916.log
+2025-09-03 00:59:17,148 [PING 1] clientId=40156 connected: True
+2025-09-03 00:59:17,149 [CONNECT] Attempt 1/8 to 127.0.0.1:7497 (clientId=19, timeout=60s)
+2025-09-03 00:59:17,262 Connected 127.0.0.1:7497 clientId=19 | Market data type: LIVE (1)
+2025-09-03 00:59:17,266 Using contract: ESU5  (conId=637533641)
+2025-09-03 00:59:17,268 [AUTOROLL] Will warn 7 days before expiry (print-only).
+2025-09-03 00:59:17,268 [RISK] Daily loss cap: $1,250.00
+2025-09-03 00:59:17,595 [WARMUP] Loaded 7140 historical 1m bars.
+2025-09-03 00:59:17,676 >> LIVE paper trading with adaptive chooser + promotion ladder. Ctrl+C to stop.

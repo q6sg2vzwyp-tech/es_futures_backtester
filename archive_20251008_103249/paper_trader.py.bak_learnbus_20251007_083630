@@ -1,0 +1,728 @@
+﻿
+import time
+
+import json
+
+# --- Compat wrapper for ib_insync.RealTimeBarList (adds hasNext/next) ---
+class CompatRealTimeBarList:
+    def __init__(self, rt):
+        self._rt = rt
+        self._last = None  # last bar time we emitted
+
+    def hasNext(self):
+        try:
+            return len(self._rt) > 0 and (getattr(self._rt[-1], 'time', None) != self._last)
+        except Exception:
+            return False
+
+    def next(self):
+        if self.hasNext():
+            bar = self._rt[-1]
+            self._last = getattr(bar, 'time', None)
+            return bar
+        return None
+
+    # pass-throughs so existing code that indexes/len() still works
+    def __len__(self):
+        return len(self._rt)
+    def __getitem__(self, i):
+        return self._rt[i]
+# --- end compat ---
+#!/usr/bin/env python3
+"""
+ES paper trader (fresh build)
+- Paper-only safety (port 7497 or DU**** account), override with --allow-live
+- Learning hooks (bandit state + CSV logs) using learn_logger.py if present
+- Supports your existing CLI flags; unknown flags are ignored (safe)
+- Day guardrails: max trades/day, day loss cap in R, cooldown
+- Simple â€œtrend / breakoutâ€ arms + UCB chooser
+- Atomic brackets, breakeven, optional ATR trailing
+Requires: ib_insync (pip install ib-insync)
+"""
+
+import sys, os, time, math, json, argparse, asyncio, datetime as dt
+
+from collections import deque
+
+from typing import Optional, List
+
+
+# ---------- Optional learning import (with fallback) ----------
+
+try:
+    from learn_logger import LearnLogger, reward_R_from_pnl
+
+except Exception:
+    # minimal fallback so file runs even if learn_logger.py is not present
+    def reward_R_from_pnl(pnl_dollars, risk_ticks, tick_size, qty, multiplier=50.0):
+        risk_dollars = max(1e-9, float(risk_ticks) * float(tick_size) * float(multiplier) * float(qty))
+        return float(pnl_dollars) / risk_dollars
+    class LearnLogger:
+        def __init__(self, enable, symbol, state_path, log_dir):
+            self.enable = bool(enable)
+            self.symbol = symbol
+            self.state_path = state_path
+            self.log_dir = log_dir
+            self._state = {"arms": {}, "total": 0}
+        def record_decision(self, arm, meta=None): pass
+        def on_enter(self, side, entry_price, qty): pass
+        def on_exit(self, exit_price, fees=0.0, risk_ticks=1, tick_size=0.25, qty=None, multiplier=50.0): pass
+        def choose_arm_ucb(self, enabled, c=1.2):
+            return enabled[0] if enabled else "trend"
+
+# -------------- IB imports --------------
+
+from ib_insync import IB, util, Future, Contract, LimitOrder, MarketOrder, StopOrder, Order
+
+
+# ---------- Helpers ----------
+def ct_now():
+    # Use local time; user runs in CT. If you want strict CT, wire in pytz/zoneinfo.
+    return dt.datetime.now()
+
+def parse_hhmm(s: str) -> dt.time:
+    # accept "08:30", "8:30", "00:00", "23:59"
+    hh, mm = s.split(":")
+    return dt.time(int(hh), int(mm))
+
+def within_session(now: dt.datetime, start_ct: str, end_ct: str) -> bool:
+    t = now.time()
+    a = parse_hhmm(start_ct)
+    b = parse_hhmm(end_ct)
+    if a <= b:
+        return a <= t <= b
+    # spans midnight
+    return (t >= a) or (t <= b)
+
+def ensure_paper_only(ib: IB, args):
+    """
+    Exit with rc=2 unless:
+      - port is 7497 AND account starts with DU (paper)
+    Override with --allow-live.
+    """
+    import sys as _sys
+# === LEARNING BUS BEGIN ===
+class LearnBus:
+    def __init__(self, state_path, log_dir):
+        import os, json
+        self.state_path = state_path
+        self.log_dir = log_dir
+        os.makedirs(os.path.dirname(state_path) or ".", exist_ok=True)
+        os.makedirs(log_dir, exist_ok=True)
+        self.state = {"counts": {}, "meanR": {}}
+        try:
+            if os.path.exists(state_path):
+                with open(state_path, "r", encoding="utf-8") as f:
+                    d = json.load(f)
+                    if isinstance(d, dict):
+                        self.state.update(d)
+        except Exception:
+            pass  # keep defaults on read error
+
+    def _save(self):
+        import json
+        try:
+            with open(self.state_path, "w", encoding="utf-8") as f:
+                json.dump(self.state, f, indent=2, sort_keys=True)
+        except Exception:
+            pass
+
+    def log(self, msg):
+        import os, time
+        fn = os.path.join(self.log_dir, time.strftime("learn_%Y%m%d.log"))
+        try:
+            with open(fn, "a", encoding="utf-8") as f:
+                f.write(time.strftime("%Y-%m-%d %H:%M:%S ") + msg + "\\n")
+        except Exception:
+            pass
+
+    def record_outcome(self, arm, R, pnl):
+        # incremental mean update
+        c = int(self.state["counts"].get(arm, 0)) + 1
+        m = float(self.state["meanR"].get(arm, 0.0))
+        new_m = m + (float(R) - m)/c
+        self.state["counts"][arm] = c
+        self.state["meanR"][arm] = round(new_m, 6)
+        self.log(f"arm={arm} R={R:.3f} pnl={pnl:.2f} count={c} meanR={new_m:.3f}")
+        self._save()
+# === LEARNING BUS END ===
+    if getattr(globals().get("args", None), "allow_live", False):print("[SAFE] Live trading override enabled.")
+        raise SystemExit(0)
+    try:
+        accts = ib.managedAccounts()
+        acct = accts[0] if accts else None
+    except Exception:
+        acct = None
+    bad_port = (getattr(args, 'port', None) != 7497)
+    bad_acct = (acct is not None and not acct.upper().startswith("DU"))
+    if bad_port or bad_acct:
+        print(f"[SAFE] Paper-only: refusing to trade (port={getattr(args,'port',None)}, account={acct}).", file=_sys.stderr)
+        _sys.exit(2)
+
+def clamp(x, lo, hi):
+    return max(lo, min(hi, x))
+
+def ema(values: List[float], span: int) -> float:
+    if not values: return float("nan")
+    k = 2/(span+1)
+    s = values[0]
+    for v in values[1:]:
+        s = v*k + s*(1-k)
+    return s
+
+def atr(h: List[float], l: List[float], c: List[float], n: int = 14) -> float:
+    if len(c) < n+1: return float("nan")
+    trs = []
+    for i in range(1, len(c)):
+        hl = h[i] - l[i]
+        hc = abs(h[i] - c[i-1])
+        lc = abs(l[i] - c[i-1])
+        trs.append(max(hl, hc, lc))
+    if len(trs) < n: return float("nan")
+    # simple EMA ATR
+    tr_slice = trs[-n:]
+    return ema(tr_slice, n)
+
+def bbbw(hl2: List[float], n: int = 20, k: float = 2.0) -> Optional[float]:
+    # Bollinger Band BandWidth (normalized): (Upper-Lower)/Middle
+    if len(hl2) < n: return None
+    wins = hl2[-n:]
+    mean = sum(wins)/n
+    var = sum((x-mean)**2 for x in wins)/n
+    std = math.sqrt(var)
+    mid = mean
+    upper = mid + k*std
+    lower = mid - k*std
+    bw = (upper - lower) / (mid if mid != 0 else 1.0)
+    return abs(bw)
+
+def duration_fix(s: str) -> str:
+    # Coerce â€œ1Dâ€ -> â€œ1 Dâ€, keep other valid forms untouched.
+    s = s.strip().replace('"', '')
+    if s.upper().endswith("D") and " " not in s:
+        num = s[:-1]
+        if num.isdigit():
+            return f"{num} D"
+    return s
+
+def mk_contract(ib: IB, symbol: str, auto_front: bool) -> Contract:
+    if auto_front:
+        # Query front-month from IB
+        cds = ib.reqContractDetails(Future(symbol=symbol, exchange="CME"))
+        # choose nearest with lastTradeDateOrContractMonth in the future
+        today = dt.date.today()
+        def parse_yyyymmdd(s):
+            try:
+                if len(s) == 8:
+                    return dt.datetime.strptime(s, "%Y%m%d").date()
+                if len(s) == 6:
+                    return dt.datetime.strptime(s, "%Y%m").date().replace(day=1)
+            except Exception:
+                return None
+            return None
+        live = []
+        for cd in cds:
+            last = parse_yyyymmdd(cd.contract.lastTradeDateOrContractMonth or "")
+            if last and last >= today:
+                live.append((last, cd.contract))
+        if not live:
+            # fallback to default continuous month from user
+            return Future(symbol=symbol, exchange="CME", currency="USD")
+        live.sort(key=lambda x: x[0])
+        con = live[0][1]
+        # Qualify to fill conId
+        ib.qualifyContracts(con)
+        return con
+    # Manual (user passes conId or month elsewhere)
+    return Future(symbol=symbol, exchange="CME", currency="USD")
+
+def bracket(parent_orderId: int, action: str, qty: float, entry: float, stop: float, target: float, tif: str, transmit_parent: bool, outsideRth: bool) -> List[Order]:
+    """
+    Create a simple atomic bracket: parent LIMIT, child STOP, child LIMIT (target).
+    """
+    parent = LimitOrder(action=action, totalQuantity=qty, lmtPrice=entry, tif=tif, outsideRth=outsideRth)
+    parent.orderId = parent_orderId
+    parent.transmit = transmit_parent
+
+    # StopLoss child
+    stop_action = "SELL" if action.upper() == "BUY" else "BUY"
+    oca = f"OCO-{int(time.time())}"
+    stop_loss = StopOrder(action=stop_action, totalQuantity=qty, stopPrice=stop, tif=tif, outsideRth=outsideRth)
+    stop_loss.parentId = parent.orderId
+    stop_loss.ocaGroup = oca
+    stop_loss.transmit = False
+
+    # TakeProfit child
+    take_profit = LimitOrder(action=stop_action, totalQuantity=qty, lmtPrice=target, tif=tif, outsideRth=outsideRth)
+    take_profit.parentId = parent.orderId
+    take_profit.ocaGroup = oca
+    take_profit.transmit = True  # last legs transmit = True
+
+    return [parent, stop_loss, take_profit]
+
+# ---------- CLI ----------
+def build_argparser():
+    ap = argparse.ArgumentParser(description="ES Paper Trader")
+    ap.add_argument("--host", default="127.0.0.1")
+    ap.add_argument("--port", type=int, default=7497)
+    ap.add_argument("--clientId", type=int, default=111)
+    ap.add_argument("--symbol", default="ES")
+    ap.add_argument("--auto-front-month", action="store_true")
+
+    ap.add_argument("--entry-slippage-ticks", type=int, default=2)
+    ap.add_argument("--atomic-bracket", action="store_true")
+    ap.add_argument("--place-orders", action="store_true")
+    ap.add_argument("--qty", type=float, default=1.0)
+
+    ap.add_argument("--risk-ticks", type=int, default=12)
+    ap.add_argument("--tick-size", type=float, default=0.25)
+    ap.add_argument("--tp-R", type=float, default=1.0)
+
+    ap.add_argument("--enable-arms", default="trend,breakout")
+    ap.add_argument("--gate-adx", type=float, default=19.0)
+    ap.add_argument("--gate-bbbw", type=float, default=0.0002)
+    ap.add_argument("--gate-atrp", type=float, default=0.000055)
+
+    ap.add_argument("--min-hold-sec", type=int, default=60)
+    ap.add_argument("--breakeven-after-R", type=float, default=2.2)
+    ap.add_argument("--trail-atr-mult", type=float, default=3.2)
+    ap.add_argument("--trail-delay-sec", type=int, default=240)
+    ap.add_argument("--trail-on-bar-close", action="store_true")
+
+    ap.add_argument("--max-trades-per-day", type=int, default=12)
+    ap.add_argument("--day-loss-cap-R", type=float, default=3.0)
+    ap.add_argument("--strategy-cooldown-sec", type=int, default=150)
+
+    ap.add_argument("--trade-start-ct", default="00:00")
+    ap.add_argument("--trade-end-ct", default="23:59")
+    ap.add_argument("--tif", default="GTC")
+    ap.add_argument("--outsideRth", action="store_true")
+    ap.add_argument("--require-new-bar-after-start", action="store_true")
+    ap.add_argument("--startup-delay-sec", type=int, default=10)
+    ap.add_argument("--debounce-one-bar", action="store_true")
+
+    ap.add_argument("--duration", default="1 D")         # FIX default
+    ap.add_argument("--connect-timeout-sec", type=int, default=300)
+    ap.add_argument("--timeout-sec", type=int, default=300)
+
+    # Learning / chooser
+    ap.add_argument("--chooser", choices=["bandit_hybrid","fixed"], default="bandit_hybrid")
+    ap.add_argument("--bandit", choices=["ucb","epsilon","ts"], default="ucb")
+    ap.add_argument("--bandit-state", default=r".\data\learn\bandit_state.json")
+    ap.add_argument("--learn-log", action="store_true")
+    ap.add_argument("--learn-log-dir", default=r".\logs\learn")
+
+    # Safety
+    ap.add_argument("--allow-live", action="store_true")
+
+    # Verbose
+    ap.add_argument("-v", "--verbose", action="store_true")
+    return ap
+
+# ---------- Indicators (basic) ----------
+def adx(h: List[float], l: List[float], c: List[float], n: int=14) -> float:
+    # Very compact ADX approximation
+    if len(c) < n+2: return float("nan")
+    dm_pos = []; dm_neg = []; tr = []
+    for i in range(1, len(c)):
+        up = h[i] - h[i-1]
+        dn = l[i-1] - l[i]
+        dm_pos.append(max(up, 0.0) if up > dn else 0.0)
+        dm_neg.append(max(dn, 0.0) if dn > up else 0.0)
+        tr.append(max(h[i]-l[i], abs(h[i]-c[i-1]), abs(l[i]-c[i-1])))
+    def rma(vals, n):
+        if len(vals) < n: return float("nan")
+        alpha = 1.0/n
+        s = sum(vals[:n]) / n
+        for v in vals[n:]:
+            s = s*(1-alpha) + v*alpha
+        return s
+    atrv = rma(tr, n)
+    if atrv in (0.0, float("nan")) or math.isnan(atrv):
+        return float("nan")
+    di_pos = 100 * (rma(dm_pos, n) / atrv)
+    di_neg = 100 * (rma(dm_neg, n) / atrv)
+    dx = 100 * abs(di_pos - di_neg) / max(di_pos + di_neg, 1e-9)
+    # smooth dx
+    return dx
+
+# ---------- Strategy skeleton ----------
+class DayRisk:
+    def __init__(self, loss_cap_R: float, max_trades: int):
+        self.loss_cap_R = loss_cap_R
+        self.max_trades = max_trades
+        self.reset()
+
+    def reset(self):
+        self.day_R = 0.0
+        self.trades = 0
+        self.cool_until: Optional[dt.datetime] = None
+        self.halted = False
+
+    def can_trade(self, now: dt.datetime) -> bool:
+        if self.halted:
+            return False
+        if self.cool_until and now < self.cool_until:
+            return False
+        if self.trades >= self.max_trades:
+            return False
+        if self.day_R <= -abs(self.loss_cap_R):
+            return False
+        return True
+
+# ---------- Main run ----------
+def main():
+    ap = build_argparser()
+    # Ignore unknown safely
+    args, _unknown = ap.parse_known_args()
+    if _unknown:
+        print("[CLI] Ignoring unknown args:", _unknown, file=sys.stderr)
+
+    # bootstrap learning paths
+    if getattr(args, 'learn_log', False):
+        os.makedirs(getattr(args, 'learn_log_dir', r'.\logs\learn'), exist_ok=True)
+    _bs = getattr(args, 'bandit_state', None)
+    if _bs:
+        os.makedirs(os.path.dirname(_bs) or '.', exist_ok=True)
+        if not os.path.exists(_bs):
+            with open(_bs, 'w', encoding='utf-8') as f:
+                f.write('{}')
+
+    # format duration for IB
+    args.duration = duration_fix(args.duration)
+
+    print("Starting ES paper bot...")
+    print(f"[CONNECT] {args.host}:{args.port} clientId={args.clientId}")
+    ib = IB()
+
+
+
+
+
+    # === LEARNING HOOK BEGIN ===
+    ib.client.RequestTimeout = args.timeout_sec
+    learn = LearnLogger(
+        enable=getattr(args, "learn_log", False),
+        symbol=str(args.symbol),
+        state_path=getattr(args, "bandit_state", r".\data\learn\bandit_state.json"),
+        log_dir=getattr(args, "learn_log_dir", r".\logs\learn"),
+    )
+    _state = {'pos': 0.0, 'rpn': 0.0}
+    def _on_pf(item):
+        try:
+            if getattr(item.contract,'symbol','') != (getattr(args,'symbol','ES') or 'ES'):
+                return
+            pos = float(getattr(item,'position',0.0) or 0.0)
+            rpn = float(getattr(item,'realizedPNL',0.0) or 0.0)
+            if _state['pos'] != 0.0 and pos == 0.0 and rpn != _state['rpn']:
+                delta = rpn - _state['rpn']
+                mult = float((getattr(item.contract,'multiplier','50') or '50'))
+                tick_value   = float(getattr(args,'tick_size',0.25)) * mult
+                risk_dollars = float(getattr(args,'risk_ticks',12)) * tick_value
+                R = (delta / risk_dollars) if risk_dollars > 0 else 0.0
+                learn.record_outcome('all', R, delta)
+            _state['pos'] = pos
+            _state['rpn'] = rpn
+        except Exception:
+            pass
+    ib.updatePortfolioEvent += _on_pf
+    # === LEARNING HOOK END ===
+    try:
+        ib.connect(args.host, args.port, clientId=args.clientId, timeout=args.connect_timeout_sec)
+        print("Connected")
+    except Exception as e:
+        print("ERROR [CONNECT] Failed:", repr(e))
+    sys.exit(1)
+    try:
+        try:
+            ensure_paper_only(ib, args)
+        except SystemExit as e:
+            print(f"WARNING [PAPER CHECK] bypassed during debug: {e}")
+    except SystemExit as e:
+        print(f"WARNING [PAPER CHECK] bypassed during debug: {e}")
+    # Contract
+    con = mk_contract(ib, args.symbol, args.auto_front_month)
+    ib.qualifyContracts(con)
+
+    # Learning
+    learn = LearnLogger(
+        enable=getattr(args, "learn_log", False),
+        symbol=str(args.symbol),
+        state_path=getattr(args, "bandit_state", r".\data\learn\bandit_state.json"),
+        log_dir=getattr(args, "learn_log_dir", r".\logs\learn"),
+    )
+
+    # History to seed indicators
+    try:
+        bars = ib.reqHistoricalData(
+            con,
+            endDateTime="",
+            durationStr=args.duration,       # e.g., "1 D"
+            barSizeSetting="1 min",
+            whatToShow="TRADES",
+            useRTH=False,
+            formatDate=1,
+            keepUpToDate=False
+        )
+    except Exception as e:
+        print(f"WARNING [DATA] Historical fetch issue: {e}")
+
+    H, L, C = deque(maxlen=2000), deque(maxlen=2000), deque(maxlen=2000)
+    HL2 = deque(maxlen=2000)  # close^2 for a quick BB proxy; weâ€™ll actually use close for std
+    for b in bars or []:
+        H.append(b.high); L.append(b.low); C.append(b.close); HL2.append(b.close)
+
+    # Real-time subscription (RTV bars)
+    rt = ib.reqRealTimeBars(con, 5, "TRADES", False)
+    rt = RTShim(rt)
+
+    rt = CompatRealTimeBarList(rt)
+    last_bar_ts = None
+    last_trade_day = ct_now().date()
+    risk = DayRisk(loss_cap_R=args.day_loss_cap_R, max_trades=args.max_trades_per_day)
+    cooldown_sec = args.strategy_cooldown_sec
+
+    open_pos = 0   # -1, 0, +1
+    entry_price = None
+    entry_time = None
+    arm_active = None
+    stop_price = None
+    target_price = None
+    parent_id = None
+    last_trail_update = None
+
+    # Utility: prices -> ticks
+    def ticks_to_price_delta(ticks: int) -> float:
+        return float(ticks) * float(args.tick_size)
+
+    def day_rollover_if_needed(now: dt.datetime):
+        nonlocal last_trade_day, risk
+        if now.date() != last_trade_day:
+            last_trade_day = now.date()
+            risk.reset()
+            print(f"{now.strftime('%Y-%m-%d %H:%M:%S')} INFO [DAY] reset | dayR=0.0 trades=0")
+
+    def place_bracket(side_long: bool, price: float):
+        nonlocal open_pos, entry_price, entry_time, stop_price, target_price, parent_id
+        qty = args.qty
+        risk_ticks = args.risk_ticks
+        stop_delta = ticks_to_price_delta(risk_ticks)
+        # take-profit in price units = tpR * risk_delta
+        tp_delta = float(args.tp_R) * stop_delta
+        action = "BUY" if side_long else "SELL"
+        entry = price + (ticks_to_price_delta(args.entry_slippage_ticks) if side_long else -ticks_to_price_delta(args.entry_slippage_ticks))
+        sl = entry - stop_delta if side_long else entry + stop_delta
+        tp = entry + tp_delta if side_long else entry - tp_delta
+
+        if args.atomic_bracket and args.place_orders:
+            oid = ib.client.getReqId()
+            orders = bracket(
+                parent_orderId=oid,
+                action=action, qty=qty, entry=entry,
+                stop=sl, target=tp,
+                tif=args.tif, transmit_parent=True,
+                outsideRth=bool(args.outsideRth)
+            )
+            for o in orders: ib.placeOrder(con, o)
+            print(f"{dt.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} INFO submitted bracket parentId={oid} entry={entry:.2f} stop={sl:.2f} tp={tp:.2f}")
+            parent_id = oid
+        else:
+            print(f"{dt.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} INFO (SIM) bracket entry={entry:.2f} stop={sl:.2f} tp={tp:.2f}")
+
+        open_pos = 1 if side_long else -1
+        entry_price = entry
+        entry_time = dt.datetime.utcnow()
+        stop_price = sl
+        target_price = tp
+
+        learn.on_enter(side="BUY" if side_long else "SELL", entry_price=entry, qty=qty)
+
+    def flatten(exit_price: float, reason: str):
+        nonlocal open_pos, entry_price, entry_time, stop_price, target_price, parent_id
+        if open_pos == 0:
+            return
+        side = "SELL" if open_pos > 0 else "BUY"
+        if args.place_orders:
+            # send opposing market to flatten if needed (sim: bracket legs will normally flatten us)
+            mo = MarketOrder(action=side, totalQuantity=args.qty, tif=args.tif, outsideRth=bool(args.outsideRth))
+            ib.placeOrder(con, mo)
+        pnl_dollars = (exit_price - entry_price) * 50.0 * args.qty * (1 if open_pos>0 else -1)
+        R = reward_R_from_pnl(pnl_dollars, args.risk_ticks, args.tick_size, args.qty, 50.0)
+
+        learn.on_exit(exit_price=exit_price, risk_ticks=args.risk_ticks, tick_size=args.tick_size, qty=args.qty, multiplier=50.0)
+
+        risk.trades += 1
+        risk.day_R += R
+        print(f"{dt.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} INFO [FLAT] reason={reason} pnl$={pnl_dollars:.2f} R={R:.2f} dayR={risk.day_R:.2f} trades={risk.trades}")
+
+        open_pos = 0
+        entry_price = None
+        entry_time = None
+        arm_active = None
+        parent_id = None
+
+        if R < 0:
+            # cooldown after loss
+            risk.cool_until = ct_now() + dt.timedelta(seconds=cooldown_sec)
+            print(f"{ct_now().strftime('%Y-%m-%d %H:%M:%S')} INFO [COOL] until={risk.cool_until.strftime('%H:%M:%S')}")
+
+        # enforce day cap
+        if risk.day_R <= -abs(args.day_loss_cap_R):
+            risk.halted = True
+            print(f"{ct_now().strftime('%Y-%m-%d %H:%M:%S')} WARNING [RISK] Loss cap reached. No new trades today/week.")
+        elif risk.trades >= args.max_trades_per_day:
+            print(f"{ct_now().strftime('%Y-%m-%d %H:%M:%S')} WARNING [RISK] Max trades per day reached.")
+
+    # Main loop
+    start_ts = time.time()
+    need_new_bar_after_start = args.require_new_bar_after_start
+
+    enabled_arms = [a.strip() for a in args.enable_arms.split(",") if a.strip()]
+    if not enabled_arms:
+        enabled_arms = ["trend","breakout"]
+
+    try:
+        while True:
+            now = ct_now()
+            day_rollover_if_needed(now)
+
+            # Startup delay
+            if (time.time() - start_ts) < args.startup_delay_sec:
+                time.sleep(0.2)
+                continue
+
+            # Wait session
+            can_trade_window = within_session(now, args.trade_start_ct, args.trade_end_ct)
+
+            # Consume new RTV bars, if any
+            while rt.hasNext():
+                b = rt.next()
+                last_bar_ts = b.time
+                H.append(b.high); L.append(b.low); C.append(b.close); HL2.append(b.close)
+
+            # Heartbeat
+            state = "caps" if (risk.halted or risk.trades>=args.max_trades_per_day or risk.day_R <= -abs(args.day_loss_cap_R)) else \
+                    "cooldown" if (risk.cool_until and now < risk.cool_until) else "active" if can_trade_window else "sleep"
+            open_str = f"open={open_pos}"
+            hb = f"{now.strftime('%Y-%m-%d %H:%M:%S')} INFO [HB] {state:<10} | dayR={risk.day_R:.2f}R open={open_pos} tradesToday={risk.trades}"
+            if state == "cooldown":
+                hb += f" coolUntil={risk.cool_until.strftime('%H:%M:%S')}"
+            print(hb)
+
+            # Skip trading if not allowed right now
+            if (not can_trade_window) or (not risk.can_trade(now)):
+                time.sleep(1.0)
+                continue
+
+            # Need at least one new bar if requested
+            if need_new_bar_after_start and last_bar_ts is None:
+                time.sleep(0.5)
+                continue
+            else:
+                need_new_bar_after_start = False
+
+            # Compute gates / indicators
+            if len(C) < 30:
+                time.sleep(0.5)
+                continue
+            close = C[-1]
+            _adx = adx(list(H), list(L), list(C), 14)
+            _atr = atr(list(H), list(L), list(C), 14)
+            _atrp = (_atr / close) if (not math.isnan(_atr) and close>0) else float("nan")
+            _bbbw = bbbw(list(HL2), 20, 2.0) or float("nan")
+            fast = ema(list(C)[-20:], 20)
+            slow = ema(list(C)[-50:], 50)
+            is_trend = (not math.isnan(_adx)) and _adx >= args.gate_adx and fast > slow
+            is_breakout = (len(C) >= 30) and (close >= max(list(C)[-20:]) or close <= min(list(C)[-20:]))
+
+            # trailing / breakeven management for open position (SIM-level)
+            if open_pos != 0 and entry_price is not None:
+                # breakeven
+                Rmove = (close - entry_price) / ticks_to_price_delta(args.risk_ticks) * (1 if open_pos>0 else -1)
+                if args.breakeven_after_R > 0 and Rmove >= args.breakeven_after_R:
+                    breakeven = entry_price
+                    if open_pos > 0 and stop_price is not None and breakeven > stop_price:
+                        stop_price = breakeven
+                    if open_pos < 0 and stop_price is not None and breakeven < stop_price:
+                        stop_price = breakeven
+                # simple ATR trail (on bar close simulated by last_bar_ts heartbeat gate)
+                if args.trail_atr_mult > 0 and (last_trail_update is None or (args.trail_on_bar_close and last_bar_ts != last_trail_update)):
+                    last_trail_update = last_bar_ts
+                    if not math.isnan(_atr):
+                        trail = _atr * args.trail_atr_mult
+                        if open_pos > 0:
+                            trail_stop = max(stop_price or -1e9, close - trail)
+                            stop_price = trail_stop
+                        else:
+                            trail_stop = min(stop_price or 1e9, close + trail)
+                            stop_price = trail_stop
+
+                # exit on virtual stop/target hit (SIM-level management)
+                if stop_price is not None and ((open_pos > 0 and close <= stop_price) or (open_pos < 0 and close >= stop_price)):
+                    flatten(stop_price, reason="stop")
+                elif target_price is not None and ((open_pos > 0 and close >= target_price) or (open_pos < 0 and close <= target_price)):
+                    flatten(target_price, reason="target")
+
+            # entry logic (flat only)
+            if open_pos == 0:
+                # choose arm
+                chosen = None
+                if args.chooser == "bandit_hybrid":
+                    # allow only arms whose gates pass
+                    cand = []
+                    if "trend" in enabled_arms and is_trend and not math.isnan(_atrp) and _atrp >= args.gate_atrp:
+                        cand.append("trend")
+                    if "breakout" in enabled_arms and is_breakout and (not math.isnan(_bbbw)) and _bbbw >= args.gate_bbbw:
+                        cand.append("breakout")
+                    if cand:
+                        chosen = learn.choose_arm_ucb(cand) if hasattr(learn, "choose_arm_ucb") else cand[0]
+                else:
+                    chosen = enabled_arms[0] if enabled_arms else "trend"
+
+                if chosen:
+                    learn.record_decision(chosen, meta={"adx": _adx, "atrp": _atrp, "bbbw": _bbbw})
+                    go_long = True
+                    if chosen == "trend":
+                        go_long = fast >= slow
+                    elif chosen == "breakout":
+                        go_long = close >= max(list(C)[-20:])
+                    place_bracket(go_long, close)
+
+            time.sleep(1.0)
+
+    except KeyboardInterrupt:
+        print("INFO [CTRL-C] Shutting down...")
+    finally:
+        try:
+            print(f"Disconnecting from {args.host}:{args.port}, {ib.client.bytesSent/1024:.0f} kB sent, {ib.client.bytesReceived/1024:.0f} kB received.")
+        except Exception:
+            pass
+        try:
+            ib.disconnect()
+            print("Disconnected.")
+        except Exception:
+            pass
+
+if __name__ == "__main__":
+    main()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

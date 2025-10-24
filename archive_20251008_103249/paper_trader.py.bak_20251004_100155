@@ -1,0 +1,853 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+paper_trader.py — single-file bot with:
+ - 24x5 operation (use --trade-start-ct 00:00 --trade-end-ct 23:59 and --outsideRth)
+ - day/weekly loss caps + cooldowns (existing args preserved)
+ - **NEW**: shadow-learning after caps (virtual trades recorded & learned)
+ - **NEW**: epsilon exploration for bandit chooser (prevents lock-in)
+ - **NEW**: signal logging to logs/signals/YYYYMMDD.jsonl
+ - Bandit state persistence (JSON file you pass via --bandit-state)
+ - Minimal, conservative signal engine (trend + breakout) to keep structure working
+
+This file is deliberately self-contained and defensive: if a broker/API
+call fails, it falls back to monitoring & learning from price bars only.
+
+You can run it under the simple watchdog we created:
+  PowerShell -NoProfile -ExecutionPolicy Bypass -File .\start_watchdog.ps1
+
+© 2025 — provided as-is. Use at your own risk.
+"""
+
+import os, sys, time, json, math, random, statistics as stats
+import argparse
+import logging
+import datetime as dt
+from dataclasses import dataclass, field
+from typing import List, Optional, Dict, Any
+
+# -------- broker/backend -----------------------------------------------------
+try:
+    from ib_insync import IB, Future, Contract, util, LimitOrder, MarketOrder, StopOrder
+except Exception as e:
+    IB = None  # we'll detect at runtime and run in monitor-only mode
+
+# -------- logging ------------------------------------------------------------
+LOG = logging.getLogger("bot")
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+    handlers=[logging.StreamHandler(sys.stdout)],
+)
+
+# -------- helpers ------------------------------------------------------------
+def ensure_dir(p: str):
+    os.makedirs(p, exist_ok=True)
+
+
+def parse_time_ct(s: str) -> dt.time:
+    """Parse HH:MM (Central Time)."""
+    hh, mm = s.split(":")
+    return dt.time(int(hh), int(mm))
+
+
+# -------- bandit (tiny UCB + epsilon) ---------------------------------------
+class SimpleBandit:
+    def __init__(self, arms: List[str]):
+        self.arms = list(arms)
+        self.counts: Dict[str, int] = {a: 0 for a in self.arms}
+        self.values: Dict[str, float] = {a: 0.0 for a in self.arms}
+
+    def choose_ucb(self, enabled: List[str]) -> Optional[str]:
+        if not enabled:
+            return None
+        total = sum(self.counts[a] for a in enabled) + 1e-9
+        ucb_scores = []
+        for a in enabled:
+            n = self.counts[a]
+            v = self.values[a]
+            bonus = math.sqrt(2.0 * math.log(max(total, 2.0)) / max(n, 1))
+            ucb_scores.append((v + bonus, a if a is not None else ""))
+        ucb_scores.sort(reverse=True)
+        return ucb_scores[0][1]
+
+    def choose_with_epsilon(self, enabled: List[str], epsilon: float) -> Optional[str]:
+        if not enabled:
+            return None
+        if random.random() < max(0.0, min(1.0, float(epsilon))):
+            return random.choice(enabled)
+        return self.choose_ucb(enabled)
+
+    def update(self, arm: str, reward_R: float):
+        if arm not in self.counts:
+            # arm may be new; register
+            self.arms.append(arm)
+            self.counts[arm] = 0
+            self.values[arm] = 0.0
+        self.counts[arm] += 1
+        n = self.counts[arm]
+        # online mean
+        self.values[arm] += (reward_R - self.values[arm]) / float(n)
+
+    # state IO
+    def dump(self, path: str):
+        if not path:
+            return
+        ensure_dir(os.path.dirname(path))
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump({"arms": self.arms, "counts": self.counts, "values": self.values}, f)
+
+    @classmethod
+    def load_or_new(cls, path: Optional[str], arms: List[str]):
+        if path and os.path.exists(path):
+            try:
+                with open(path, "r", encoding="utf-8") as f:
+                    d = json.load(f)
+                obj = cls(d.get("arms", arms) or arms)
+                obj.counts.update(d.get("counts", {}))
+                obj.values.update(d.get("values", {}))
+                # add any missing arms
+                for a in arms:
+                    obj.counts.setdefault(a, 0)
+                    obj.values.setdefault(a, 0.0)
+                return obj
+            except Exception:
+                pass
+        return cls(arms)
+
+
+# -------- learning & signal logs --------------------------------------------
+def log_learn_event(reward_R: float, arm: str, origin: str, learn_dir: str, state_path: Optional[str], bandit: SimpleBandit):
+    ensure_dir(learn_dir)
+    dayfile = os.path.join(learn_dir, f"{dt.date.today():%Y%m%d}.jsonl")
+    evt = {
+        "t": dt.datetime.utcnow().isoformat(timespec="seconds"),
+        "origin": origin,
+        "arm": arm,
+        "reward_R": round(float(reward_R), 4),
+    }
+    with open(dayfile, "a", encoding="utf-8") as f:
+        f.write(json.dumps(evt) + "\n")
+    # persist bandit
+    try:
+        bandit.dump(state_path or "")
+    except Exception:
+        pass
+
+
+def log_signal(sig: Dict[str, Any], feats: Dict[str, Any], log_dir: str = "logs/signals"):
+    ensure_dir(log_dir)
+    row = {
+        "t": dt.datetime.utcnow().isoformat(timespec="seconds"),
+        **sig,
+        "feats": feats,
+    }
+    dayfile = os.path.join(log_dir, f"{dt.date.today():%Y%m%d}.jsonl")
+    with open(dayfile, "a", encoding="utf-8") as f:
+        f.write(json.dumps(row) + "\n")
+
+
+# -------- features/indicators (lightweight) ---------------------------------
+def sma(vals: List[float], n: int) -> Optional[float]:
+    if len(vals) < n:
+        return None
+    return sum(vals[-n:]) / float(n)
+
+
+def stdev(vals: List[float], n: int) -> Optional[float]:
+    if len(vals) < n:
+        return None
+    return stats.pstdev(vals[-n:])
+
+
+def atr_percent(highs: List[float], lows: List[float], closes: List[float], n: int) -> Optional[float]:
+    if len(closes) <= n:
+        return None
+    trs = []
+    for i in range(-n, 0):
+        prev = closes[i-1]
+        tr = max(highs[i] - lows[i], abs(highs[i] - prev), abs(lows[i] - prev))
+        trs.append(tr)
+    atr = sum(trs) / n
+    price = closes[-1]
+    if price <= 0:
+        return None
+    return atr / price
+
+
+def bbbw(close: List[float], n: int = 20) -> Optional[float]:
+    if len(close) < n:
+        return None
+    m = sma(close, n)
+    s = stdev(close, n)
+    if m in (None, 0.0) or s is None:
+        return None
+    upper = m + 2*s
+    lower = m - 2*s
+    width = upper - lower
+    return (width / m) if m else None
+
+
+def trend_strength(close: List[float], n: int = 20) -> Optional[float]:
+    if len(close) < n:
+        return None
+    # simple slope proxy: (SMA(n/2) - SMA(n)) / ATR% scaled
+    n2 = max(2, n // 2)
+    s_long = sma(close, n)
+    s_short = sma(close, n2)
+    if s_long is None or s_short is None:
+        return None
+    num = abs(s_short - s_long)
+    den = max(1e-6, (s_long))
+    return num / den
+
+
+# -------- market data snapshot ----------------------------------------------
+@dataclass
+class Bars:
+    time: List[dt.datetime] = field(default_factory=list)
+    open: List[float] = field(default_factory=list)
+    high: List[float] = field(default_factory=list)
+    low: List[float] = field(default_factory=list)
+    close: List[float] = field(default_factory=list)
+
+    def append_ib_bars(self, ib_bars):
+        # ib_insync returns a list of BarData; convert
+        self.time = [b.date if isinstance(b.date, dt.datetime) else util.parseIBDatetime(b.date) for b in ib_bars]
+        self.open = [float(b.open) for b in ib_bars]
+        self.high = [float(b.high) for b in ib_bars]
+        self.low = [float(b.low) for b in ib_bars]
+        self.close = [float(b.close) for b in ib_bars]
+
+    def last_bar(self):
+        if not self.time:
+            return None
+        return {
+            "time": self.time[-1],
+            "open": self.open[-1],
+            "high": self.high[-1],
+            "low": self.low[-1],
+            "close": self.close[-1],
+        }
+
+
+# -------- shadow trades ------------------------------------------------------
+_shadow_positions: List[Dict[str, Any]] = []
+
+
+def add_shadow(sig: Dict[str, Any], cfg, now_utc: dt.datetime):
+    _shadow_positions.append({
+        "arm": sig.get("arm", "unknown"),
+        "side": sig.get("side", "NA"),
+        "entry": float(sig["entry"]),
+        "stop": float(sig["stop"]),
+        "tp": float(sig["tp"]),
+        "risk_ticks": int(cfg.risk_ticks),
+        "tick_size": float(cfg.tick_size),
+        "opened": now_utc,
+    })
+
+
+def _shadow_exit_reward(pos: Dict[str, Any], bar: Dict[str, float]):
+    lo, hi, close = float(bar["low"]), float(bar["high"]), float(bar["close"])
+    buy = (str(pos["side"]).upper() == "BUY")
+    hit_tp = (hi >= pos["tp"]) if buy else (lo <= pos["tp"]) 
+    hit_sl = (lo <= pos["stop"]) if buy else (hi >= pos["stop"]) 
+    if hit_tp and not hit_sl:
+        r = (pos["tp"] - pos["entry"]) / (pos["risk_ticks"] * pos["tick_size"]) if buy \
+            else (pos["entry"] - pos["tp"]) / (pos["risk_ticks"] * pos["tick_size"]) 
+        return True, abs(r)
+    if hit_sl and not hit_tp:
+        r = (pos["entry"] - pos["stop"]) / (pos["risk_ticks"] * pos["tick_size"]) if buy \
+            else (pos["stop"] - pos["entry"]) / (pos["risk_ticks"] * pos["tick_size"]) 
+        return True, -abs(r)
+    if hit_tp and hit_sl:
+        worst = (pos["entry"] - pos["stop"]) / (pos["risk_ticks"] * pos["tick_size"]) if buy \
+                else (pos["stop"] - pos["entry"]) / (pos["risk_ticks"] * pos["tick_size"]) 
+        return True, -abs(worst)
+    return False, 0.0
+
+
+def update_shadow_on_bar(final_bar: Dict[str, Any], cfg, bandit: SimpleBandit):
+    if not _shadow_positions:
+        return
+    remaining = []
+    for pos in _shadow_positions:
+        done, reward_R = _shadow_exit_reward(pos, final_bar)
+        if done:
+            arm = pos.get("arm", "unknown")
+            try:
+                bandit.update(arm, reward_R)
+            except Exception:
+                pass
+            if cfg.learn_log:
+                log_learn_event(reward_R, arm, origin="shadow",
+                                learn_dir=cfg.learn_log_dir,
+                                state_path=cfg.bandit_state,
+                                bandit=bandit)
+        else:
+            remaining.append(pos)
+    _shadow_positions[:] = remaining
+
+
+# -------- bracket order helper (conservative) --------------------------------
+def place_atomic_bracket(ib: IB, contract: Contract, side: str, qty: float, entry: float,
+                         risk_ticks: int, tick_size: float, tp_R: float,
+                         tif: str, outsideRth: bool, oca_group: str) -> Optional[int]:
+    """Submit parent limit at entry and attach OCO TP/SL. Returns parent orderId."""
+    side = side.upper()
+    if side not in ("BUY", "SELL"):
+        raise ValueError("side must be BUY or SELL")
+
+    # compute TP distance in ticks = tp_R * risk_ticks
+    tp_ticks = max(1, int(round(tp_R * risk_ticks)))
+    pt = tick_size * tp_ticks
+    if side == "BUY":
+        tp_price = entry + pt
+        sl_price = entry - risk_ticks * tick_size
+    else:
+        tp_price = entry - pt
+        sl_price = entry + risk_ticks * tick_size
+
+    # parent limit at entry
+    parent = LimitOrder(action=side, totalQuantity=qty, lmtPrice=float(entry), tif=tif)
+    parent.outsideRth = bool(outsideRth)
+    parent.transmit = False
+    parent.ocaGroup = oca_group
+
+    # TP limit (opposite side)
+    tp = LimitOrder(action=("SELL" if side == "BUY" else "BUY"), totalQuantity=qty, lmtPrice=float(tp_price), tif=tif)
+    tp.ocaGroup = oca_group
+    tp.parentId = 0  # set after placement; transmit False for chain
+    tp.transmit = False
+
+    # SL stop
+    sl = StopOrder(action=("SELL" if side == "BUY" else "BUY"), totalQuantity=qty, stopPrice=float(sl_price), tif=tif)
+    sl.ocaGroup = oca_group
+    sl.parentId = 0
+    sl.transmit = True  # last in chain transmits all
+
+    trade_parent = ib.placeOrder(contract, parent)
+    # ensure id
+    parent_id = trade_parent.order.orderId
+
+    tp.parentId = parent_id
+    sl.parentId = parent_id
+
+    ib.placeOrder(contract, tp)
+    ib.placeOrder(contract, sl)
+
+    LOG.info("submitted bracket | parentId=%s entry=%.2f tp=%.2f sl=%.2f", parent_id, entry, tp_price, sl_price)
+    return parent_id
+
+
+# -------- core bot -----------------------------------------------------------
+@dataclass
+class Cfg:
+    # connection
+    host: str = "127.0.0.1"
+    port: int = 7497
+    clientId: int = 111
+    connect_timeout_sec: int = 120
+    timeout_sec: int = 120
+
+    # instrument
+    symbol: str = "ES"
+    exchange: str = "CME"
+    currency: str = "USD"
+    auto_front_month: bool = True
+    tick_size: float = 0.25
+
+    # trading
+    place_orders: bool = False
+    qty: float = 1.0
+    tif: str = "DAY"
+    outsideRth: bool = False
+    entry_slippage_ticks: int = 2
+    risk_ticks: int = 12
+    tp_R: float = 1.0
+
+    # time windows (Central Time)
+    trade_start_ct: str = "00:00"
+    trade_end_ct: str = "23:59"
+
+    # guards
+    day_loss_cap_R: float = 3.0
+    max_trades_per_day: int = 12
+    strategy_cooldown_sec: int = 150
+
+    # features/gates
+    gate_adx: float = 0.0  # we map this to trend_strength proxy
+    gate_bbbw: float = 0.0
+    gate_atrp: float = 0.0
+
+    # chooser/bandit
+    enable_arms: List[str] = field(default_factory=lambda: ["trend", "breakout"])
+    chooser: str = "bandit_hybrid"
+    bandit: str = "ucb"
+    bandit_state: Optional[str] = None
+    bandit_epsilon: float = 0.03  # NEW
+
+    # learning logs
+    learn_log: bool = False
+    learn_log_dir: str = "logs/learn"
+
+    # shadow learn after caps
+    shadow_learn_after_cap: bool = True
+
+    # bars
+    duration: str = "1 D"
+    barSize: str = "1 min"
+
+    # misc
+    debounce_one_bar: bool = True
+    require_new_bar_after_start: bool = True
+    startup_delay_sec: int = 10
+    verbose: bool = False
+
+
+@dataclass
+class State:
+    ib: Optional[IB] = None
+    contract: Optional[Contract] = None
+    bars: Bars = field(default_factory=Bars)
+    last_bar_time: Optional[dt.datetime] = None
+
+    # day stats
+    dayR: float = 0.0
+    weekR: float = 0.0
+    lossStreak: int = 0
+    tradesToday: int = 0
+
+    # cooling & caps
+    cool_until: Optional[dt.datetime] = None
+    cap_active: bool = False
+
+    # bandit
+    bandit: Optional[SimpleBandit] = None
+
+
+# -------- ib helpers ---------------------------------------------------------
+def ib_connect(cfg: Cfg) -> Optional[IB]:
+    if IB is None:
+        LOG.warning("ib_insync not available. Running in monitor-only mode.")
+        return None
+    ib = IB()
+    LOG.info("[CONNECT] %s:%s clientId=%s", cfg.host, cfg.port, cfg.clientId)
+    ib.connect(cfg.host, cfg.port, clientId=cfg.clientId, timeout=cfg.connect_timeout_sec)
+    LOG.info("Connected")
+    return ib
+
+
+def resolve_front_month(ib: IB, symbol: str, exchange: str, currency: str) -> Contract:
+    # Try to pick the nearest future (non-expired)
+    cd = ib.reqContractDetails(Future(symbol=symbol, exchange=exchange))
+    if not cd:
+        # fallback generic
+        return Future(symbol=symbol, exchange=exchange, currency=currency)
+    today = dt.date.today()
+    best = None
+    for c in cd:
+        last = c.contract.lastTradeDateOrContractMonth
+        try:
+            # formats like YYYYMMDD or YYYYMM
+            if len(last) >= 6:
+                y, m = int(last[:4]), int(last[4:6])
+                d = int(last[6:8]) if len(last) >= 8 else 28
+                expiry = dt.date(y, m, min(d, 28))
+            else:
+                continue
+            if expiry >= today:
+                if best is None or expiry < best[0]:
+                    best = (expiry, c.contract)
+        except Exception:
+            continue
+    return best[1] if best else cd[0].contract
+
+
+def fetch_bars(ib: IB, contract: Contract, cfg: Cfg) -> Bars:
+    bars = Bars()
+    try:
+        ib_bars = ib.reqHistoricalData(
+            contract,
+            endDateTime="",
+            durationStr=cfg.duration,  # MUST be like "1 D"
+            barSizeSetting=cfg.barSize,
+            whatToShow="TRADES",
+            useRTH=0 if cfg.outsideRth else 1,
+            keepUpToDate=False,
+        )
+        if ib_bars:
+            bars.append_ib_bars(ib_bars)
+        else:
+            LOG.warning("[DATA] Historical fetch issue: No historical data returned.")
+    except Exception as e:
+        LOG.error("[DATA] fetch failed: %s", e)
+    return bars
+
+
+# -------- signal engine (minimal) --------------------------------------------
+def gates_pass(feats: Dict[str, float], cfg: Cfg) -> bool:
+    if cfg.gate_adx and (feats.get("trend", 0.0) < cfg.gate_adx):
+        return False
+    if cfg.gate_bbbw and (feats.get("bbbw", 0.0) < cfg.gate_bbbw):
+        return False
+    if cfg.gate_atrp and (feats.get("atrp", 0.0) < cfg.gate_atrp):
+        return False
+    return True
+
+
+def build_features(bars: Bars) -> Dict[str, float]:
+    feats: Dict[str, float] = {}
+    if not bars.close:
+        return feats
+    feats["atrp"] = atr_percent(bars.high, bars.low, bars.close, 14) or 0.0
+    feats["bbbw"] = bbbw(bars.close, 20) or 0.0
+    feats["trend"] = trend_strength(bars.close, 20) or 0.0
+    return feats
+
+
+def make_signal(arm: str, bars: Bars, cfg: Cfg) -> Optional[Dict[str, Any]]:
+    if len(bars.close) < 25:
+        return None
+    last = bars.close[-1]
+    hi20 = max(bars.high[-20:])
+    lo20 = min(bars.low[-20:])
+    # simple direction heuristics
+    if arm == "breakout":
+        if last >= hi20:
+            side = "BUY"
+        elif last <= lo20:
+            side = "SELL"
+        else:
+            return None
+    else:  # trend arm (follow SMA crossover)
+        s20 = sma(bars.close, 20)
+        s50 = sma(bars.close, 50)
+        if s20 is None or s50 is None:
+            return None
+        side = "BUY" if s20 > s50 else "SELL"
+
+    slip = cfg.entry_slippage_ticks * cfg.tick_size
+    if side == "BUY":
+        entry = last + slip
+        stop = entry - cfg.risk_ticks * cfg.tick_size
+        tp = entry + cfg.tp_R * cfg.risk_ticks * cfg.tick_size
+    else:
+        entry = last - slip
+        stop = entry + cfg.risk_ticks * cfg.tick_size
+        tp = entry - cfg.tp_R * cfg.risk_ticks * cfg.tick_size
+
+    return {
+        "arm": arm,
+        "side": side,
+        "entry": round(entry, 5),
+        "stop": round(stop, 5),
+        "tp": round(tp, 5),
+    }
+
+
+# -------- risk/cap logic -----------------------------------------------------
+def ct_now() -> dt.datetime:
+    # naive Central Time: assume system clock is CT; if not, you can adjust here
+    return dt.datetime.now()
+
+
+def in_trade_window(cfg: Cfg) -> bool:
+    now = ct_now().time()
+    start = parse_time_ct(cfg.trade_start_ct)
+    end = parse_time_ct(cfg.trade_end_ct)
+    if start <= end:
+        return start <= now <= end
+    # crosses midnight
+    return now >= start or now <= end
+
+
+# -------- run loop -----------------------------------------------------------
+def run_bot(cfg: Cfg):
+    LOG.info("Starting ES paper bot...")
+    if cfg.verbose:
+        LOG.setLevel(logging.DEBUG)
+
+    ensure_dir("logs")
+    if cfg.learn_log:
+        ensure_dir(cfg.learn_log_dir)
+
+    st = State()
+
+    # bandit init
+    arms = [a.strip() for a in (cfg.enable_arms or []) if a.strip()]
+    st.bandit = SimpleBandit.load_or_new(cfg.bandit_state, arms)
+
+    # connect
+    st.ib = ib_connect(cfg)
+    if st.ib is None:
+        LOG.warning("No IB connection; monitoring-only mode.")
+
+    # resolve contract
+    if st.ib is not None:
+        try:
+            if cfg.auto_front_month:
+                st.contract = resolve_front_month(st.ib, cfg.symbol, cfg.exchange, cfg.currency)
+            else:
+                st.contract = Future(symbol=cfg.symbol, exchange=cfg.exchange, currency=cfg.currency)
+            st.ib.qualifyContracts(st.contract)
+        except Exception as e:
+            LOG.error("contract resolve failed: %s", e)
+            st.contract = None
+
+    # warmup bars
+    if st.ib is not None and st.contract is not None:
+        st.bars = fetch_bars(st.ib, st.contract, cfg)
+        st.last_bar_time = st.bars.time[-1] if st.bars.time else None
+
+    if cfg.startup_delay_sec > 0:
+        time.sleep(cfg.startup_delay_sec)
+
+    last_hb = 0.0
+    open_orders_today = 0
+    last_rollover_date = dt.date.today()
+
+    while True:
+        # rollover day/week counters at midnight
+        today = dt.date.today()
+        if today != last_rollover_date:
+            st.tradesToday = 0
+            st.dayR = 0.0
+            st.lossStreak = 0
+            last_rollover_date = today
+
+        # fetch new bars periodically
+        time.sleep(1.0)
+        if st.ib is not None and st.contract is not None:
+            fresh = fetch_bars(st.ib, st.contract, cfg)
+            if fresh.time:
+                st.bars = fresh
+
+        # update shadow positions on new finalized bar
+        lb = st.bars.last_bar()
+        if lb and (st.last_bar_time is None or lb["time"] > st.last_bar_time):
+            # bar finalized
+            update_shadow_on_bar(lb, cfg, st.bandit)
+            st.last_bar_time = lb["time"]
+
+        # Heartbeat every ~5s
+        now_ts = time.time()
+        if now_ts - last_hb >= 5.0:
+            last_hb = now_ts
+            hb_state = "caps" if st.cap_active else ("cooldown" if (st.cool_until and dt.datetime.utcnow() < st.cool_until) else ("active" if in_trade_window(cfg) else "outside window"))
+            extra = ""
+            if st.cool_until:
+                # show CT time horizon
+                rem = (st.cool_until - dt.datetime.utcnow()).total_seconds()
+                if rem > 0:
+                    extra = f" coolUntil={int(rem)}s"
+            LOG.info("[HB] %-22s | dayR=%.2fR weekR=%.2fR lossStreak=%s open=%d tradesToday=%d%s",
+                     hb_state, st.dayR, st.weekR, st.lossStreak, len(_shadow_positions), st.tradesToday, extra)
+
+        # evaluate caps/cooldown
+        st.cap_active = (st.dayR <= -abs(cfg.day_loss_cap_R))
+        cooling = st.cool_until and dt.datetime.utcnow() < st.cool_until
+
+        # if we cannot trade real orders, optionally shadow-learn
+        can_signal = in_trade_window(cfg) and not cooling
+        if not can_signal:
+            continue
+
+        # Build features and choose an arm
+        feats = build_features(st.bars)
+        if not gates_pass(feats, cfg):
+            continue
+
+        enabled = [a for a in arms if a]
+        arm = st.bandit.choose_with_epsilon(enabled, cfg.bandit_epsilon) if enabled else None
+        if not arm:
+            continue
+
+        sig = make_signal(arm, st.bars, cfg)
+        if not sig:
+            continue
+
+        # ALWAYS log the signal
+        try:
+            log_signal(sig, feats)
+        except Exception:
+            pass
+
+        # cap logic: if capped, shadow only
+        if st.cap_active and cfg.shadow_learn_after_cap:
+            add_shadow(sig, cfg, now_utc=dt.datetime.utcnow())
+            LOG.info("[SHADOW] recorded virtual trade | arm=%s side=%s entry=%.2f stop=%.2f tp=%.2f",
+                     sig["arm"], sig["side"], sig["entry"], sig["stop"], sig["tp"]) 
+            continue
+
+        # max trades per day
+        if st.tradesToday >= int(cfg.max_trades_per_day):
+            LOG.warning("[RISK] Max trades reached for today (%s).", st.tradesToday)
+            continue
+
+        # place or shadow if place_orders is off
+        if not cfg.place_orders or st.ib is None or st.contract is None:
+            # simulate immediately as a shadow to learn
+            add_shadow(sig, cfg, now_utc=dt.datetime.utcnow())
+            LOG.info("[SIM] not placing real order; shadowed | arm=%s", sig["arm"]) 
+            st.tradesToday += 1
+            continue
+
+        try:
+            oca = f"OCO-{random.randint(1, 2**31-1)}"
+            parent_id = place_atomic_bracket(
+                st.ib, st.contract, sig["side"], cfg.qty, sig["entry"],
+                cfg.risk_ticks, cfg.tick_size, cfg.tp_R, cfg.tif, cfg.outsideRth, oca
+            )
+            st.tradesToday += 1
+            # we don't sync fills in this minimal file; learning will come from shadow & logs
+        except Exception as e:
+            LOG.error("order placement failed: %s", e)
+            # fallback to shadow so we still learn
+            add_shadow(sig, cfg, now_utc=dt.datetime.utcnow())
+            LOG.info("[SHADOW] fallback after order error | arm=%s", sig["arm"]) 
+
+
+# -------- argparse / main ----------------------------------------------------
+def build_argparser() -> argparse.ArgumentParser:
+    ap = argparse.ArgumentParser()
+    # connection
+    ap.add_argument("--host", default="127.0.0.1")
+    ap.add_argument("--port", type=int, default=7497)
+    ap.add_argument("--clientId", type=int, default=111)
+    ap.add_argument("--connect-timeout-sec", type=int, default=120)
+    ap.add_argument("--timeout-sec", type=int, default=120)
+
+    # instrument
+    ap.add_argument("--symbol", default="ES")
+    ap.add_argument("--auto-front-month", action="store_true")
+    ap.add_argument("--tick-size", type=float, default=0.25)
+
+    # trading
+    ap.add_argument("--place-orders", action="store_true")
+    ap.add_argument("--qty", type=float, default=1.0)
+    ap.add_argument("--tif", choices=["DAY", "GTC"], default="DAY")
+    ap.add_argument("--outsideRth", action="store_true")
+    ap.add_argument("--entry-slippage-ticks", type=int, default=2)
+    ap.add_argument("--risk-ticks", type=int, default=12)
+    ap.add_argument("--tp-R", type=float, default=1.0)
+
+    # windows
+    ap.add_argument("--trade-start-ct", default="00:00")
+    ap.add_argument("--trade-end-ct", default="23:59")
+
+    # risk guards
+    ap.add_argument("--day-loss-cap-R", type=float, default=3.0)
+    ap.add_argument("--max-trades-per-day", type=int, default=12)
+    ap.add_argument("--strategy-cooldown-sec", type=int, default=150)
+
+    # gates
+    ap.add_argument("--gate-adx", type=float, default=0.0)
+    ap.add_argument("--gate-bbbw", type=float, default=0.0)
+    ap.add_argument("--gate-atrp", type=float, default=0.0)
+
+    # chooser/bandit
+    ap.add_argument("--enable-arms", default="trend,breakout")
+    ap.add_argument("--chooser", default="bandit_hybrid")
+    ap.add_argument("--bandit", default="ucb")
+    ap.add_argument("--bandit-state", default=os.path.join("data", "learn", "bandit_state.json"))
+    ap.add_argument("--bandit-epsilon", type=float, default=0.03, help="Exploration floor 0..1")
+
+    # learning
+    ap.add_argument("--learn-log", action="store_true")
+    ap.add_argument("--learn-log-dir", default=os.path.join("logs", "learn"))
+    ap.add_argument("--shadow-learn-after-cap", action="store_true",
+                    help="When caps active, shadow-trade signals and learn off them.")
+
+    # bars / data
+    ap.add_argument("--duration", default="1 D")
+    ap.add_argument("--durationStr", dest="duration_compat", default=None)  # backwards compat; ignored if set
+    ap.add_argument("--barSize", default="1 min")
+
+    # misc
+    ap.add_argument("--debounce-one-bar", action="store_true")
+    ap.add_argument("--require-new-bar-after-start", action="store_true")
+    ap.add_argument("--startup-delay-sec", type=int, default=10)
+    ap.add_argument("-v", dest="verbose", action="store_true")
+    return ap
+
+
+def main():
+    ap = build_argparser()
+    args = ap.parse_args()
+
+    # Normalize args -> Cfg
+    arms = [s.strip() for s in (args.enable_arms or "").split(",") if s.strip()]
+    cfg = Cfg(
+        host=args.host,
+        port=args.port,
+        clientId=args.clientId,
+        connect_timeout_sec=args.connect_timeout_sec,
+        timeout_sec=args.timeout_sec,
+        symbol=args.symbol,
+        auto_front_month=bool(args.auto_front_month),
+        tick_size=args.tick_size,
+        place_orders=bool(args.place_orders),
+        qty=args.qty,
+        tif=args.tif,
+        outsideRth=bool(args.outsideRth),
+        entry_slippage_ticks=args.entry_slippage_ticks,
+        risk_ticks=args.risk_ticks,
+        tp_R=args.tp_R,
+        trade_start_ct=args.trade_start_ct,
+        trade_end_ct=args.trade_end_ct,
+        day_loss_cap_R=args.day_loss_cap_R,
+        max_trades_per_day=args.max_trades_per_day,
+        strategy_cooldown_sec=args.strategy_cooldown_sec,
+        gate_adx=args.gate_adx,
+        gate_bbbw=args.gate_bbbw,
+        gate_atrp=args.gate_atrp,
+        enable_arms=arms,
+        chooser=args.chooser,
+        bandit=args.bandit,
+        bandit_state=args.bandit_state,
+        bandit_epsilon=args.bandit_epsilon,
+        learn_log=bool(args.learn_log),
+        learn_log_dir=args.learn_log_dir,
+        shadow_learn_after_cap=bool(args.shadow_learn_after_cap),
+        duration=(args.duration or "1 D"),
+        barSize=args.barSize,
+        debounce_one_bar=bool(args.debounce_one_bar),
+        require_new_bar_after_start=bool(args.require_new_bar_after_start),
+        startup_delay_sec=args.startup_delay_sec,
+        verbose=bool(args.verbose),
+    )
+
+    # guard: duration must be like "<int> <unit>"
+    try:
+        parts = cfg.duration.split()
+        assert len(parts) == 2 and parts[0].isdigit() and parts[1] in ("S","D","W","M","Y","sec","min","hour","day")
+    except Exception:
+        # normalize common mistakes like "1D" -> "1 D"
+        txt = cfg.duration.strip().upper().replace("D", " D").replace("  ", " ")
+        if txt != cfg.duration:
+            LOG.warning("normalizing duration '%s' -> '%s'", cfg.duration, txt)
+            cfg.duration = txt
+
+    # ensure folders
+    ensure_dir(os.path.join("data", "learn"))
+    ensure_dir(os.path.join("logs", "learn"))
+    ensure_dir(os.path.join("logs", "signals"))
+
+    # run
+    try:
+        run_bot(cfg)
+    except KeyboardInterrupt:
+        LOG.info("[CTRL-C] Shutting down...")
+        try:
+            IB() and IB().disconnect()
+        except Exception:
+            pass
+    finally:
+        LOG.info("Disconnecting")
+
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,10 @@
+Traceback (most recent call last):
+  File "C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py", line 1003, in main
+    run_trader(args, session_dir)
+    ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py", line 646, in run_trader
+    ladder_spec = parse_tp_ladder(args.tp_ladder)
+  File "C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py", line 641, in parse_tp_ladder
+    out.append((float(mult), int(pct)))
+                ~~~~~^^^^^^
+ValueError: could not convert string to float: '1.0R'

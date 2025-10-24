@@ -1,0 +1,21 @@
+{
+  "stats": {
+    "trend": {
+      "n": 7,
+      "mean": -1.0
+    },
+    "breakout": {
+      "n": 1,
+      "mean": -1.0
+    },
+    "reversion": {
+      "n": 0,
+      "mean": 0.0
+    },
+    "vwap": {
+      "n": 0,
+      "mean": 0.0
+    }
+  },
+  "total": 43969
+}

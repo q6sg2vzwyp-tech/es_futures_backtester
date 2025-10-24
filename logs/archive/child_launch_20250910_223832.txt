@@ -1,0 +1,69 @@
+============================================================
+[START] 2025-09-10 22:38:32
+[CMD] C:\Users\owner\AppData\Local\Programs\Python\Python313\python.exe -X faulthandler -u paper_trader.py --host 127.0.0.1 --port 7497 --clientId 19 --conId 637533641 --tp-ladder 1.0R:50,2.0R:50 --place-orders --debug-regime --alpha 0.6 --epsilon 0.05 --epsilon-final 0.02 --epsilon-decay-min 120.0 --enable-arms trend,breakout --reward-mode linear --reward-penalty-time 0.1 --reward-penalty-dd 0.2 --reward-penalty-slip 0.05 --reward-regime-bonus 0.02 --arm-min-trades 12 --arm-good-thresh 0.08 --arm-bad-thresh -0.06 --auto-freeze-bad --alpha-boost-good --alpha-boost-mult 1.5 --alpha-boost-secs 600 --freeze-cooldown-secs 14400 --decay-every-secs 600 --decay-gamma 0.995 --rth-only --one-trade-at-a-time --strategy-cooldown-sec 60 --debounce-one-bar --persist-chooser --chooser-model-path C:\Users\owner\Desktop\es_futures_backtester\models\linucb_state.json
+============================================================
+[LOG] 2025-09-10 22:38:33 Enabled arms: trend,breakout
+[LOG] 2025-09-10 22:38:33 Loaded chooser state from C:\Users\owner\Desktop\es_futures_backtester\models\linucb_state.json
+[LOG] 2025-09-10 22:38:33 [PING 1] clientId=19 connected: False
+Peer closed connection. clientId 19 already in use?
+Exception in callback _ProactorBasePipeTransport._call_connection_lost()
+handle: <Handle _ProactorBasePipeTransport._call_connection_lost()>
+Traceback (most recent call last):
+  File "C:\Users\owner\AppData\Local\Programs\Python\Python313\Lib\asyncio\events.py", line 89, in _run
+    self._context.run(self._callback, *self._args)
+    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\owner\AppData\Local\Programs\Python\Python313\Lib\asyncio\proactor_events.py", line 165, in _call_connection_lost
+    self._sock.shutdown(socket.SHUT_RDWR)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+ConnectionResetError: [WinError 10054] An existing connection was forcibly closed by the remote host
+API connection failed: TimeoutError()
+Traceback (most recent call last):
+  File "C:\Users\owner\AppData\Local\Programs\Python\Python313\Lib\asyncio\tasks.py", line 507, in wait_for
+    return await fut
+           ^^^^^^^^^
+  File "C:\Users\owner\AppData\Local\Programs\Python\Python313\Lib\asyncio\futures.py", line 286, in __await__
+    yield self  # This tells Task to wait for completion.
+    ^^^^^^^^^^
+  File "C:\Users\owner\AppData\Local\Programs\Python\Python313\Lib\asyncio\tasks.py", line 375, in __wakeup
+    future.result()
+    ~~~~~~~~~~~~~^^
+  File "C:\Users\owner\AppData\Local\Programs\Python\Python313\Lib\asyncio\futures.py", line 194, in result
+    raise self._make_cancelled_error()
+asyncio.exceptions.CancelledError
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py", line 959, in <module>
+    main()
+    ~~~~^^
+  File "C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py", line 622, in main
+    ib.connect(args.host, args.port, clientId=args.clientId)
+    ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\owner\AppData\Local\Programs\Python\Python313\Lib\site-packages\ib_insync\ib.py", line 279, in connect
+    return self._run(self.connectAsync(
+           ~~~~~~~~~^^^^^^^^^^^^^^^^^^^
+        host, port, clientId, timeout, readonly, account))
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\owner\AppData\Local\Programs\Python\Python313\Lib\site-packages\ib_insync\ib.py", line 318, in _run
+    return util.run(*awaitables, timeout=self.RequestTimeout)
+           ~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\owner\AppData\Local\Programs\Python\Python313\Lib\site-packages\ib_insync\util.py", line 341, in run
+    result = loop.run_until_complete(task)
+  File "C:\Users\owner\AppData\Local\Programs\Python\Python313\Lib\site-packages\nest_asyncio.py", line 98, in run_until_complete
+    return f.result()
+           ~~~~~~~~^^
+  File "C:\Users\owner\AppData\Local\Programs\Python\Python313\Lib\asyncio\futures.py", line 199, in result
+    raise self._exception.with_traceback(self._exception_tb)
+  File "C:\Users\owner\AppData\Local\Programs\Python\Python313\Lib\asyncio\tasks.py", line 306, in __step_run_and_handle_result
+    result = coro.throw(exc)
+  File "C:\Users\owner\AppData\Local\Programs\Python\Python313\Lib\site-packages\ib_insync\ib.py", line 1748, in connectAsync
+    await self.client.connectAsync(host, port, clientId, timeout)
+  File "C:\Users\owner\AppData\Local\Programs\Python\Python313\Lib\site-packages\ib_insync\client.py", line 217, in connectAsync
+    await asyncio.wait_for(self.apiStart, timeout)
+  File "C:\Users\owner\AppData\Local\Programs\Python\Python313\Lib\asyncio\tasks.py", line 506, in wait_for
+    async with timeouts.timeout(timeout):
+               ~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\Users\owner\AppData\Local\Programs\Python\Python313\Lib\asyncio\timeouts.py", line 116, in __aexit__
+    raise TimeoutError from exc_val
+TimeoutError

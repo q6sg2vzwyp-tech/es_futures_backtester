@@ -1,0 +1,4 @@
+  File "C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py", line 1916
+    )
+    ^
+SyntaxError: unmatched ')'

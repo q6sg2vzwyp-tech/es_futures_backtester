@@ -1,0 +1,12 @@
+2025-08-27 14:42:53,466 ================== PAPER MODE ==================
+2025-08-27 14:42:53,467 Host:127.0.0.1  Port:7497  ClientId:5418
+2025-08-27 14:42:53,467 Paper account required (TWS/Gateway set to Paper). Orders WILL be sent (paper).
+2025-08-27 14:42:53,467 Writing log to logs\run_Wed0827_144253.log
+2025-08-27 14:42:53,469 [CONNECT] Attempt 1/8 to 127.0.0.1:7497 (clientId=5418, timeout=60s)
+2025-08-27 14:42:53,785 Connected 127.0.0.1:7497 clientId=5418 | Market data type: LIVE (1)
+2025-08-27 14:42:53,787 [AUTO] Selecting front quarter for ES/CME ...
+2025-08-27 14:42:53,817 [AUTO] Front month chosen: ESU5 exp=20250919
+2025-08-27 14:42:53,821 Using contract: ESU5  (conId=637533641)
+2025-08-27 14:42:53,821 [RISK] Daily loss cap: $1,250.00
+2025-08-27 14:42:54,088 [WARMUP] Loaded 6823 historical 1m bars.
+2025-08-27 14:42:54,149 [CRASH] Saved traceback to: results/ib_session_20250827_194253/crash_20250827_194254.log

@@ -1,0 +1,280 @@
+# missed_reasons.py
+import json
+import re
+from pathlib import Path
+
+import numpy as np
+import pandas as pd
+import logging
+logger = logging.getLogger(__name__)
+
+TZ_CT = "America/Chicago"
+RESULTS = Path("results")
+
+
+# ---------- indicators ----------
+def ema(s, n):
+    return s.ewm(span=n, adjust=False).mean()
+
+
+def _tr(df):
+    c1 = df["Close"].shift()
+    a = (df["High"] - df["Low"]).abs()
+    b = (df["High"] - c1).abs()
+    c = (df["Low"] - c1).abs()
+    return pd.concat([a, b, c], axis=1).max(axis=1)
+
+
+def atr(df, n=14):
+    return _tr(df).rolling(n, min_periods=1).mean()
+
+
+def adx(df, n=14):
+    up = df["High"].diff()
+    dn = -df["Low"].diff()
+    plusDM = np.where((up > dn) & (up > 0), up, 0.0)
+    minusDM = np.where((dn > up) & (dn > 0), dn, 0.0)
+    tr = _tr(df)
+    atrN = tr.ewm(alpha=1 / n, adjust=False).mean()
+    plusDI = (
+        100
+        * pd.Series(plusDM, index=df.index).ewm(alpha=1 / n, adjust=False).mean()
+        / (atrN + 1e-12)
+    )
+    minusDI = (
+        100
+        * pd.Series(minusDM, index=df.index).ewm(alpha=1 / n, adjust=False).mean()
+        / (atrN + 1e-12)
+    )
+    dx = ((plusDI - minusDI).abs() / (plusDI + minusDI + 1e-12)) * 100
+    return dx.ewm(alpha=1 / n, adjust=False).mean()
+
+
+def bb_bw(close, length=20, mult=2.0):
+    ma = close.rolling(length).mean()
+    sd = close.rolling(length).std(ddof=0)
+    upper = ma + mult * sd
+    lower = ma - mult * sd
+    return (upper - lower) / (ma + 1e-12)
+
+
+# ---------- load latest session ----------
+sessions = sorted(
+    [p for p in RESULTS.glob("ib_session_*") if p.is_dir()],
+    key=lambda p: p.stat().st_mtime,
+    reverse=True,
+)
+if not sessions:
+    raise SystemExit('No sessions under "results\\".')
+S = sessions[0]
+print("Analyzing latest session:", S)
+
+bars_path = S / "bars_1m.csv"
+sigs_path = S / "signals.csv"
+meta_path = S / "session.json"
+hb_path = S / "heartbeat.log"
+
+for p in [bars_path, sigs_path, meta_path]:
+    if not p.exists():
+        raise SystemExit(f"Missing {p}")
+
+with open(meta_path) as f:
+    meta = json.load(f)
+
+gates = meta.get("gates", {})
+smart = meta.get("smart", {})
+risk = meta.get("risk", {})
+
+# thresholds
+min_atr_ticks = float(gates.get("min_atr_ticks", 0) or 0)
+max_spread_ticks = float(gates.get("max_spread_ticks", 0) or 0)
+adx_min = float(smart.get("adx_min", 15))
+bb_min = float(smart.get("bb_bw_min", 0.04))
+atrp_min = float(smart.get("atr_pct_min", 0.008))
+stop_entry_mult = float(smart.get("stop_entry_atr_mult", 0.5))
+atr_init_mult = float(smart.get("atr_init_mult", 1.8))
+min_stop_ticks = int(risk.get("min_stop_ticks", 0) or 0)
+
+TICK = 0.25
+
+# ---------- load bars ----------
+bars = pd.read_csv(bars_path)
+bars["Time"] = pd.to_datetime(bars["Time"], utc=True, errors="coerce")
+bars = bars.dropna(subset=["Time"]).set_index("Time").sort_index()
+
+# compute EMAs
+bars["ema8"] = ema(bars["Close"], 8)
+bars["ema20"] = ema(bars["Close"], 20)
+
+# EMA crosses (both sides)
+cross_up = (bars["ema8"].shift(1) <= bars["ema20"].shift(1)) & (bars["ema8"] > bars["ema20"])
+cross_dn = (bars["ema8"].shift(1) >= bars["ema20"].shift(1)) & (bars["ema8"] < bars["ema20"])
+cands = bars.loc[cross_up | cross_dn].copy()
+cands["side"] = np.where(cross_up[cross_up | cross_dn], "BUY", "SELL")
+
+# RTH filter (08:30–15:00 CT)
+ct_idx = cands.index.tz_convert(TZ_CT)
+in_rth = ((ct_idx.hour > 8) | ((ct_idx.hour == 8) & (ct_idx.minute >= 30))) & (ct_idx.hour < 15)
+cands = cands[in_rth].copy()
+cands["MinuteUTC"] = cands.index.floor("min")
+cands["MinuteCT"] = cands.index.tz_convert(TZ_CT).floor("min")
+
+# ---------- bot signals ----------
+sigs = pd.read_csv(sigs_path)
+sigs["Time"] = pd.to_datetime(sigs["Time"], utc=True, errors="coerce").dt.floor("min")
+sigs = sigs[sigs["Signal"].isin(["BUY", "SELL"])]
+
+# ---------- heartbeat (Spread/ATR/RiskGuard reasons) ----------
+hb = []
+if hb_path.exists():
+    rx = re.compile(
+        r"\[(?P<ts>[^]]+)]\s+PnL=.*?Blocked=(?P<blk>[^|]+)\s*\|\s*ATRt=(?P<atr>[^|]+)\s*\|\s*Sprd=(?P<sprd>.+)"
+    )
+    for line in hb_path.read_text().splitlines():
+        m = rx.search(line)
+        if not m:
+            continue
+        ts = pd.to_datetime(m.group("ts"), errors="coerce")
+        if pd.isna(ts):
+            continue
+        # local CT in file; localize to CT
+        try:
+            ts = ts.tz_localize(TZ_CT)
+        except Exception:
+            # already tz-aware? force convert
+            try:
+                ts = ts.tz_convert(TZ_CT)
+            except Exception as e:
+
+                logger.debug('Swallowed exception in archive\missed_reasons.py: %s', e)
+ continue
+        blk = m.group("blk").strip()
+        atrt = float(m.group("atr")) if m.group("atr") not in ("?", "") else np.nan
+        sprd = float(m.group("sprd")) if m.group("sprd") not in ("?", "") else np.nan
+        hb.append(
+            {
+                "MinuteCT": ts.floor("min"),
+                "Blocked": blk,
+                "HB_ATRt": atrt,
+                "HB_Sprd": sprd,
+            }
+        )
+hb_df = (
+    pd.DataFrame(hb).drop_duplicates(subset=["MinuteCT"], keep="last")
+    if hb
+    else pd.DataFrame(columns=["MinuteCT", "Blocked", "HB_ATRt", "HB_Sprd"])
+)
+
+# ---------- analyze each cross ----------
+rows = []
+for tct, row in cands.iterrows():
+    minute_ct = row["MinuteCT"]
+    minute_utc = row["MinuteUTC"]
+    side = row["side"]
+
+    # slice up to this minute
+    hist = bars.loc[:minute_utc].copy()
+    if len(hist) < 220:
+        # not enough history to evaluate HTF slope robustly; mark as unknown but continue
+        htf_ok = np.nan
+    else:
+        htf = (
+            hist.resample("60T")
+            .agg({"Open": "first", "High": "max", "Low": "min", "Close": "last"})
+            .dropna()
+        )
+        if len(htf) < 205:
+            htf_ok = np.nan
+        else:
+            e200 = ema(htf["Close"], 200)
+            slope = (e200.iloc[-1] - e200.iloc[-5]) if len(e200) >= 6 else np.nan
+            htf_ok = (slope > 0) if side == "BUY" else (slope < 0)
+
+    # regime stats at the bar
+    a = float(adx(hist, 14).iloc[-1]) if len(hist) else np.nan
+    bb = float(bb_bw(hist["Close"], 20, 2).iloc[-1]) if len(hist) else np.nan
+    a14 = float(atr(hist, 14).iloc[-1]) if len(hist) else np.nan
+    close = float(hist["Close"].iloc[-1])
+    atr_pct = (a14 / close) if close else np.nan
+    atr_ticks = a14 / TICK if a14 == a14 else np.nan  # keep nan if nan
+
+    regime_ok = (a >= adx_min) and (bb >= bb_min) and (atr_pct >= atrp_min)
+
+    # reconstruct stop distance (in ticks) with params
+    last_high = float(hist["High"].iloc[-1])
+    last_low = float(hist["Low"].iloc[-1])
+    trig = last_high + stop_entry_mult * a14 if side == "BUY" else last_low - stop_entry_mult * a14
+    stop0 = trig - atr_init_mult * a14 if side == "BUY" else trig + atr_init_mult * a14
+    stop_ticks = abs(trig - stop0) / TICK
+    minstop_ok = (stop_ticks >= min_stop_ticks) if min_stop_ticks > 0 else True
+
+    # heartbeat lookup
+    hb_row = hb_df[hb_df["MinuteCT"] == minute_ct]
+    HB_ATRt = float(hb_row["HB_ATRt"].iloc[0]) if len(hb_row) else np.nan
+    HB_Sprd = float(hb_row["HB_Sprd"].iloc[0]) if len(hb_row) else np.nan
+    blk_raw = str(hb_row["Blocked"].iloc[0]) if len(hb_row) else ""
+
+    # gate evaluations
+    atr_gate = (not np.isnan(atr_ticks)) and (min_atr_ticks > 0) and (atr_ticks < min_atr_ticks)
+    spread_gate = (
+        (not np.isnan(HB_Sprd)) and (max_spread_ticks > 0) and (HB_Sprd > max_spread_ticks)
+    )
+    risk_guard = "YES" in blk_raw and "RiskGuard" in blk_raw
+
+    reasons = []
+    if not regime_ok:
+        reasons.append("Regime")
+    if atr_gate:
+        reasons.append("ATR")
+    if spread_gate:
+        reasons.append("Spread")
+    if isinstance(htf_ok, bool) and not htf_ok:
+        reasons.append("HTF")
+    if not minstop_ok:
+        reasons.append("MinStop")
+    if risk_guard:
+        reasons.append("RiskGuard")
+
+    rows.append(
+        {
+            "MinuteUTC": minute_utc,
+            "MinuteCT": minute_ct,
+            "side": side,
+            "Close": close,
+            "ema8": float(hist["Close"].ewm(span=8, adjust=False).mean().iloc[-1]),
+            "ema20": float(hist["Close"].ewm(span=20, adjust=False).mean().iloc[-1]),
+            "ADX": a,
+            "BBbw": bb,
+            "ATR%": atr_pct,
+            "ATRticks": atr_ticks,
+            "RegimeOK": regime_ok,
+            "HTF_OK": htf_ok,
+            "HB_ATRt": HB_ATRt,
+            "HB_Sprd": HB_Sprd,
+            "ATR_gate": atr_gate,
+            "Spread_gate": spread_gate,
+            "MinStopOK": minstop_ok,
+            "StopTicks": stop_ticks,
+            "Blocked_raw": blk_raw,
+            "Reasons": "/".join(reasons) if reasons else "",
+        }
+    )
+
+out = pd.DataFrame(rows)
+out = out.sort_values("MinuteUTC")
+out_file = S / "missed_reasons.csv"
+out.to_csv(out_file, index=False)
+
+# little summary
+counts = out["Reasons"].replace("", "None").value_counts().sort_values(ascending=False)
+summary_path = S / "reason_counts.txt"
+with open(summary_path, "w") as f:
+    f.write("Missed Crosses — Reason counts\n")
+    for k, v in counts.items():
+        f.write(f"{k}: {v}\n")
+
+print("Wrote:")
+print(" ", out_file)
+print(" ", summary_path)
+print("\nTop reason counts:")
+print(counts.head(10))

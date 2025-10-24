@@ -1,0 +1,828 @@
+2025-09-30 15:28:37 INFO Starting ES paper bot...
+2025-09-30 15:28:37 INFO [CONNECT] 127.0.0.1:7497 clientId=111
+2025-09-30 15:28:37 INFO Connecting to 127.0.0.1:7497 with clientId 111...
+2025-09-30 15:28:37 INFO Connected
+2025-09-30 15:28:37 INFO Logged on to server version 176
+2025-09-30 15:28:37 INFO API connection ready
+2025-09-30 15:28:37 INFO Warning 2104, reqId -1: Market data farm connection is OK:usfarm.nj
+2025-09-30 15:28:37 INFO Warning 2104, reqId -1: Market data farm connection is OK:usfuture
+2025-09-30 15:28:37 INFO Warning 2104, reqId -1: Market data farm connection is OK:cashfarm
+2025-09-30 15:28:37 INFO Warning 2104, reqId -1: Market data farm connection is OK:usfarm
+2025-09-30 15:28:37 INFO Warning 2106, reqId -1: HMDS data farm connection is OK:ushmds
+2025-09-30 15:28:37 INFO Warning 2158, reqId -1: Sec-def data farm connection is OK:secdefil
+2025-09-30 15:28:37 INFO position: Position(account='DU2660649', contract=Future(conId=495512563, symbol='ES', lastTradeDateOrContractMonth='20251219', multiplier='50', currency='USD', localSymbol='ESZ5', tradingClass='ES'), position=0.0, avgCost=0.0)
+2025-09-30 15:28:37 INFO updatePortfolio: PortfolioItem(contract=Future(conId=495512563, symbol='ES', lastTradeDateOrContractMonth='20251219', right='0', multiplier='50', primaryExchange='CME', currency='USD', localSymbol='ESZ5', tradingClass='ES'), position=0.0, marketPrice=6727.5, marketValue=0.0, averageCost=0.0, unrealizedPNL=0.0, realizedPNL=11322.0, account='DU2660649')
+2025-09-30 15:28:37 INFO execDetails Execution(execId='0000e1a7.68db1599.01.01', time=datetime.datetime(2025, 9, 30, 6, 24, tzinfo=datetime.timezone.utc), acctNumber='DU2660649', exchange='CME', side='SLD', shares=1.0, price=6715.0, permId=1119156401, clientId=19, orderId=11960, liquidation=0, cumQty=1.0, avgPrice=6715.0, orderRef='', evRule='', evMultiplier=0.0, modelCode='', lastLiquidity=1)
+2025-09-30 15:28:37 INFO execDetails Execution(execId='0000e1a7.68db4350.01.01', time=datetime.datetime(2025, 9, 30, 13, 30, tzinfo=datetime.timezone.utc), acctNumber='DU2660649', exchange='CME', side='SLD', shares=1.0, price=6706.25, permId=1119156388, clientId=19, orderId=11943, liquidation=0, cumQty=1.0, avgPrice=6706.25, orderRef='', evRule='', evMultiplier=0.0, modelCode='', lastLiquidity=1)
+2025-09-30 15:28:37 INFO execDetails Execution(execId='0000e1a7.68db4352.01.01', time=datetime.datetime(2025, 9, 30, 13, 30, tzinfo=datetime.timezone.utc), acctNumber='DU2660649', exchange='CME', side='SLD', shares=1.0, price=6706.5, permId=1119156382, clientId=19, orderId=11935, liquidation=0, cumQty=1.0, avgPrice=6706.5, orderRef='', evRule='', evMultiplier=0.0, modelCode='', lastLiquidity=1)
+2025-09-30 15:28:37 INFO execDetails Execution(execId='0000e1a7.68db4353.01.01', time=datetime.datetime(2025, 9, 30, 13, 30, tzinfo=datetime.timezone.utc), acctNumber='DU2660649', exchange='CME', side='SLD', shares=1.0, price=6706.5, permId=1119156406, clientId=19, orderId=11967, liquidation=0, cumQty=1.0, avgPrice=6706.5, orderRef='', evRule='', evMultiplier=0.0, modelCode='', lastLiquidity=1)
+2025-09-30 15:28:37 INFO execDetails Execution(execId='0000e1a7.68db4354.01.01', time=datetime.datetime(2025, 9, 30, 13, 30, tzinfo=datetime.timezone.utc), acctNumber='DU2660649', exchange='CME', side='SLD', shares=1.0, price=6706.5, permId=1119156373, clientId=19, orderId=11923, liquidation=0, cumQty=1.0, avgPrice=6706.5, orderRef='', evRule='', evMultiplier=0.0, modelCode='', lastLiquidity=1)
+2025-09-30 15:28:37 INFO execDetails Execution(execId='0000e1a7.68db4355.01.01', time=datetime.datetime(2025, 9, 30, 13, 30, tzinfo=datetime.timezone.utc), acctNumber='DU2660649', exchange='CME', side='SLD', shares=1.0, price=6706.5, permId=1119156418, clientId=19, orderId=11983, liquidation=0, cumQty=1.0, avgPrice=6706.5, orderRef='', evRule='', evMultiplier=0.0, modelCode='', lastLiquidity=1)
+2025-09-30 15:28:37 INFO execDetails Execution(execId='0000e1a7.68db4356.01.01', time=datetime.datetime(2025, 9, 30, 13, 30, tzinfo=datetime.timezone.utc), acctNumber='DU2660649', exchange='CME', side='SLD', shares=1.0, price=6706.5, permId=1119156403, clientId=19, orderId=11963, liquidation=0, cumQty=1.0, avgPrice=6706.5, orderRef='', evRule='', evMultiplier=0.0, modelCode='', lastLiquidity=1)
+2025-09-30 15:28:37 INFO execDetails Execution(execId='0000e1a7.68db4357.01.01', time=datetime.datetime(2025, 9, 30, 13, 30, tzinfo=datetime.timezone.utc), acctNumber='DU2660649', exchange='CME', side='SLD', shares=1.0, price=6706.5, permId=1119156376, clientId=19, orderId=11927, liquidation=0, cumQty=1.0, avgPrice=6706.5, orderRef='', evRule='', evMultiplier=0.0, modelCode='', lastLiquidity=1)
+2025-09-30 15:28:37 INFO execDetails Execution(execId='0000e1a7.68db4358.01.01', time=datetime.datetime(2025, 9, 30, 13, 30, tzinfo=datetime.timezone.utc), acctNumber='DU2660649', exchange='CME', side='SLD', shares=1.0, price=6706.5, permId=1119156440, clientId=19, orderId=12011, liquidation=0, cumQty=1.0, avgPrice=6706.5, orderRef='', evRule='', evMultiplier=0.0, modelCode='', lastLiquidity=1)
+2025-09-30 15:28:37 INFO execDetails Execution(execId='0000e1a7.68db4359.01.01', time=datetime.datetime(2025, 9, 30, 13, 30, tzinfo=datetime.timezone.utc), acctNumber='DU2660649', exchange='CME', side='SLD', shares=1.0, price=6706.5, permId=1119156409, clientId=19, orderId=11971, liquidation=0, cumQty=1.0, avgPrice=6706.5, orderRef='', evRule='', evMultiplier=0.0, modelCode='', lastLiquidity=1)
+2025-09-30 15:28:37 INFO execDetails Execution(execId='0000e1a7.68db435a.01.01', time=datetime.datetime(2025, 9, 30, 13, 30, tzinfo=datetime.timezone.utc), acctNumber='DU2660649', exchange='CME', side='SLD', shares=1.0, price=6706.5, permId=1119156385, clientId=19, orderId=11939, liquidation=0, cumQty=1.0, avgPrice=6706.5, orderRef='', evRule='', evMultiplier=0.0, modelCode='', lastLiquidity=1)
+2025-09-30 15:28:37 INFO execDetails Execution(execId='0000e1a7.68db435c.01.01', time=datetime.datetime(2025, 9, 30, 13, 30, tzinfo=datetime.timezone.utc), acctNumber='DU2660649', exchange='CME', side='SLD', shares=1.0, price=6706.5, permId=1119156424, clientId=19, orderId=11991, liquidation=0, cumQty=1.0, avgPrice=6706.5, orderRef='', evRule='', evMultiplier=0.0, modelCode='', lastLiquidity=1)
+2025-09-30 15:28:37 INFO execDetails Execution(execId='0000e1a7.68db435d.01.01', time=datetime.datetime(2025, 9, 30, 13, 30, tzinfo=datetime.timezone.utc), acctNumber='DU2660649', exchange='CME', side='SLD', shares=1.0, price=6706.5, permId=1119156391, clientId=19, orderId=11947, liquidation=0, cumQty=1.0, avgPrice=6706.5, orderRef='', evRule='', evMultiplier=0.0, modelCode='', lastLiquidity=1)
+2025-09-30 15:28:37 INFO execDetails Execution(execId='0000e1a7.68db435e.01.01', time=datetime.datetime(2025, 9, 30, 13, 30, tzinfo=datetime.timezone.utc), acctNumber='DU2660649', exchange='CME', side='SLD', shares=1.0, price=6706.5, permId=1119156471, clientId=19, orderId=12053, liquidation=0, cumQty=1.0, avgPrice=6706.5, orderRef='', evRule='', evMultiplier=0.0, modelCode='', lastLiquidity=1)
+2025-09-30 15:28:37 INFO execDetails Execution(execId='0000e1a7.68db435f.01.01', time=datetime.datetime(2025, 9, 30, 13, 30, tzinfo=datetime.timezone.utc), acctNumber='DU2660649', exchange='CME', side='SLD', shares=1.0, price=6706.5, permId=1119156427, clientId=19, orderId=11995, liquidation=0, cumQty=1.0, avgPrice=6706.5, orderRef='', evRule='', evMultiplier=0.0, modelCode='', lastLiquidity=1)
+2025-09-30 15:28:37 INFO execDetails Execution(execId='0000e1a7.68db4360.01.01', time=datetime.datetime(2025, 9, 30, 13, 30, tzinfo=datetime.timezone.utc), acctNumber='DU2660649', exchange='CME', side='SLD', shares=1.0, price=6706.5, permId=1119156379, clientId=19, orderId=11931, liquidation=0, cumQty=1.0, avgPrice=6706.5, orderRef='', evRule='', evMultiplier=0.0, modelCode='', lastLiquidity=1)
+2025-09-30 15:28:37 INFO execDetails Execution(execId='0000e1a7.68db4b06.01.01', time=datetime.datetime(2025, 9, 30, 13, 41, 16, tzinfo=datetime.timezone.utc), acctNumber='DU2660649', exchange='CME', side='BOT', shares=10.0, price=6702.75, permId=1598338802, clientId=0, orderId=0, liquidation=0, cumQty=10.0, avgPrice=6702.75, orderRef='', evRule='', evMultiplier=0.0, modelCode='', lastLiquidity=1)
+2025-09-30 15:28:37 INFO execDetails Execution(execId='0000e1a7.68db4b29.01.01', time=datetime.datetime(2025, 9, 30, 13, 41, 29, tzinfo=datetime.timezone.utc), acctNumber='DU2660649', exchange='CME', side='BOT', shares=1.0, price=6703.25, permId=1598338806, clientId=0, orderId=0, liquidation=0, cumQty=1.0, avgPrice=6703.25, orderRef='', evRule='', evMultiplier=0.0, modelCode='', lastLiquidity=1)
+2025-09-30 15:28:37 INFO execDetails Execution(execId='0000e1a7.68db4b48.01.01', time=datetime.datetime(2025, 9, 30, 13, 41, 40, tzinfo=datetime.timezone.utc), acctNumber='DU2660649', exchange='CME', side='BOT', shares=9.0, price=6702.0, permId=1598338810, clientId=0, orderId=0, liquidation=0, cumQty=9.0, avgPrice=6702.0, orderRef='', evRule='', evMultiplier=0.0, modelCode='', lastLiquidity=1)
+2025-09-30 15:28:37 INFO execDetails Execution(execId='0000e1a7.68db4b8f.01.01', time=datetime.datetime(2025, 9, 30, 13, 42, 11, tzinfo=datetime.timezone.utc), acctNumber='DU2660649', exchange='CME', side='BOT', shares=4.0, price=6703.0, permId=1598338814, clientId=0, orderId=0, liquidation=0, cumQty=4.0, avgPrice=6703.0, orderRef='', evRule='', evMultiplier=0.0, modelCode='', lastLiquidity=1)
+2025-09-30 15:28:37 INFO execDetails Execution(execId='0000e1a7.68db4b99.01.01', time=datetime.datetime(2025, 9, 30, 13, 42, 22, tzinfo=datetime.timezone.utc), acctNumber='DU2660649', exchange='CME', side='BOT', shares=20.0, price=6703.75, permId=1598338818, clientId=0, orderId=0, liquidation=0, cumQty=20.0, avgPrice=6703.75, orderRef='', evRule='', evMultiplier=0.0, modelCode='', lastLiquidity=1)
+2025-09-30 15:28:37 INFO execDetails Execution(execId='0000e1a7.68db4bbc.01.01', time=datetime.datetime(2025, 9, 30, 13, 42, 41, tzinfo=datetime.timezone.utc), acctNumber='DU2660649', exchange='CME', side='BOT', shares=1.0, price=6703.0, permId=1598338814, clientId=0, orderId=0, liquidation=0, cumQty=5.0, avgPrice=6703.0, orderRef='', evRule='', evMultiplier=0.0, modelCode='', lastLiquidity=1)
+2025-09-30 15:28:37 INFO execDetails Execution(execId='0000e1a7.68db4bbd.01.01', time=datetime.datetime(2025, 9, 30, 13, 42, 41, tzinfo=datetime.timezone.utc), acctNumber='DU2660649', exchange='CME', side='BOT', shares=6.0, price=6703.0, permId=1598338814, clientId=0, orderId=0, liquidation=0, cumQty=11.0, avgPrice=6703.0, orderRef='', evRule='', evMultiplier=0.0, modelCode='', lastLiquidity=1)
+2025-09-30 15:28:37 INFO execDetails Execution(execId='0000e1a7.68db4bbe.01.01', time=datetime.datetime(2025, 9, 30, 13, 42, 41, tzinfo=datetime.timezone.utc), acctNumber='DU2660649', exchange='CME', side='BOT', shares=4.0, price=6703.0, permId=1598338814, clientId=0, orderId=0, liquidation=0, cumQty=15.0, avgPrice=6703.0, orderRef='', evRule='', evMultiplier=0.0, modelCode='', lastLiquidity=1)
+2025-09-30 15:28:37 INFO execDetails Execution(execId='0000e1a7.68db4bbf.01.01', time=datetime.datetime(2025, 9, 30, 13, 42, 41, tzinfo=datetime.timezone.utc), acctNumber='DU2660649', exchange='CME', side='BOT', shares=5.0, price=6703.0, permId=1598338814, clientId=0, orderId=0, liquidation=0, cumQty=20.0, avgPrice=6703.0, orderRef='', evRule='', evMultiplier=0.0, modelCode='', lastLiquidity=1)
+2025-09-30 15:28:37 INFO execDetails Execution(execId='0000e1a7.68db4bef.01.01', time=datetime.datetime(2025, 9, 30, 13, 43, 12, tzinfo=datetime.timezone.utc), acctNumber='DU2660649', exchange='CME', side='BOT', shares=10.0, price=6703.25, permId=1598338826, clientId=0, orderId=0, liquidation=0, cumQty=10.0, avgPrice=6703.25, orderRef='', evRule='', evMultiplier=0.0, modelCode='', lastLiquidity=1)
+2025-09-30 15:28:37 INFO execDetails Execution(execId='0000e1a7.68db4ca3.01.01', time=datetime.datetime(2025, 9, 30, 13, 44, 6, tzinfo=datetime.timezone.utc), acctNumber='DU2660649', exchange='CME', side='SLD', shares=10.0, price=6705.25, permId=1598338825, clientId=0, orderId=0, liquidation=0, cumQty=10.0, avgPrice=6705.25, orderRef='', evRule='', evMultiplier=0.0, modelCode='', lastLiquidity=1)
+2025-09-30 15:28:37 INFO execDetails Execution(execId='0000e1a7.68db4cde.01.01', time=datetime.datetime(2025, 9, 30, 13, 44, 30, tzinfo=datetime.timezone.utc), acctNumber='DU2660649', exchange='CME', side='SLD', shares=1.0, price=6707.25, permId=1598338830, clientId=0, orderId=0, liquidation=0, cumQty=1.0, avgPrice=6707.25, orderRef='', evRule='', evMultiplier=0.0, modelCode='', lastLiquidity=1)
+2025-09-30 15:28:37 INFO execDetails Execution(execId='0000e1a7.68db4ce0.01.01', time=datetime.datetime(2025, 9, 30, 13, 44, 30, tzinfo=datetime.timezone.utc), acctNumber='DU2660649', exchange='CME', side='SLD', shares=5.0, price=6707.25, permId=1598338830, clientId=0, orderId=0, liquidation=0, cumQty=6.0, avgPrice=6707.25, orderRef='', evRule='', evMultiplier=0.0, modelCode='', lastLiquidity=1)
+2025-09-30 15:28:37 INFO execDetails Execution(execId='0000e1a7.68db4ce3.01.01', time=datetime.datetime(2025, 9, 30, 13, 44, 31, tzinfo=datetime.timezone.utc), acctNumber='DU2660649', exchange='CME', side='SLD', shares=4.0, price=6707.25, permId=1598338830, clientId=0, orderId=0, liquidation=0, cumQty=10.0, avgPrice=6707.25, orderRef='', evRule='', evMultiplier=0.0, modelCode='', lastLiquidity=1)
+2025-09-30 15:28:37 INFO execDetails Execution(execId='0000e1a7.68db4d43.01.01', time=datetime.datetime(2025, 9, 30, 13, 45, 11, tzinfo=datetime.timezone.utc), acctNumber='DU2660649', exchange='CME', side='SLD', shares=10.0, price=6708.0, permId=1598338834, clientId=0, orderId=0, liquidation=0, cumQty=10.0, avgPrice=6708.0, orderRef='', evRule='', evMultiplier=0.0, modelCode='', lastLiquidity=1)
+2025-09-30 15:28:37 INFO execDetails Execution(execId='0000e1a7.68db4d99.01.01', time=datetime.datetime(2025, 9, 30, 13, 45, 34, tzinfo=datetime.timezone.utc), acctNumber='DU2660649', exchange='CME', side='SLD', shares=10.0, price=6709.25, permId=1598338838, clientId=0, orderId=0, liquidation=0, cumQty=10.0, avgPrice=6709.25, orderRef='', evRule='', evMultiplier=0.0, modelCode='', lastLiquidity=1)
+2025-09-30 15:28:37 INFO execDetails Execution(execId='0000e1a7.68db4e34.01.01', time=datetime.datetime(2025, 9, 30, 13, 46, 25, tzinfo=datetime.timezone.utc), acctNumber='DU2660649', exchange='CME', side='SLD', shares=10.0, price=6709.0, permId=1598338842, clientId=0, orderId=0, liquidation=0, cumQty=10.0, avgPrice=6709.0, orderRef='', evRule='', evMultiplier=0.0, modelCode='', lastLiquidity=1)
+2025-09-30 15:28:37 INFO execDetails Execution(execId='0000e1a7.68db4eb1.01.01', time=datetime.datetime(2025, 9, 30, 13, 47, 30, tzinfo=datetime.timezone.utc), acctNumber='DU2660649', exchange='CME', side='SLD', shares=10.0, price=6706.25, permId=1598338846, clientId=0, orderId=0, liquidation=0, cumQty=10.0, avgPrice=6706.25, orderRef='', evRule='', evMultiplier=0.0, modelCode='', lastLiquidity=1)
+2025-09-30 15:28:37 INFO execDetails Execution(execId='0000e1a7.68db508d.01.01', time=datetime.datetime(2025, 9, 30, 13, 50, 43, tzinfo=datetime.timezone.utc), acctNumber='DU2660649', exchange='CME', side='SLD', shares=1.0, price=6703.0, permId=1598338854, clientId=0, orderId=0, liquidation=0, cumQty=1.0, avgPrice=6703.0, orderRef='', evRule='', evMultiplier=0.0, modelCode='', lastLiquidity=1)
+2025-09-30 15:28:37 INFO execDetails Execution(execId='0000e1a7.68db5642.01.01', time=datetime.datetime(2025, 9, 30, 13, 59, 11, tzinfo=datetime.timezone.utc), acctNumber='DU2660649', exchange='CME', side='SLD', shares=2.0, price=6706.5, permId=1598338857, clientId=0, orderId=0, liquidation=0, cumQty=2.0, avgPrice=6706.5, orderRef='', evRule='', evMultiplier=0.0, modelCode='', lastLiquidity=1)
+2025-09-30 15:28:37 INFO execDetails Execution(execId='0000e1a7.68db5645.01.01', time=datetime.datetime(2025, 9, 30, 13, 59, 11, tzinfo=datetime.timezone.utc), acctNumber='DU2660649', exchange='CME', side='SLD', shares=1.0, price=6706.5, permId=1598338857, clientId=0, orderId=0, liquidation=0, cumQty=3.0, avgPrice=6706.5, orderRef='', evRule='', evMultiplier=0.0, modelCode='', lastLiquidity=1)
+2025-09-30 15:28:37 INFO execDetails Execution(execId='0000e1a7.68db5646.01.01', time=datetime.datetime(2025, 9, 30, 13, 59, 11, tzinfo=datetime.timezone.utc), acctNumber='DU2660649', exchange='CME', side='SLD', shares=2.0, price=6706.5, permId=1598338857, clientId=0, orderId=0, liquidation=0, cumQty=5.0, avgPrice=6706.5, orderRef='', evRule='', evMultiplier=0.0, modelCode='', lastLiquidity=1)
+2025-09-30 15:28:37 INFO execDetails Execution(execId='0000e1a7.68db5647.01.01', time=datetime.datetime(2025, 9, 30, 13, 59, 12, tzinfo=datetime.timezone.utc), acctNumber='DU2660649', exchange='CME', side='SLD', shares=1.0, price=6706.5, permId=1598338857, clientId=0, orderId=0, liquidation=0, cumQty=6.0, avgPrice=6706.5, orderRef='', evRule='', evMultiplier=0.0, modelCode='', lastLiquidity=1)
+2025-09-30 15:28:37 INFO execDetails Execution(execId='0000e1a7.68db5649.01.01', time=datetime.datetime(2025, 9, 30, 13, 59, 13, tzinfo=datetime.timezone.utc), acctNumber='DU2660649', exchange='CME', side='SLD', shares=1.0, price=6706.5, permId=1598338857, clientId=0, orderId=0, liquidation=0, cumQty=7.0, avgPrice=6706.5, orderRef='', evRule='', evMultiplier=0.0, modelCode='', lastLiquidity=1)
+2025-09-30 15:28:37 INFO execDetails Execution(execId='0000e1a7.68db564a.01.01', time=datetime.datetime(2025, 9, 30, 13, 59, 13, tzinfo=datetime.timezone.utc), acctNumber='DU2660649', exchange='CME', side='SLD', shares=2.0, price=6706.5, permId=1598338857, clientId=0, orderId=0, liquidation=0, cumQty=9.0, avgPrice=6706.5, orderRef='', evRule='', evMultiplier=0.0, modelCode='', lastLiquidity=1)
+2025-09-30 15:28:37 INFO commissionReport: CommissionReport(execId='0000e1a7.68db1599.01.01', commission=2.25, currency='USD', realizedPNL=127.711538, yield_=0.0, yieldRedemptionDate=0)
+2025-09-30 15:28:37 INFO commissionReport: CommissionReport(execId='0000e1a7.68db4350.01.01', commission=2.25, currency='USD', realizedPNL=-309.788462, yield_=0.0, yieldRedemptionDate=0)
+2025-09-30 15:28:37 INFO commissionReport: CommissionReport(execId='0000e1a7.68db4352.01.01', commission=2.25, currency='USD', realizedPNL=-297.288462, yield_=0.0, yieldRedemptionDate=0)
+2025-09-30 15:28:37 INFO commissionReport: CommissionReport(execId='0000e1a7.68db4353.01.01', commission=2.25, currency='USD', realizedPNL=-297.288462, yield_=0.0, yieldRedemptionDate=0)
+2025-09-30 15:28:37 INFO commissionReport: CommissionReport(execId='0000e1a7.68db4354.01.01', commission=2.25, currency='USD', realizedPNL=-297.288462, yield_=0.0, yieldRedemptionDate=0)
+2025-09-30 15:28:37 INFO commissionReport: CommissionReport(execId='0000e1a7.68db4355.01.01', commission=2.25, currency='USD', realizedPNL=-297.288462, yield_=0.0, yieldRedemptionDate=0)
+2025-09-30 15:28:37 INFO commissionReport: CommissionReport(execId='0000e1a7.68db4356.01.01', commission=2.25, currency='USD', realizedPNL=-297.288462, yield_=0.0, yieldRedemptionDate=0)
+2025-09-30 15:28:37 INFO commissionReport: CommissionReport(execId='0000e1a7.68db4357.01.01', commission=2.25, currency='USD', realizedPNL=-297.288462, yield_=0.0, yieldRedemptionDate=0)
+2025-09-30 15:28:37 INFO commissionReport: CommissionReport(execId='0000e1a7.68db4358.01.01', commission=2.25, currency='USD', realizedPNL=-297.288462, yield_=0.0, yieldRedemptionDate=0)
+2025-09-30 15:28:37 INFO commissionReport: CommissionReport(execId='0000e1a7.68db4359.01.01', commission=2.25, currency='USD', realizedPNL=-297.288462, yield_=0.0, yieldRedemptionDate=0)
+2025-09-30 15:28:37 INFO commissionReport: CommissionReport(execId='0000e1a7.68db435a.01.01', commission=2.25, currency='USD', realizedPNL=-297.288462, yield_=0.0, yieldRedemptionDate=0)
+2025-09-30 15:28:37 INFO commissionReport: CommissionReport(execId='0000e1a7.68db435c.01.01', commission=2.25, currency='USD', realizedPNL=-297.288462, yield_=0.0, yieldRedemptionDate=0)
+2025-09-30 15:28:37 INFO commissionReport: CommissionReport(execId='0000e1a7.68db435d.01.01', commission=2.25, currency='USD', realizedPNL=-297.288462, yield_=0.0, yieldRedemptionDate=0)
+2025-09-30 15:28:37 INFO commissionReport: CommissionReport(execId='0000e1a7.68db435e.01.01', commission=2.25, currency='USD', realizedPNL=-297.288462, yield_=0.0, yieldRedemptionDate=0)
+2025-09-30 15:28:37 INFO commissionReport: CommissionReport(execId='0000e1a7.68db435f.01.01', commission=2.25, currency='USD', realizedPNL=-297.288462, yield_=0.0, yieldRedemptionDate=0)
+2025-09-30 15:28:37 INFO commissionReport: CommissionReport(execId='0000e1a7.68db4360.01.01', commission=2.25, currency='USD', realizedPNL=-297.288462, yield_=0.0, yieldRedemptionDate=0)
+2025-09-30 15:28:37 INFO commissionReport: CommissionReport(execId='0000e1a7.68db4b06.01.01', commission=22.5, currency='USD', realizedPNL=0.0, yield_=0.0, yieldRedemptionDate=0)
+2025-09-30 15:28:37 INFO commissionReport: CommissionReport(execId='0000e1a7.68db4b29.01.01', commission=2.25, currency='USD', realizedPNL=0.0, yield_=0.0, yieldRedemptionDate=0)
+2025-09-30 15:28:37 INFO commissionReport: CommissionReport(execId='0000e1a7.68db4b48.01.01', commission=20.25, currency='USD', realizedPNL=0.0, yield_=0.0, yieldRedemptionDate=0)
+2025-09-30 15:28:37 INFO commissionReport: CommissionReport(execId='0000e1a7.68db4b8f.01.01', commission=9.0, currency='USD', realizedPNL=0.0, yield_=0.0, yieldRedemptionDate=0)
+2025-09-30 15:28:37 INFO commissionReport: CommissionReport(execId='0000e1a7.68db4b99.01.01', commission=45.0, currency='USD', realizedPNL=0.0, yield_=0.0, yieldRedemptionDate=0)
+2025-09-30 15:28:37 INFO commissionReport: CommissionReport(execId='0000e1a7.68db4bbc.01.01', commission=2.25, currency='USD', realizedPNL=0.0, yield_=0.0, yieldRedemptionDate=0)
+2025-09-30 15:28:37 INFO commissionReport: CommissionReport(execId='0000e1a7.68db4bbd.01.01', commission=13.5, currency='USD', realizedPNL=0.0, yield_=0.0, yieldRedemptionDate=0)
+2025-09-30 15:28:37 INFO commissionReport: CommissionReport(execId='0000e1a7.68db4bbe.01.01', commission=9.0, currency='USD', realizedPNL=0.0, yield_=0.0, yieldRedemptionDate=0)
+2025-09-30 15:28:37 INFO commissionReport: CommissionReport(execId='0000e1a7.68db4bbf.01.01', commission=11.25, currency='USD', realizedPNL=0.0, yield_=0.0, yieldRedemptionDate=0)
+2025-09-30 15:28:37 INFO commissionReport: CommissionReport(execId='0000e1a7.68db4bef.01.01', commission=22.5, currency='USD', realizedPNL=0.0, yield_=0.0, yieldRedemptionDate=0)
+2025-09-30 15:28:37 INFO commissionReport: CommissionReport(execId='0000e1a7.68db4ca3.01.01', commission=22.5, currency='USD', realizedPNL=1035.357143, yield_=0.0, yieldRedemptionDate=0)
+2025-09-30 15:28:37 INFO commissionReport: CommissionReport(execId='0000e1a7.68db4cde.01.01', commission=2.25, currency='USD', realizedPNL=203.535714, yield_=0.0, yieldRedemptionDate=0)
+2025-09-30 15:28:37 INFO commissionReport: CommissionReport(execId='0000e1a7.68db4ce0.01.01', commission=11.25, currency='USD', realizedPNL=1017.678571, yield_=0.0, yieldRedemptionDate=0)
+2025-09-30 15:28:37 INFO commissionReport: CommissionReport(execId='0000e1a7.68db4ce3.01.01', commission=9.0, currency='USD', realizedPNL=814.142857, yield_=0.0, yieldRedemptionDate=0)
+2025-09-30 15:28:37 INFO commissionReport: CommissionReport(execId='0000e1a7.68db4d43.01.01', commission=22.5, currency='USD', realizedPNL=2410.357143, yield_=0.0, yieldRedemptionDate=0)
+2025-09-30 15:28:37 INFO commissionReport: CommissionReport(execId='0000e1a7.68db4d99.01.01', commission=22.5, currency='USD', realizedPNL=3035.357143, yield_=0.0, yieldRedemptionDate=0)
+2025-09-30 15:28:37 INFO commissionReport: CommissionReport(execId='0000e1a7.68db4e34.01.01', commission=22.5, currency='USD', realizedPNL=2910.357143, yield_=0.0, yieldRedemptionDate=0)
+2025-09-30 15:28:37 INFO commissionReport: CommissionReport(execId='0000e1a7.68db4eb1.01.01', commission=22.5, currency='USD', realizedPNL=1535.357143, yield_=0.0, yieldRedemptionDate=0)
+2025-09-30 15:28:37 INFO commissionReport: CommissionReport(execId='0000e1a7.68db508d.01.01', commission=2.25, currency='USD', realizedPNL=-8.964286, yield_=0.0, yieldRedemptionDate=0)
+2025-09-30 15:28:37 INFO commissionReport: CommissionReport(execId='0000e1a7.68db5642.01.01', commission=4.5, currency='USD', realizedPNL=332.071429, yield_=0.0, yieldRedemptionDate=0)
+2025-09-30 15:28:37 INFO commissionReport: CommissionReport(execId='0000e1a7.68db5645.01.01', commission=2.25, currency='USD', realizedPNL=166.035714, yield_=0.0, yieldRedemptionDate=0)
+2025-09-30 15:28:37 INFO commissionReport: CommissionReport(execId='0000e1a7.68db5646.01.01', commission=4.5, currency='USD', realizedPNL=332.071429, yield_=0.0, yieldRedemptionDate=0)
+2025-09-30 15:28:37 INFO commissionReport: CommissionReport(execId='0000e1a7.68db5647.01.01', commission=2.25, currency='USD', realizedPNL=166.035714, yield_=0.0, yieldRedemptionDate=0)
+2025-09-30 15:28:37 INFO commissionReport: CommissionReport(execId='0000e1a7.68db5649.01.01', commission=2.25, currency='USD', realizedPNL=166.035714, yield_=0.0, yieldRedemptionDate=0)
+2025-09-30 15:28:37 INFO commissionReport: CommissionReport(execId='0000e1a7.68db564a.01.01', commission=4.5, currency='USD', realizedPNL=332.071429, yield_=0.0, yieldRedemptionDate=0)
+2025-09-30 15:28:37 INFO Synchronization complete
+2025-09-30 15:28:37 INFO [CONTRACT] Auto front-month: ES 20251219 conId=495512563 exch=CME
+2025-09-30 15:28:38 INFO [GATE] ADX=34.9 BBbw=0.000560 ATRp=0.000178 ok=True
+2025-09-30 15:28:38 INFO placeOrder: New order Trade(contract=Contract(secType='FUT', conId=495512563, symbol='ES', lastTradeDateOrContractMonth='20251219', multiplier='50', exchange='CME', currency='USD', localSymbol='ESZ5', tradingClass='ES'), order=LimitOrder(orderId=88, clientId=111, action='BUY', totalQuantity=1.0, lmtPrice=6726.5, tif='DAY', transmit=False), orderStatus=OrderStatus(orderId=88, status='PendingSubmit', filled=0.0, remaining=0.0, avgFillPrice=0.0, permId=0, parentId=0, lastFillPrice=0.0, clientId=0, whyHeld='', mktCapPrice=0.0), fills=[], log=[TradeLogEntry(time=datetime.datetime(2025, 9, 30, 20, 28, 38, 238067, tzinfo=datetime.timezone.utc), status='PendingSubmit', message='', errorCode=0)], advancedError='')
+2025-09-30 15:28:38 INFO placeOrder: New order Trade(contract=Contract(secType='FUT', conId=495512563, symbol='ES', lastTradeDateOrContractMonth='20251219', multiplier='50', exchange='CME', currency='USD', localSymbol='ESZ5', tradingClass='ES'), order=StopOrder(orderId=89, clientId=111, action='SELL', totalQuantity=1.0, auxPrice=6723.5, tif='DAY', ocaGroup='OCO-1759264118', transmit=False, parentId=88), orderStatus=OrderStatus(orderId=89, status='PendingSubmit', filled=0.0, remaining=0.0, avgFillPrice=0.0, permId=0, parentId=0, lastFillPrice=0.0, clientId=0, whyHeld='', mktCapPrice=0.0), fills=[], log=[TradeLogEntry(time=datetime.datetime(2025, 9, 30, 20, 28, 38, 294902, tzinfo=datetime.timezone.utc), status='PendingSubmit', message='', errorCode=0)], advancedError='')
+2025-09-30 15:28:38 INFO placeOrder: New order Trade(contract=Contract(secType='FUT', conId=495512563, symbol='ES', lastTradeDateOrContractMonth='20251219', multiplier='50', exchange='CME', currency='USD', localSymbol='ESZ5', tradingClass='ES'), order=LimitOrder(orderId=90, clientId=111, action='SELL', totalQuantity=1.0, lmtPrice=6729.5, tif='DAY', ocaGroup='OCO-1759264118', parentId=88), orderStatus=OrderStatus(orderId=90, status='PendingSubmit', filled=0.0, remaining=0.0, avgFillPrice=0.0, permId=0, parentId=0, lastFillPrice=0.0, clientId=0, whyHeld='', mktCapPrice=0.0), fills=[], log=[TradeLogEntry(time=datetime.datetime(2025, 9, 30, 20, 28, 38, 295550, tzinfo=datetime.timezone.utc), status='PendingSubmit', message='', errorCode=0)], advancedError='')
+2025-09-30 15:28:38 INFO [ORD] Atomic bracket placed: parent#88 BUY LMT=6726.5 | TP=6729.5 SL=6723.5
+2025-09-30 15:28:38 INFO orderStatus: Trade(contract=Contract(secType='FUT', conId=495512563, symbol='ES', lastTradeDateOrContractMonth='20251219', multiplier='50', exchange='CME', currency='USD', localSymbol='ESZ5', tradingClass='ES'), order=StopOrder(orderId=89, clientId=111, permId=1296287469, action='SELL', totalQuantity=1.0, lmtPrice=0.0, auxPrice=6723.5, tif='DAY', ocaGroup='OCO-1759264118', transmit=False, parentId=88), orderStatus=OrderStatus(orderId=89, status='PreSubmitted', filled=0.0, remaining=1.0, avgFillPrice=0.0, permId=1296287469, parentId=88, lastFillPrice=0.0, clientId=111, whyHeld='child,trigger', mktCapPrice=0.0), fills=[], log=[TradeLogEntry(time=datetime.datetime(2025, 9, 30, 20, 28, 38, 294902, tzinfo=datetime.timezone.utc), status='PendingSubmit', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2025, 9, 30, 20, 28, 38, 501530, tzinfo=datetime.timezone.utc), status='PreSubmitted', message='', errorCode=0)], advancedError='')
+2025-09-30 15:28:38 INFO orderStatus: Trade(contract=Contract(secType='FUT', conId=495512563, symbol='ES', lastTradeDateOrContractMonth='20251219', multiplier='50', exchange='CME', currency='USD', localSymbol='ESZ5', tradingClass='ES'), order=LimitOrder(orderId=90, clientId=111, permId=1296287470, action='SELL', totalQuantity=1.0, lmtPrice=6729.5, auxPrice=0.0, tif='DAY', ocaGroup='OCO-1759264118', parentId=88), orderStatus=OrderStatus(orderId=90, status='PreSubmitted', filled=0.0, remaining=1.0, avgFillPrice=0.0, permId=1296287470, parentId=88, lastFillPrice=0.0, clientId=111, whyHeld='child', mktCapPrice=0.0), fills=[], log=[TradeLogEntry(time=datetime.datetime(2025, 9, 30, 20, 28, 38, 295550, tzinfo=datetime.timezone.utc), status='PendingSubmit', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2025, 9, 30, 20, 28, 38, 503104, tzinfo=datetime.timezone.utc), status='PreSubmitted', message='', errorCode=0)], advancedError='')
+2025-09-30 15:28:38 INFO orderStatus: Trade(contract=Contract(secType='FUT', conId=495512563, symbol='ES', lastTradeDateOrContractMonth='20251219', multiplier='50', exchange='CME', currency='USD', localSymbol='ESZ5', tradingClass='ES'), order=LimitOrder(orderId=88, clientId=111, permId=1296287468, action='BUY', totalQuantity=1.0, lmtPrice=6726.5, auxPrice=0.0, tif='DAY', transmit=False), orderStatus=OrderStatus(orderId=88, status='PreSubmitted', filled=0.0, remaining=1.0, avgFillPrice=0.0, permId=1296287468, parentId=0, lastFillPrice=0.0, clientId=111, whyHeld='', mktCapPrice=0.0), fills=[], log=[TradeLogEntry(time=datetime.datetime(2025, 9, 30, 20, 28, 38, 238067, tzinfo=datetime.timezone.utc), status='PendingSubmit', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2025, 9, 30, 20, 28, 38, 514304, tzinfo=datetime.timezone.utc), status='PreSubmitted', message='', errorCode=0)], advancedError='')
+2025-09-30 15:28:38 INFO position: Position(account='DU2660649', contract=Future(conId=495512563, symbol='ES', lastTradeDateOrContractMonth='20251219', multiplier='50', currency='USD', localSymbol='ESZ5', tradingClass='ES'), position=1.0, avgCost=336300.0)
+2025-09-30 15:28:38 INFO execDetails Execution(execId='0000e1a7.68dbbfe0.01.01', time=datetime.datetime(2025, 9, 30, 20, 28, 39, tzinfo=datetime.timezone.utc), acctNumber='DU2660649', exchange='CME', side='BOT', shares=1.0, price=6726.0, permId=1296287468, clientId=111, orderId=88, liquidation=0, cumQty=1.0, avgPrice=6726.0, orderRef='', evRule='', evMultiplier=0.0, modelCode='', lastLiquidity=1)
+2025-09-30 15:28:38 INFO execDetails: Fill(contract=Contract(secType='FUT', conId=495512563, symbol='ES', lastTradeDateOrContractMonth='20251219', multiplier='50', exchange='CME', currency='USD', localSymbol='ESZ5', tradingClass='ES'), execution=Execution(execId='0000e1a7.68dbbfe0.01.01', time=datetime.datetime(2025, 9, 30, 20, 28, 39, tzinfo=datetime.timezone.utc), acctNumber='DU2660649', exchange='CME', side='BOT', shares=1.0, price=6726.0, permId=1296287468, clientId=111, orderId=88, liquidation=0, cumQty=1.0, avgPrice=6726.0, orderRef='', evRule='', evMultiplier=0.0, modelCode='', lastLiquidity=1), commissionReport=CommissionReport(execId='', commission=0.0, currency='', realizedPNL=0.0, yield_=0.0, yieldRedemptionDate=0), time=datetime.datetime(2025, 9, 30, 20, 28, 38, 724562, tzinfo=datetime.timezone.utc))
+2025-09-30 15:28:38 INFO orderStatus: Trade(contract=Contract(secType='FUT', conId=495512563, symbol='ES', lastTradeDateOrContractMonth='20251219', multiplier='50', exchange='CME', currency='USD', localSymbol='ESZ5', tradingClass='ES'), order=LimitOrder(orderId=88, clientId=111, permId=1296287468, action='BUY', totalQuantity=1.0, lmtPrice=6726.5, auxPrice=0.0, tif='DAY', transmit=False), orderStatus=OrderStatus(orderId=88, status='Filled', filled=1.0, remaining=0.0, avgFillPrice=6726.0, permId=1296287468, parentId=0, lastFillPrice=6726.0, clientId=111, whyHeld='', mktCapPrice=0.0), fills=[Fill(contract=Contract(secType='FUT', conId=495512563, symbol='ES', lastTradeDateOrContractMonth='20251219', multiplier='50', exchange='CME', currency='USD', localSymbol='ESZ5', tradingClass='ES'), execution=Execution(execId='0000e1a7.68dbbfe0.01.01', time=datetime.datetime(2025, 9, 30, 20, 28, 39, tzinfo=datetime.timezone.utc), acctNumber='DU2660649', exchange='CME', side='BOT', shares=1.0, price=6726.0, permId=1296287468, clientId=111, orderId=88, liquidation=0, cumQty=1.0, avgPrice=6726.0, orderRef='', evRule='', evMultiplier=0.0, modelCode='', lastLiquidity=1), commissionReport=CommissionReport(execId='', commission=0.0, currency='', realizedPNL=0.0, yield_=0.0, yieldRedemptionDate=0), time=datetime.datetime(2025, 9, 30, 20, 28, 38, 724562, tzinfo=datetime.timezone.utc))], log=[TradeLogEntry(time=datetime.datetime(2025, 9, 30, 20, 28, 38, 238067, tzinfo=datetime.timezone.utc), status='PendingSubmit', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2025, 9, 30, 20, 28, 38, 514304, tzinfo=datetime.timezone.utc), status='PreSubmitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2025, 9, 30, 20, 28, 38, 724562, tzinfo=datetime.timezone.utc), status='PreSubmitted', message='Fill 1.0@6726.0', errorCode=0), TradeLogEntry(time=datetime.datetime(2025, 9, 30, 20, 28, 38, 725070, tzinfo=datetime.timezone.utc), status='Filled', message='', errorCode=0)], advancedError='')
+2025-09-30 15:28:38 INFO commissionReport: CommissionReport(execId='0000e1a7.68dbbfe0.01.01', commission=2.25, currency='USD', realizedPNL=0.0, yield_=0.0, yieldRedemptionDate=0)
+2025-09-30 15:28:38 INFO position: Position(account='DU2660649', contract=Future(conId=495512563, symbol='ES', lastTradeDateOrContractMonth='20251219', multiplier='50', currency='USD', localSymbol='ESZ5', tradingClass='ES'), position=1.0, avgCost=336302.25)
+2025-09-30 15:28:38 INFO orderStatus: Trade(contract=Contract(secType='FUT', conId=495512563, symbol='ES', lastTradeDateOrContractMonth='20251219', multiplier='50', exchange='CME', currency='USD', localSymbol='ESZ5', tradingClass='ES'), order=StopOrder(orderId=89, clientId=111, permId=1296287469, action='SELL', totalQuantity=1.0, lmtPrice=0.0, auxPrice=6723.5, tif='DAY', ocaGroup='OCO-1759264118', transmit=False, parentId=88), orderStatus=OrderStatus(orderId=89, status='PreSubmitted', filled=0.0, remaining=1.0, avgFillPrice=0.0, permId=1296287469, parentId=88, lastFillPrice=0.0, clientId=111, whyHeld='trigger', mktCapPrice=0.0), fills=[], log=[TradeLogEntry(time=datetime.datetime(2025, 9, 30, 20, 28, 38, 294902, tzinfo=datetime.timezone.utc), status='PendingSubmit', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2025, 9, 30, 20, 28, 38, 501530, tzinfo=datetime.timezone.utc), status='PreSubmitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2025, 9, 30, 20, 28, 38, 732093, tzinfo=datetime.timezone.utc), status='PreSubmitted', message='', errorCode=0)], advancedError='')
+2025-09-30 15:28:38 INFO orderStatus: Trade(contract=Contract(secType='FUT', conId=495512563, symbol='ES', lastTradeDateOrContractMonth='20251219', multiplier='50', exchange='CME', currency='USD', localSymbol='ESZ5', tradingClass='ES'), order=LimitOrder(orderId=90, clientId=111, permId=1296287470, action='SELL', totalQuantity=1.0, lmtPrice=6729.5, auxPrice=0.0, tif='DAY', ocaGroup='OCO-1759264118', parentId=88), orderStatus=OrderStatus(orderId=90, status='PreSubmitted', filled=0.0, remaining=1.0, avgFillPrice=0.0, permId=1296287470, parentId=88, lastFillPrice=0.0, clientId=111, whyHeld='', mktCapPrice=0.0), fills=[], log=[TradeLogEntry(time=datetime.datetime(2025, 9, 30, 20, 28, 38, 295550, tzinfo=datetime.timezone.utc), status='PendingSubmit', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2025, 9, 30, 20, 28, 38, 503104, tzinfo=datetime.timezone.utc), status='PreSubmitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2025, 9, 30, 20, 28, 38, 735447, tzinfo=datetime.timezone.utc), status='PreSubmitted', message='', errorCode=0)], advancedError='')
+2025-09-30 15:28:38 INFO orderStatus: Trade(contract=Contract(secType='FUT', conId=495512563, symbol='ES', lastTradeDateOrContractMonth='20251219', multiplier='50', exchange='CME', currency='USD', localSymbol='ESZ5', tradingClass='ES'), order=LimitOrder(orderId=90, clientId=111, permId=1296287470, action='SELL', totalQuantity=1.0, lmtPrice=6729.5, auxPrice=0.0, tif='DAY', ocaGroup='OCO-1759264118', parentId=88), orderStatus=OrderStatus(orderId=90, status='Submitted', filled=0.0, remaining=1.0, avgFillPrice=0.0, permId=1296287470, parentId=88, lastFillPrice=0.0, clientId=111, whyHeld='', mktCapPrice=0.0), fills=[], log=[TradeLogEntry(time=datetime.datetime(2025, 9, 30, 20, 28, 38, 295550, tzinfo=datetime.timezone.utc), status='PendingSubmit', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2025, 9, 30, 20, 28, 38, 503104, tzinfo=datetime.timezone.utc), status='PreSubmitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2025, 9, 30, 20, 28, 38, 735447, tzinfo=datetime.timezone.utc), status='PreSubmitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2025, 9, 30, 20, 28, 38, 746875, tzinfo=datetime.timezone.utc), status='Submitted', message='', errorCode=0)], advancedError='')
+2025-09-30 15:28:39 INFO updatePortfolio: PortfolioItem(contract=Future(conId=495512563, symbol='ES', lastTradeDateOrContractMonth='20251219', right='0', multiplier='50', primaryExchange='CME', currency='USD', localSymbol='ESZ5', tradingClass='ES'), position=1.0, marketPrice=6726.0, marketValue=336300.0, averageCost=336302.25, unrealizedPNL=-2.25, realizedPNL=11322.0, account='DU2660649')
+2025-09-30 15:31:39 INFO updatePortfolio: PortfolioItem(contract=Future(conId=495512563, symbol='ES', lastTradeDateOrContractMonth='20251219', right='0', multiplier='50', primaryExchange='CME', currency='USD', localSymbol='ESZ5', tradingClass='ES'), position=1.0, marketPrice=6725.25, marketValue=336262.5, averageCost=336302.25, unrealizedPNL=-39.75, realizedPNL=11322.0, account='DU2660649')
+2025-09-30 15:32:42 INFO position: Position(account='DU2660649', contract=Future(conId=495512563, symbol='ES', lastTradeDateOrContractMonth='20251219', multiplier='50', currency='USD', localSymbol='ESZ5', tradingClass='ES'), position=1.0, avgCost=336302.25)
+2025-09-30 15:34:05 WARNING reqHistoricalData: Timeout for Contract(secType='FUT', conId=495512563, symbol='ES', lastTradeDateOrContractMonth='20251219', multiplier='50', exchange='CME', currency='USD', localSymbol='ESZ5', tradingClass='ES')
+2025-09-30 15:34:05 ERROR Error 162, reqId 348: Historical Market Data Service error message:API historical data query cancelled: 348, contract: Contract(secType='FUT', conId=495512563, symbol='ES', lastTradeDateOrContractMonth='20251219', multiplier='50', exchange='CME', currency='USD', localSymbol='ESZ5', tradingClass='ES')
+2025-09-30 15:34:36 INFO orderStatus: Trade(contract=Contract(secType='FUT', conId=495512563, symbol='ES', lastTradeDateOrContractMonth='20251219', multiplier='50', exchange='CME', currency='USD', localSymbol='ESZ5', tradingClass='ES'), order=LimitOrder(orderId=90, clientId=111, permId=1296287470, action='SELL', lmtPrice=6729.5, auxPrice=0.0, tif='DAY', ocaGroup='OCO-1759264118', parentId=88), orderStatus=OrderStatus(orderId=90, status='PendingCancel', filled=0.0, remaining=0.0, avgFillPrice=0.0, permId=1296287470, parentId=88, lastFillPrice=0.0, clientId=111, whyHeld='', mktCapPrice=0.0), fills=[], log=[TradeLogEntry(time=datetime.datetime(2025, 9, 30, 20, 28, 38, 295550, tzinfo=datetime.timezone.utc), status='PendingSubmit', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2025, 9, 30, 20, 28, 38, 503104, tzinfo=datetime.timezone.utc), status='PreSubmitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2025, 9, 30, 20, 28, 38, 735447, tzinfo=datetime.timezone.utc), status='PreSubmitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2025, 9, 30, 20, 28, 38, 746875, tzinfo=datetime.timezone.utc), status='Submitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2025, 9, 30, 20, 34, 36, 38757, tzinfo=datetime.timezone.utc), status='PendingCancel', message='', errorCode=0)], advancedError='')
+2025-09-30 15:34:36 INFO position: Position(account='DU2660649', contract=Future(conId=495512563, symbol='ES', lastTradeDateOrContractMonth='20251219', multiplier='50', currency='USD', localSymbol='ESZ5', tradingClass='ES'), position=0.0, avgCost=0.0)
+2025-09-30 15:34:36 INFO execDetails Execution(execId='0000e1a7.68dbc080.01.01', time=datetime.datetime(2025, 9, 30, 20, 34, 37, tzinfo=datetime.timezone.utc), acctNumber='DU2660649', exchange='CME', side='SLD', shares=1.0, price=6723.5, permId=1296287469, clientId=111, orderId=89, liquidation=0, cumQty=1.0, avgPrice=6723.5, orderRef='', evRule='', evMultiplier=0.0, modelCode='', lastLiquidity=1)
+2025-09-30 15:34:36 INFO execDetails: Fill(contract=Contract(secType='FUT', conId=495512563, symbol='ES', lastTradeDateOrContractMonth='20251219', multiplier='50', exchange='CME', currency='USD', localSymbol='ESZ5', tradingClass='ES'), execution=Execution(execId='0000e1a7.68dbc080.01.01', time=datetime.datetime(2025, 9, 30, 20, 34, 37, tzinfo=datetime.timezone.utc), acctNumber='DU2660649', exchange='CME', side='SLD', shares=1.0, price=6723.5, permId=1296287469, clientId=111, orderId=89, liquidation=0, cumQty=1.0, avgPrice=6723.5, orderRef='', evRule='', evMultiplier=0.0, modelCode='', lastLiquidity=1), commissionReport=CommissionReport(execId='', commission=0.0, currency='', realizedPNL=0.0, yield_=0.0, yieldRedemptionDate=0), time=datetime.datetime(2025, 9, 30, 20, 34, 36, 45169, tzinfo=datetime.timezone.utc))
+2025-09-30 15:34:36 INFO orderStatus: Trade(contract=Contract(secType='FUT', conId=495512563, symbol='ES', lastTradeDateOrContractMonth='20251219', multiplier='50', exchange='CME', currency='USD', localSymbol='ESZ5', tradingClass='ES'), order=StopOrder(orderId=89, clientId=111, permId=1296287469, action='SELL', totalQuantity=1.0, lmtPrice=0.0, auxPrice=6723.5, tif='DAY', ocaGroup='OCO-1759264118', transmit=False, parentId=88), orderStatus=OrderStatus(orderId=89, status='Filled', filled=1.0, remaining=0.0, avgFillPrice=6723.5, permId=1296287469, parentId=88, lastFillPrice=6723.5, clientId=111, whyHeld='', mktCapPrice=0.0), fills=[Fill(contract=Contract(secType='FUT', conId=495512563, symbol='ES', lastTradeDateOrContractMonth='20251219', multiplier='50', exchange='CME', currency='USD', localSymbol='ESZ5', tradingClass='ES'), execution=Execution(execId='0000e1a7.68dbc080.01.01', time=datetime.datetime(2025, 9, 30, 20, 34, 37, tzinfo=datetime.timezone.utc), acctNumber='DU2660649', exchange='CME', side='SLD', shares=1.0, price=6723.5, permId=1296287469, clientId=111, orderId=89, liquidation=0, cumQty=1.0, avgPrice=6723.5, orderRef='', evRule='', evMultiplier=0.0, modelCode='', lastLiquidity=1), commissionReport=CommissionReport(execId='', commission=0.0, currency='', realizedPNL=0.0, yield_=0.0, yieldRedemptionDate=0), time=datetime.datetime(2025, 9, 30, 20, 34, 36, 45169, tzinfo=datetime.timezone.utc))], log=[TradeLogEntry(time=datetime.datetime(2025, 9, 30, 20, 28, 38, 294902, tzinfo=datetime.timezone.utc), status='PendingSubmit', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2025, 9, 30, 20, 28, 38, 501530, tzinfo=datetime.timezone.utc), status='PreSubmitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2025, 9, 30, 20, 28, 38, 732093, tzinfo=datetime.timezone.utc), status='PreSubmitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2025, 9, 30, 20, 34, 36, 45169, tzinfo=datetime.timezone.utc), status='PreSubmitted', message='Fill 1.0@6723.5', errorCode=0), TradeLogEntry(time=datetime.datetime(2025, 9, 30, 20, 34, 36, 45169, tzinfo=datetime.timezone.utc), status='Filled', message='', errorCode=0)], advancedError='')
+2025-09-30 15:34:36 INFO commissionReport: CommissionReport(execId='0000e1a7.68dbc080.01.01', commission=2.25, currency='USD', realizedPNL=-129.5, yield_=0.0, yieldRedemptionDate=0)
+2025-09-30 15:34:36 INFO orderStatus: Trade(contract=Contract(secType='FUT', conId=495512563, symbol='ES', lastTradeDateOrContractMonth='20251219', multiplier='50', exchange='CME', currency='USD', localSymbol='ESZ5', tradingClass='ES'), order=LimitOrder(orderId=90, clientId=111, permId=1296287470, action='SELL', lmtPrice=6729.5, auxPrice=0.0, tif='DAY', ocaGroup='OCO-1759264118', parentId=88), orderStatus=OrderStatus(orderId=90, status='Cancelled', filled=0.0, remaining=0.0, avgFillPrice=0.0, permId=1296287470, parentId=88, lastFillPrice=0.0, clientId=111, whyHeld='', mktCapPrice=0.0), fills=[], log=[TradeLogEntry(time=datetime.datetime(2025, 9, 30, 20, 28, 38, 295550, tzinfo=datetime.timezone.utc), status='PendingSubmit', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2025, 9, 30, 20, 28, 38, 503104, tzinfo=datetime.timezone.utc), status='PreSubmitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2025, 9, 30, 20, 28, 38, 735447, tzinfo=datetime.timezone.utc), status='PreSubmitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2025, 9, 30, 20, 28, 38, 746875, tzinfo=datetime.timezone.utc), status='Submitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2025, 9, 30, 20, 34, 36, 38757, tzinfo=datetime.timezone.utc), status='PendingCancel', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2025, 9, 30, 20, 34, 36, 51450, tzinfo=datetime.timezone.utc), status='Cancelled', message='', errorCode=0)], advancedError='')
+2025-09-30 15:34:36 INFO Warning 202, reqId 90: Order Canceled - reason:
+2025-09-30 15:34:36 INFO position: Position(account='DU2660649', contract=Future(conId=495512563, symbol='ES', lastTradeDateOrContractMonth='20251219', multiplier='50', currency='USD', localSymbol='ESZ5', tradingClass='ES'), position=0.0, avgCost=0.0)
+2025-09-30 15:34:36 INFO position: Position(account='DU2660649', contract=Future(conId=495512563, symbol='ES', lastTradeDateOrContractMonth='20251219', multiplier='50', currency='USD', localSymbol='ESZ5', tradingClass='ES'), position=0.0, avgCost=0.0)
+2025-09-30 15:34:37 INFO updatePortfolio: PortfolioItem(contract=Future(conId=495512563, symbol='ES', lastTradeDateOrContractMonth='20251219', right='0', multiplier='50', primaryExchange='CME', currency='USD', localSymbol='ESZ5', tradingClass='ES'), position=0.0, marketPrice=6723.75, marketValue=0.0, averageCost=0.0, unrealizedPNL=0.0, realizedPNL=11192.5, account='DU2660649')
+2025-09-30 15:35:06 WARNING reqHistoricalData: Timeout for Contract(secType='FUT', conId=495512563, symbol='ES', lastTradeDateOrContractMonth='20251219', multiplier='50', exchange='CME', currency='USD', localSymbol='ESZ5', tradingClass='ES')
+2025-09-30 15:35:06 ERROR Error 162, reqId 350: Historical Market Data Service error message:API historical data query cancelled: 350, contract: Contract(secType='FUT', conId=495512563, symbol='ES', lastTradeDateOrContractMonth='20251219', multiplier='50', exchange='CME', currency='USD', localSymbol='ESZ5', tradingClass='ES')
+2025-09-30 15:35:07 INFO [EXIT-FILL] stop status=Filled
+2025-09-30 15:35:07 INFO [HB] ok                     | dayR=-0.83R weekR=-0.83R lossStreak=1 open=0 tradesToday=1 coolUntil=15:37:37
+2025-09-30 15:35:12 INFO [HB] cooldown               | dayR=-0.83R weekR=-0.83R lossStreak=1 open=0 tradesToday=1 coolUntil=15:37:37
+2025-09-30 15:35:17 INFO [HB] cooldown               | dayR=-0.83R weekR=-0.83R lossStreak=1 open=0 tradesToday=1 coolUntil=15:37:37
+2025-09-30 15:35:22 INFO [HB] cooldown               | dayR=-0.83R weekR=-0.83R lossStreak=1 open=0 tradesToday=1 coolUntil=15:37:37
+2025-09-30 15:35:27 INFO [HB] cooldown               | dayR=-0.83R weekR=-0.83R lossStreak=1 open=0 tradesToday=1 coolUntil=15:37:37
+2025-09-30 15:35:32 INFO [HB] cooldown               | dayR=-0.83R weekR=-0.83R lossStreak=1 open=0 tradesToday=1 coolUntil=15:37:37
+2025-09-30 15:35:37 INFO [HB] cooldown               | dayR=-0.83R weekR=-0.83R lossStreak=1 open=0 tradesToday=1 coolUntil=15:37:37
+2025-09-30 15:35:42 INFO [HB] cooldown               | dayR=-0.83R weekR=-0.83R lossStreak=1 open=0 tradesToday=1 coolUntil=15:37:37
+2025-09-30 15:35:47 INFO [HB] cooldown               | dayR=-0.83R weekR=-0.83R lossStreak=1 open=0 tradesToday=1 coolUntil=15:37:37
+2025-09-30 15:35:52 INFO [HB] cooldown               | dayR=-0.83R weekR=-0.83R lossStreak=1 open=0 tradesToday=1 coolUntil=15:37:37
+2025-09-30 15:35:57 INFO [HB] cooldown               | dayR=-0.83R weekR=-0.83R lossStreak=1 open=0 tradesToday=1 coolUntil=15:37:37
+2025-09-30 15:36:02 INFO [HB] cooldown               | dayR=-0.83R weekR=-0.83R lossStreak=1 open=0 tradesToday=1 coolUntil=15:37:37
+2025-09-30 15:36:07 INFO [HB] cooldown               | dayR=-0.83R weekR=-0.83R lossStreak=1 open=0 tradesToday=1 coolUntil=15:37:37
+2025-09-30 15:36:12 INFO [HB] cooldown               | dayR=-0.83R weekR=-0.83R lossStreak=1 open=0 tradesToday=1 coolUntil=15:37:37
+2025-09-30 15:36:17 INFO [HB] cooldown               | dayR=-0.83R weekR=-0.83R lossStreak=1 open=0 tradesToday=1 coolUntil=15:37:37
+2025-09-30 15:36:22 INFO [HB] cooldown               | dayR=-0.83R weekR=-0.83R lossStreak=1 open=0 tradesToday=1 coolUntil=15:37:37
+2025-09-30 15:36:27 INFO [HB] cooldown               | dayR=-0.83R weekR=-0.83R lossStreak=1 open=0 tradesToday=1 coolUntil=15:37:37
+2025-09-30 15:36:32 INFO [HB] cooldown               | dayR=-0.83R weekR=-0.83R lossStreak=1 open=0 tradesToday=1 coolUntil=15:37:37
+2025-09-30 15:36:37 INFO [HB] cooldown               | dayR=-0.83R weekR=-0.83R lossStreak=1 open=0 tradesToday=1 coolUntil=15:37:37
+2025-09-30 15:36:42 INFO [HB] cooldown               | dayR=-0.83R weekR=-0.83R lossStreak=1 open=0 tradesToday=1 coolUntil=15:37:37
+2025-09-30 15:36:47 INFO [HB] cooldown               | dayR=-0.83R weekR=-0.83R lossStreak=1 open=0 tradesToday=1 coolUntil=15:37:37
+2025-09-30 15:36:52 INFO [HB] cooldown               | dayR=-0.83R weekR=-0.83R lossStreak=1 open=0 tradesToday=1 coolUntil=15:37:37
+2025-09-30 15:36:57 INFO [HB] cooldown               | dayR=-0.83R weekR=-0.83R lossStreak=1 open=0 tradesToday=1 coolUntil=15:37:37
+2025-09-30 15:37:02 INFO [HB] cooldown               | dayR=-0.83R weekR=-0.83R lossStreak=1 open=0 tradesToday=1 coolUntil=15:37:37
+2025-09-30 15:37:07 INFO [HB] cooldown               | dayR=-0.83R weekR=-0.83R lossStreak=1 open=0 tradesToday=1 coolUntil=15:37:37
+2025-09-30 15:37:12 INFO [HB] cooldown               | dayR=-0.83R weekR=-0.83R lossStreak=1 open=0 tradesToday=1 coolUntil=15:37:37
+2025-09-30 15:37:17 INFO [HB] cooldown               | dayR=-0.83R weekR=-0.83R lossStreak=1 open=0 tradesToday=1 coolUntil=15:37:37
+2025-09-30 15:37:22 INFO [HB] cooldown               | dayR=-0.83R weekR=-0.83R lossStreak=1 open=0 tradesToday=1 coolUntil=15:37:37
+2025-09-30 15:37:27 INFO [HB] cooldown               | dayR=-0.83R weekR=-0.83R lossStreak=1 open=0 tradesToday=1 coolUntil=15:37:37
+2025-09-30 15:37:32 INFO [HB] cooldown               | dayR=-0.83R weekR=-0.83R lossStreak=1 open=0 tradesToday=1 coolUntil=15:37:37
+2025-09-30 15:37:37 INFO updatePortfolio: PortfolioItem(contract=Future(conId=495512563, symbol='ES', lastTradeDateOrContractMonth='20251219', right='0', multiplier='50', primaryExchange='CME', currency='USD', localSymbol='ESZ5', tradingClass='ES'), position=0.0, marketPrice=6724.25, marketValue=0.0, averageCost=0.0, unrealizedPNL=0.0, realizedPNL=11192.5, account='DU2660649')
+2025-09-30 15:37:37 INFO [GATE] ADX=19.3 BBbw=0.000682 ATRp=0.000120 ok=True
+2025-09-30 15:37:37 INFO placeOrder: New order Trade(contract=Contract(secType='FUT', conId=495512563, symbol='ES', lastTradeDateOrContractMonth='20251219', multiplier='50', exchange='CME', currency='USD', localSymbol='ESZ5', tradingClass='ES'), order=LimitOrder(orderId=352, clientId=111, action='BUY', totalQuantity=1.0, lmtPrice=6724.75, tif='DAY', transmit=False), orderStatus=OrderStatus(orderId=352, status='PendingSubmit', filled=0.0, remaining=0.0, avgFillPrice=0.0, permId=0, parentId=0, lastFillPrice=0.0, clientId=0, whyHeld='', mktCapPrice=0.0), fills=[], log=[TradeLogEntry(time=datetime.datetime(2025, 9, 30, 20, 37, 37, 839358, tzinfo=datetime.timezone.utc), status='PendingSubmit', message='', errorCode=0)], advancedError='')
+2025-09-30 15:37:37 INFO placeOrder: New order Trade(contract=Contract(secType='FUT', conId=495512563, symbol='ES', lastTradeDateOrContractMonth='20251219', multiplier='50', exchange='CME', currency='USD', localSymbol='ESZ5', tradingClass='ES'), order=StopOrder(orderId=353, clientId=111, action='SELL', totalQuantity=1.0, auxPrice=6721.75, tif='DAY', ocaGroup='OCO-1759264657', transmit=False, parentId=352), orderStatus=OrderStatus(orderId=353, status='PendingSubmit', filled=0.0, remaining=0.0, avgFillPrice=0.0, permId=0, parentId=0, lastFillPrice=0.0, clientId=0, whyHeld='', mktCapPrice=0.0), fills=[], log=[TradeLogEntry(time=datetime.datetime(2025, 9, 30, 20, 37, 37, 901896, tzinfo=datetime.timezone.utc), status='PendingSubmit', message='', errorCode=0)], advancedError='')
+2025-09-30 15:37:37 INFO placeOrder: New order Trade(contract=Contract(secType='FUT', conId=495512563, symbol='ES', lastTradeDateOrContractMonth='20251219', multiplier='50', exchange='CME', currency='USD', localSymbol='ESZ5', tradingClass='ES'), order=LimitOrder(orderId=354, clientId=111, action='SELL', totalQuantity=1.0, lmtPrice=6727.75, tif='DAY', ocaGroup='OCO-1759264657', parentId=352), orderStatus=OrderStatus(orderId=354, status='PendingSubmit', filled=0.0, remaining=0.0, avgFillPrice=0.0, permId=0, parentId=0, lastFillPrice=0.0, clientId=0, whyHeld='', mktCapPrice=0.0), fills=[], log=[TradeLogEntry(time=datetime.datetime(2025, 9, 30, 20, 37, 37, 902426, tzinfo=datetime.timezone.utc), status='PendingSubmit', message='', errorCode=0)], advancedError='')
+2025-09-30 15:37:37 INFO [ORD] Atomic bracket placed: parent#352 BUY LMT=6724.75 | TP=6727.75 SL=6721.75
+2025-09-30 15:37:38 INFO orderStatus: Trade(contract=Contract(secType='FUT', conId=495512563, symbol='ES', lastTradeDateOrContractMonth='20251219', multiplier='50', exchange='CME', currency='USD', localSymbol='ESZ5', tradingClass='ES'), order=StopOrder(orderId=353, clientId=111, permId=1296287472, action='SELL', totalQuantity=1.0, lmtPrice=0.0, auxPrice=6721.75, tif='DAY', ocaGroup='OCO-1759264657', transmit=False, parentId=352), orderStatus=OrderStatus(orderId=353, status='PreSubmitted', filled=0.0, remaining=1.0, avgFillPrice=0.0, permId=1296287472, parentId=352, lastFillPrice=0.0, clientId=111, whyHeld='child,trigger', mktCapPrice=0.0), fills=[], log=[TradeLogEntry(time=datetime.datetime(2025, 9, 30, 20, 37, 37, 901896, tzinfo=datetime.timezone.utc), status='PendingSubmit', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2025, 9, 30, 20, 37, 38, 25583, tzinfo=datetime.timezone.utc), status='PreSubmitted', message='', errorCode=0)], advancedError='')
+2025-09-30 15:37:38 INFO orderStatus: Trade(contract=Contract(secType='FUT', conId=495512563, symbol='ES', lastTradeDateOrContractMonth='20251219', multiplier='50', exchange='CME', currency='USD', localSymbol='ESZ5', tradingClass='ES'), order=LimitOrder(orderId=354, clientId=111, permId=1296287473, action='SELL', totalQuantity=1.0, lmtPrice=6727.75, auxPrice=0.0, tif='DAY', ocaGroup='OCO-1759264657', parentId=352), orderStatus=OrderStatus(orderId=354, status='PreSubmitted', filled=0.0, remaining=1.0, avgFillPrice=0.0, permId=1296287473, parentId=352, lastFillPrice=0.0, clientId=111, whyHeld='child', mktCapPrice=0.0), fills=[], log=[TradeLogEntry(time=datetime.datetime(2025, 9, 30, 20, 37, 37, 902426, tzinfo=datetime.timezone.utc), status='PendingSubmit', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2025, 9, 30, 20, 37, 38, 26346, tzinfo=datetime.timezone.utc), status='PreSubmitted', message='', errorCode=0)], advancedError='')
+2025-09-30 15:37:38 INFO orderStatus: Trade(contract=Contract(secType='FUT', conId=495512563, symbol='ES', lastTradeDateOrContractMonth='20251219', multiplier='50', exchange='CME', currency='USD', localSymbol='ESZ5', tradingClass='ES'), order=LimitOrder(orderId=352, clientId=111, permId=1296287471, action='BUY', totalQuantity=1.0, lmtPrice=6724.75, auxPrice=0.0, tif='DAY', transmit=False), orderStatus=OrderStatus(orderId=352, status='PreSubmitted', filled=0.0, remaining=1.0, avgFillPrice=0.0, permId=1296287471, parentId=0, lastFillPrice=0.0, clientId=111, whyHeld='', mktCapPrice=0.0), fills=[], log=[TradeLogEntry(time=datetime.datetime(2025, 9, 30, 20, 37, 37, 839358, tzinfo=datetime.timezone.utc), status='PendingSubmit', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2025, 9, 30, 20, 37, 38, 46150, tzinfo=datetime.timezone.utc), status='PreSubmitted', message='', errorCode=0)], advancedError='')
+2025-09-30 15:37:38 INFO position: Position(account='DU2660649', contract=Future(conId=495512563, symbol='ES', lastTradeDateOrContractMonth='20251219', multiplier='50', currency='USD', localSymbol='ESZ5', tradingClass='ES'), position=1.0, avgCost=336212.5)
+2025-09-30 15:37:38 INFO execDetails Execution(execId='0000e1a7.68dbc0ab.01.01', time=datetime.datetime(2025, 9, 30, 20, 37, 39, tzinfo=datetime.timezone.utc), acctNumber='DU2660649', exchange='CME', side='BOT', shares=1.0, price=6724.25, permId=1296287471, clientId=111, orderId=352, liquidation=0, cumQty=1.0, avgPrice=6724.25, orderRef='', evRule='', evMultiplier=0.0, modelCode='', lastLiquidity=1)
+2025-09-30 15:37:38 INFO execDetails: Fill(contract=Contract(secType='FUT', conId=495512563, symbol='ES', lastTradeDateOrContractMonth='20251219', multiplier='50', exchange='CME', currency='USD', localSymbol='ESZ5', tradingClass='ES'), execution=Execution(execId='0000e1a7.68dbc0ab.01.01', time=datetime.datetime(2025, 9, 30, 20, 37, 39, tzinfo=datetime.timezone.utc), acctNumber='DU2660649', exchange='CME', side='BOT', shares=1.0, price=6724.25, permId=1296287471, clientId=111, orderId=352, liquidation=0, cumQty=1.0, avgPrice=6724.25, orderRef='', evRule='', evMultiplier=0.0, modelCode='', lastLiquidity=1), commissionReport=CommissionReport(execId='', commission=0.0, currency='', realizedPNL=0.0, yield_=0.0, yieldRedemptionDate=0), time=datetime.datetime(2025, 9, 30, 20, 37, 38, 52777, tzinfo=datetime.timezone.utc))
+2025-09-30 15:37:38 INFO orderStatus: Trade(contract=Contract(secType='FUT', conId=495512563, symbol='ES', lastTradeDateOrContractMonth='20251219', multiplier='50', exchange='CME', currency='USD', localSymbol='ESZ5', tradingClass='ES'), order=LimitOrder(orderId=352, clientId=111, permId=1296287471, action='BUY', totalQuantity=1.0, lmtPrice=6724.75, auxPrice=0.0, tif='DAY', transmit=False), orderStatus=OrderStatus(orderId=352, status='Filled', filled=1.0, remaining=0.0, avgFillPrice=6724.25, permId=1296287471, parentId=0, lastFillPrice=6724.25, clientId=111, whyHeld='', mktCapPrice=0.0), fills=[Fill(contract=Contract(secType='FUT', conId=495512563, symbol='ES', lastTradeDateOrContractMonth='20251219', multiplier='50', exchange='CME', currency='USD', localSymbol='ESZ5', tradingClass='ES'), execution=Execution(execId='0000e1a7.68dbc0ab.01.01', time=datetime.datetime(2025, 9, 30, 20, 37, 39, tzinfo=datetime.timezone.utc), acctNumber='DU2660649', exchange='CME', side='BOT', shares=1.0, price=6724.25, permId=1296287471, clientId=111, orderId=352, liquidation=0, cumQty=1.0, avgPrice=6724.25, orderRef='', evRule='', evMultiplier=0.0, modelCode='', lastLiquidity=1), commissionReport=CommissionReport(execId='', commission=0.0, currency='', realizedPNL=0.0, yield_=0.0, yieldRedemptionDate=0), time=datetime.datetime(2025, 9, 30, 20, 37, 38, 52777, tzinfo=datetime.timezone.utc))], log=[TradeLogEntry(time=datetime.datetime(2025, 9, 30, 20, 37, 37, 839358, tzinfo=datetime.timezone.utc), status='PendingSubmit', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2025, 9, 30, 20, 37, 38, 46150, tzinfo=datetime.timezone.utc), status='PreSubmitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2025, 9, 30, 20, 37, 38, 52777, tzinfo=datetime.timezone.utc), status='PreSubmitted', message='Fill 1.0@6724.25', errorCode=0), TradeLogEntry(time=datetime.datetime(2025, 9, 30, 20, 37, 38, 53399, tzinfo=datetime.timezone.utc), status='Filled', message='', errorCode=0)], advancedError='')
+2025-09-30 15:37:38 INFO commissionReport: CommissionReport(execId='0000e1a7.68dbc0ab.01.01', commission=2.25, currency='USD', realizedPNL=0.0, yield_=0.0, yieldRedemptionDate=0)
+2025-09-30 15:37:38 INFO position: Position(account='DU2660649', contract=Future(conId=495512563, symbol='ES', lastTradeDateOrContractMonth='20251219', multiplier='50', currency='USD', localSymbol='ESZ5', tradingClass='ES'), position=1.0, avgCost=336214.75)
+2025-09-30 15:37:38 INFO orderStatus: Trade(contract=Contract(secType='FUT', conId=495512563, symbol='ES', lastTradeDateOrContractMonth='20251219', multiplier='50', exchange='CME', currency='USD', localSymbol='ESZ5', tradingClass='ES'), order=StopOrder(orderId=353, clientId=111, permId=1296287472, action='SELL', totalQuantity=1.0, lmtPrice=0.0, auxPrice=6721.75, tif='DAY', ocaGroup='OCO-1759264657', transmit=False, parentId=352), orderStatus=OrderStatus(orderId=353, status='PreSubmitted', filled=0.0, remaining=1.0, avgFillPrice=0.0, permId=1296287472, parentId=352, lastFillPrice=0.0, clientId=111, whyHeld='trigger', mktCapPrice=0.0), fills=[], log=[TradeLogEntry(time=datetime.datetime(2025, 9, 30, 20, 37, 37, 901896, tzinfo=datetime.timezone.utc), status='PendingSubmit', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2025, 9, 30, 20, 37, 38, 25583, tzinfo=datetime.timezone.utc), status='PreSubmitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2025, 9, 30, 20, 37, 38, 56006, tzinfo=datetime.timezone.utc), status='PreSubmitted', message='', errorCode=0)], advancedError='')
+2025-09-30 15:37:38 INFO orderStatus: Trade(contract=Contract(secType='FUT', conId=495512563, symbol='ES', lastTradeDateOrContractMonth='20251219', multiplier='50', exchange='CME', currency='USD', localSymbol='ESZ5', tradingClass='ES'), order=LimitOrder(orderId=354, clientId=111, permId=1296287473, action='SELL', totalQuantity=1.0, lmtPrice=6727.75, auxPrice=0.0, tif='DAY', ocaGroup='OCO-1759264657', parentId=352), orderStatus=OrderStatus(orderId=354, status='PreSubmitted', filled=0.0, remaining=1.0, avgFillPrice=0.0, permId=1296287473, parentId=352, lastFillPrice=0.0, clientId=111, whyHeld='', mktCapPrice=0.0), fills=[], log=[TradeLogEntry(time=datetime.datetime(2025, 9, 30, 20, 37, 37, 902426, tzinfo=datetime.timezone.utc), status='PendingSubmit', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2025, 9, 30, 20, 37, 38, 26346, tzinfo=datetime.timezone.utc), status='PreSubmitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2025, 9, 30, 20, 37, 38, 58619, tzinfo=datetime.timezone.utc), status='PreSubmitted', message='', errorCode=0)], advancedError='')
+2025-09-30 15:37:38 INFO orderStatus: Trade(contract=Contract(secType='FUT', conId=495512563, symbol='ES', lastTradeDateOrContractMonth='20251219', multiplier='50', exchange='CME', currency='USD', localSymbol='ESZ5', tradingClass='ES'), order=LimitOrder(orderId=354, clientId=111, permId=1296287473, action='SELL', totalQuantity=1.0, lmtPrice=6727.75, auxPrice=0.0, tif='DAY', ocaGroup='OCO-1759264657', parentId=352), orderStatus=OrderStatus(orderId=354, status='Submitted', filled=0.0, remaining=1.0, avgFillPrice=0.0, permId=1296287473, parentId=352, lastFillPrice=0.0, clientId=111, whyHeld='', mktCapPrice=0.0), fills=[], log=[TradeLogEntry(time=datetime.datetime(2025, 9, 30, 20, 37, 37, 902426, tzinfo=datetime.timezone.utc), status='PendingSubmit', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2025, 9, 30, 20, 37, 38, 26346, tzinfo=datetime.timezone.utc), status='PreSubmitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2025, 9, 30, 20, 37, 38, 58619, tzinfo=datetime.timezone.utc), status='PreSubmitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2025, 9, 30, 20, 37, 38, 72959, tzinfo=datetime.timezone.utc), status='Submitted', message='', errorCode=0)], advancedError='')
+2025-09-30 15:37:39 INFO updatePortfolio: PortfolioItem(contract=Future(conId=495512563, symbol='ES', lastTradeDateOrContractMonth='20251219', right='0', multiplier='50', primaryExchange='CME', currency='USD', localSymbol='ESZ5', tradingClass='ES'), position=1.0, marketPrice=6724.25, marketValue=336212.5, averageCost=336214.75, unrealizedPNL=-2.25, realizedPNL=11192.5, account='DU2660649')
+2025-09-30 15:38:46 INFO position: Position(account='DU2660649', contract=Future(conId=495512563, symbol='ES', lastTradeDateOrContractMonth='20251219', multiplier='50', currency='USD', localSymbol='ESZ5', tradingClass='ES'), position=1.0, avgCost=336214.75)
+2025-09-30 15:40:39 INFO updatePortfolio: PortfolioItem(contract=Future(conId=495512563, symbol='ES', lastTradeDateOrContractMonth='20251219', right='0', multiplier='50', primaryExchange='CME', currency='USD', localSymbol='ESZ5', tradingClass='ES'), position=1.0, marketPrice=6723.0, marketValue=336150.0, averageCost=336214.75, unrealizedPNL=-64.75, realizedPNL=11192.5, account='DU2660649')
+2025-09-30 15:43:04 WARNING reqHistoricalData: Timeout for Contract(secType='FUT', conId=495512563, symbol='ES', lastTradeDateOrContractMonth='20251219', multiplier='50', exchange='CME', currency='USD', localSymbol='ESZ5', tradingClass='ES')
+2025-09-30 15:43:04 ERROR Error 162, reqId 612: Historical Market Data Service error message:API historical data query cancelled: 612, contract: Contract(secType='FUT', conId=495512563, symbol='ES', lastTradeDateOrContractMonth='20251219', multiplier='50', exchange='CME', currency='USD', localSymbol='ESZ5', tradingClass='ES')
+2025-09-30 15:43:39 INFO updatePortfolio: PortfolioItem(contract=Future(conId=495512563, symbol='ES', lastTradeDateOrContractMonth='20251219', right='0', multiplier='50', primaryExchange='CME', currency='USD', localSymbol='ESZ5', tradingClass='ES'), position=1.0, marketPrice=6722.1899414, marketValue=336109.5, averageCost=336214.75, unrealizedPNL=-105.25, realizedPNL=11192.5, account='DU2660649')
+2025-09-30 15:44:05 WARNING reqHistoricalData: Timeout for Contract(secType='FUT', conId=495512563, symbol='ES', lastTradeDateOrContractMonth='20251219', multiplier='50', exchange='CME', currency='USD', localSymbol='ESZ5', tradingClass='ES')
+2025-09-30 15:44:05 ERROR Error 162, reqId 614: Historical Market Data Service error message:API historical data query cancelled: 614, contract: Contract(secType='FUT', conId=495512563, symbol='ES', lastTradeDateOrContractMonth='20251219', multiplier='50', exchange='CME', currency='USD', localSymbol='ESZ5', tradingClass='ES')
+2025-09-30 15:45:06 WARNING reqHistoricalData: Timeout for Contract(secType='FUT', conId=495512563, symbol='ES', lastTradeDateOrContractMonth='20251219', multiplier='50', exchange='CME', currency='USD', localSymbol='ESZ5', tradingClass='ES')
+2025-09-30 15:45:06 ERROR Error 162, reqId 616: Historical Market Data Service error message:API historical data query cancelled: 616, contract: Contract(secType='FUT', conId=495512563, symbol='ES', lastTradeDateOrContractMonth='20251219', multiplier='50', exchange='CME', currency='USD', localSymbol='ESZ5', tradingClass='ES')
+2025-09-30 15:46:07 WARNING reqHistoricalData: Timeout for Contract(secType='FUT', conId=495512563, symbol='ES', lastTradeDateOrContractMonth='20251219', multiplier='50', exchange='CME', currency='USD', localSymbol='ESZ5', tradingClass='ES')
+2025-09-30 15:46:07 ERROR Error 162, reqId 618: Historical Market Data Service error message:API historical data query cancelled: 618, contract: Contract(secType='FUT', conId=495512563, symbol='ES', lastTradeDateOrContractMonth='20251219', multiplier='50', exchange='CME', currency='USD', localSymbol='ESZ5', tradingClass='ES')
+2025-09-30 15:46:39 INFO updatePortfolio: PortfolioItem(contract=Future(conId=495512563, symbol='ES', lastTradeDateOrContractMonth='20251219', right='0', multiplier='50', primaryExchange='CME', currency='USD', localSymbol='ESZ5', tradingClass='ES'), position=1.0, marketPrice=6723.66259765, marketValue=336183.13, averageCost=336214.75, unrealizedPNL=-31.62, realizedPNL=11192.5, account='DU2660649')
+2025-09-30 15:47:09 WARNING reqHistoricalData: Timeout for Contract(secType='FUT', conId=495512563, symbol='ES', lastTradeDateOrContractMonth='20251219', multiplier='50', exchange='CME', currency='USD', localSymbol='ESZ5', tradingClass='ES')
+2025-09-30 15:47:09 ERROR Error 162, reqId 620: Historical Market Data Service error message:API historical data query cancelled: 620, contract: Contract(secType='FUT', conId=495512563, symbol='ES', lastTradeDateOrContractMonth='20251219', multiplier='50', exchange='CME', currency='USD', localSymbol='ESZ5', tradingClass='ES')
+2025-09-30 15:48:10 WARNING reqHistoricalData: Timeout for Contract(secType='FUT', conId=495512563, symbol='ES', lastTradeDateOrContractMonth='20251219', multiplier='50', exchange='CME', currency='USD', localSymbol='ESZ5', tradingClass='ES')
+2025-09-30 15:48:10 ERROR Error 162, reqId 622: Historical Market Data Service error message:API historical data query cancelled: 622, contract: Contract(secType='FUT', conId=495512563, symbol='ES', lastTradeDateOrContractMonth='20251219', multiplier='50', exchange='CME', currency='USD', localSymbol='ESZ5', tradingClass='ES')
+2025-09-30 15:49:11 WARNING reqHistoricalData: Timeout for Contract(secType='FUT', conId=495512563, symbol='ES', lastTradeDateOrContractMonth='20251219', multiplier='50', exchange='CME', currency='USD', localSymbol='ESZ5', tradingClass='ES')
+2025-09-30 15:49:11 ERROR Error 162, reqId 624: Historical Market Data Service error message:API historical data query cancelled: 624, contract: Contract(secType='FUT', conId=495512563, symbol='ES', lastTradeDateOrContractMonth='20251219', multiplier='50', exchange='CME', currency='USD', localSymbol='ESZ5', tradingClass='ES')
+2025-09-30 15:49:39 INFO updatePortfolio: PortfolioItem(contract=Future(conId=495512563, symbol='ES', lastTradeDateOrContractMonth='20251219', right='0', multiplier='50', primaryExchange='CME', currency='USD', localSymbol='ESZ5', tradingClass='ES'), position=1.0, marketPrice=6724.75, marketValue=336237.5, averageCost=336214.75, unrealizedPNL=22.75, realizedPNL=11192.5, account='DU2660649')
+2025-09-30 15:50:12 WARNING reqHistoricalData: Timeout for Contract(secType='FUT', conId=495512563, symbol='ES', lastTradeDateOrContractMonth='20251219', multiplier='50', exchange='CME', currency='USD', localSymbol='ESZ5', tradingClass='ES')
+2025-09-30 15:50:12 ERROR Error 162, reqId 626: Historical Market Data Service error message:API historical data query cancelled: 626, contract: Contract(secType='FUT', conId=495512563, symbol='ES', lastTradeDateOrContractMonth='20251219', multiplier='50', exchange='CME', currency='USD', localSymbol='ESZ5', tradingClass='ES')
+2025-09-30 15:51:13 WARNING reqHistoricalData: Timeout for Contract(secType='FUT', conId=495512563, symbol='ES', lastTradeDateOrContractMonth='20251219', multiplier='50', exchange='CME', currency='USD', localSymbol='ESZ5', tradingClass='ES')
+2025-09-30 15:51:13 ERROR Error 162, reqId 628: Historical Market Data Service error message:API historical data query cancelled: 628, contract: Contract(secType='FUT', conId=495512563, symbol='ES', lastTradeDateOrContractMonth='20251219', multiplier='50', exchange='CME', currency='USD', localSymbol='ESZ5', tradingClass='ES')
+2025-09-30 15:52:14 WARNING reqHistoricalData: Timeout for Contract(secType='FUT', conId=495512563, symbol='ES', lastTradeDateOrContractMonth='20251219', multiplier='50', exchange='CME', currency='USD', localSymbol='ESZ5', tradingClass='ES')
+2025-09-30 15:52:14 ERROR Error 162, reqId 630: Historical Market Data Service error message:API historical data query cancelled: 630, contract: Contract(secType='FUT', conId=495512563, symbol='ES', lastTradeDateOrContractMonth='20251219', multiplier='50', exchange='CME', currency='USD', localSymbol='ESZ5', tradingClass='ES')
+2025-09-30 15:52:39 INFO updatePortfolio: PortfolioItem(contract=Future(conId=495512563, symbol='ES', lastTradeDateOrContractMonth='20251219', right='0', multiplier='50', primaryExchange='CME', currency='USD', localSymbol='ESZ5', tradingClass='ES'), position=1.0, marketPrice=6724.75, marketValue=336237.5, averageCost=336214.75, unrealizedPNL=22.75, realizedPNL=11192.5, account='DU2660649')
+2025-09-30 15:53:15 WARNING reqHistoricalData: Timeout for Contract(secType='FUT', conId=495512563, symbol='ES', lastTradeDateOrContractMonth='20251219', multiplier='50', exchange='CME', currency='USD', localSymbol='ESZ5', tradingClass='ES')
+2025-09-30 15:53:15 ERROR Error 162, reqId 632: Historical Market Data Service error message:API historical data query cancelled: 632, contract: Contract(secType='FUT', conId=495512563, symbol='ES', lastTradeDateOrContractMonth='20251219', multiplier='50', exchange='CME', currency='USD', localSymbol='ESZ5', tradingClass='ES')
+2025-09-30 15:54:16 WARNING reqHistoricalData: Timeout for Contract(secType='FUT', conId=495512563, symbol='ES', lastTradeDateOrContractMonth='20251219', multiplier='50', exchange='CME', currency='USD', localSymbol='ESZ5', tradingClass='ES')
+2025-09-30 15:54:16 ERROR Error 162, reqId 634: Historical Market Data Service error message:API historical data query cancelled: 634, contract: Contract(secType='FUT', conId=495512563, symbol='ES', lastTradeDateOrContractMonth='20251219', multiplier='50', exchange='CME', currency='USD', localSymbol='ESZ5', tradingClass='ES')
+2025-09-30 15:55:17 WARNING reqHistoricalData: Timeout for Contract(secType='FUT', conId=495512563, symbol='ES', lastTradeDateOrContractMonth='20251219', multiplier='50', exchange='CME', currency='USD', localSymbol='ESZ5', tradingClass='ES')
+2025-09-30 15:55:17 ERROR Error 162, reqId 636: Historical Market Data Service error message:API historical data query cancelled: 636, contract: Contract(secType='FUT', conId=495512563, symbol='ES', lastTradeDateOrContractMonth='20251219', multiplier='50', exchange='CME', currency='USD', localSymbol='ESZ5', tradingClass='ES')
+2025-09-30 15:55:39 INFO updatePortfolio: PortfolioItem(contract=Future(conId=495512563, symbol='ES', lastTradeDateOrContractMonth='20251219', right='0', multiplier='50', primaryExchange='CME', currency='USD', localSymbol='ESZ5', tradingClass='ES'), position=1.0, marketPrice=6726.18359375, marketValue=336309.18, averageCost=336214.75, unrealizedPNL=94.43, realizedPNL=11192.5, account='DU2660649')
+2025-09-30 15:56:18 WARNING reqHistoricalData: Timeout for Contract(secType='FUT', conId=495512563, symbol='ES', lastTradeDateOrContractMonth='20251219', multiplier='50', exchange='CME', currency='USD', localSymbol='ESZ5', tradingClass='ES')
+2025-09-30 15:56:18 ERROR Error 162, reqId 638: Historical Market Data Service error message:API historical data query cancelled: 638, contract: Contract(secType='FUT', conId=495512563, symbol='ES', lastTradeDateOrContractMonth='20251219', multiplier='50', exchange='CME', currency='USD', localSymbol='ESZ5', tradingClass='ES')
+2025-09-30 15:57:19 WARNING reqHistoricalData: Timeout for Contract(secType='FUT', conId=495512563, symbol='ES', lastTradeDateOrContractMonth='20251219', multiplier='50', exchange='CME', currency='USD', localSymbol='ESZ5', tradingClass='ES')
+2025-09-30 15:57:19 ERROR Error 162, reqId 640: Historical Market Data Service error message:API historical data query cancelled: 640, contract: Contract(secType='FUT', conId=495512563, symbol='ES', lastTradeDateOrContractMonth='20251219', multiplier='50', exchange='CME', currency='USD', localSymbol='ESZ5', tradingClass='ES')
+2025-09-30 15:58:20 WARNING reqHistoricalData: Timeout for Contract(secType='FUT', conId=495512563, symbol='ES', lastTradeDateOrContractMonth='20251219', multiplier='50', exchange='CME', currency='USD', localSymbol='ESZ5', tradingClass='ES')
+2025-09-30 15:58:20 ERROR Error 162, reqId 642: Historical Market Data Service error message:API historical data query cancelled: 642, contract: Contract(secType='FUT', conId=495512563, symbol='ES', lastTradeDateOrContractMonth='20251219', multiplier='50', exchange='CME', currency='USD', localSymbol='ESZ5', tradingClass='ES')
+2025-09-30 15:58:39 INFO updatePortfolio: PortfolioItem(contract=Future(conId=495512563, symbol='ES', lastTradeDateOrContractMonth='20251219', right='0', multiplier='50', primaryExchange='CME', currency='USD', localSymbol='ESZ5', tradingClass='ES'), position=1.0, marketPrice=6724.75, marketValue=336237.5, averageCost=336214.75, unrealizedPNL=22.75, realizedPNL=11192.5, account='DU2660649')
+2025-09-30 15:59:21 WARNING reqHistoricalData: Timeout for Contract(secType='FUT', conId=495512563, symbol='ES', lastTradeDateOrContractMonth='20251219', multiplier='50', exchange='CME', currency='USD', localSymbol='ESZ5', tradingClass='ES')
+2025-09-30 15:59:21 ERROR Error 162, reqId 644: Historical Market Data Service error message:API historical data query cancelled: 644, contract: Contract(secType='FUT', conId=495512563, symbol='ES', lastTradeDateOrContractMonth='20251219', multiplier='50', exchange='CME', currency='USD', localSymbol='ESZ5', tradingClass='ES')
+2025-09-30 16:00:22 WARNING reqHistoricalData: Timeout for Contract(secType='FUT', conId=495512563, symbol='ES', lastTradeDateOrContractMonth='20251219', multiplier='50', exchange='CME', currency='USD', localSymbol='ESZ5', tradingClass='ES')
+2025-09-30 16:00:22 ERROR Error 162, reqId 646: Historical Market Data Service error message:API historical data query cancelled: 646, contract: Contract(secType='FUT', conId=495512563, symbol='ES', lastTradeDateOrContractMonth='20251219', multiplier='50', exchange='CME', currency='USD', localSymbol='ESZ5', tradingClass='ES')
+2025-09-30 16:01:39 INFO updatePortfolio: PortfolioItem(contract=Future(conId=495512563, symbol='ES', lastTradeDateOrContractMonth='20251219', right='0', multiplier='50', primaryExchange='CME', currency='USD', localSymbol='ESZ5', tradingClass='ES'), position=1.0, marketPrice=6724.25, marketValue=336212.5, averageCost=336214.75, unrealizedPNL=-2.25, realizedPNL=11192.5, account='DU2660649')
+2025-09-30 16:04:03 INFO Warning 2103, reqId -1: Market data farm connection is broken:cashfarm
+2025-09-30 16:04:04 INFO Warning 2104, reqId -1: Market data farm connection is OK:cashfarm
+2025-09-30 16:09:04 INFO Warning 2103, reqId -1: Market data farm connection is broken:cashfarm
+2025-09-30 16:09:04 INFO Warning 2104, reqId -1: Market data farm connection is OK:cashfarm
+2025-09-30 16:15:00 ERROR Peer closed connection.
+2025-09-30 16:15:00 ERROR [ERROR] Order placement/management failed: Socket disconnect
+Traceback (most recent call last):
+  File "C:\Users\owner\AppData\Local\Programs\Python\Python313\Lib\site-packages\ib_insync\util.py", line 341, in run
+    result = loop.run_until_complete(task)
+  File "C:\Users\owner\AppData\Local\Programs\Python\Python313\Lib\asyncio\base_events.py", line 725, in run_until_complete
+    return future.result()
+           ~~~~~~~~~~~~~^^
+  File "C:\Users\owner\AppData\Local\Programs\Python\Python313\Lib\asyncio\tasks.py", line 718, in sleep
+    return await future
+           ^^^^^^^^^^^^
+asyncio.exceptions.CancelledError
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py", line 845, in run_bot
+    ib.sleep(1.0)
+    ~~~~~~~~^^^^^
+  File "C:\Users\owner\AppData\Local\Programs\Python\Python313\Lib\site-packages\ib_insync\util.py", line 386, in sleep
+    run(asyncio.sleep(secs))
+    ~~~^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\owner\AppData\Local\Programs\Python\Python313\Lib\site-packages\ib_insync\util.py", line 343, in run
+    raise globalErrorEvent.value() or e
+ConnectionError: Socket disconnect
+2025-09-30 16:15:00 INFO [HB] ok                     | dayR=-0.83R weekR=-0.83R lossStreak=1 open=0 tradesToday=2 coolUntil=16:17:30
+2025-09-30 16:15:05 INFO [HB] cooldown               | dayR=-0.83R weekR=-0.83R lossStreak=1 open=0 tradesToday=2 coolUntil=16:17:30
+2025-09-30 16:15:10 INFO [HB] cooldown               | dayR=-0.83R weekR=-0.83R lossStreak=1 open=0 tradesToday=2 coolUntil=16:17:30
+2025-09-30 16:15:15 INFO [HB] cooldown               | dayR=-0.83R weekR=-0.83R lossStreak=1 open=0 tradesToday=2 coolUntil=16:17:30
+2025-09-30 16:15:20 INFO [HB] cooldown               | dayR=-0.83R weekR=-0.83R lossStreak=1 open=0 tradesToday=2 coolUntil=16:17:30
+2025-09-30 16:15:25 INFO [HB] cooldown               | dayR=-0.83R weekR=-0.83R lossStreak=1 open=0 tradesToday=2 coolUntil=16:17:30
+2025-09-30 16:15:30 INFO [HB] cooldown               | dayR=-0.83R weekR=-0.83R lossStreak=1 open=0 tradesToday=2 coolUntil=16:17:30
+2025-09-30 16:15:35 INFO [HB] cooldown               | dayR=-0.83R weekR=-0.83R lossStreak=1 open=0 tradesToday=2 coolUntil=16:17:30
+2025-09-30 16:15:40 INFO [HB] cooldown               | dayR=-0.83R weekR=-0.83R lossStreak=1 open=0 tradesToday=2 coolUntil=16:17:30
+2025-09-30 16:15:45 INFO [HB] cooldown               | dayR=-0.83R weekR=-0.83R lossStreak=1 open=0 tradesToday=2 coolUntil=16:17:30
+2025-09-30 16:15:50 INFO [HB] cooldown               | dayR=-0.83R weekR=-0.83R lossStreak=1 open=0 tradesToday=2 coolUntil=16:17:30
+2025-09-30 16:15:55 INFO [HB] cooldown               | dayR=-0.83R weekR=-0.83R lossStreak=1 open=0 tradesToday=2 coolUntil=16:17:30
+2025-09-30 16:16:00 INFO [HB] cooldown               | dayR=-0.83R weekR=-0.83R lossStreak=1 open=0 tradesToday=2 coolUntil=16:17:30
+2025-09-30 16:16:05 INFO [HB] cooldown               | dayR=-0.83R weekR=-0.83R lossStreak=1 open=0 tradesToday=2 coolUntil=16:17:30
+2025-09-30 16:16:10 INFO [HB] cooldown               | dayR=-0.83R weekR=-0.83R lossStreak=1 open=0 tradesToday=2 coolUntil=16:17:30
+2025-09-30 16:16:15 INFO [HB] cooldown               | dayR=-0.83R weekR=-0.83R lossStreak=1 open=0 tradesToday=2 coolUntil=16:17:30
+2025-09-30 16:16:20 INFO [HB] cooldown               | dayR=-0.83R weekR=-0.83R lossStreak=1 open=0 tradesToday=2 coolUntil=16:17:30
+2025-09-30 16:16:25 INFO [HB] cooldown               | dayR=-0.83R weekR=-0.83R lossStreak=1 open=0 tradesToday=2 coolUntil=16:17:30
+2025-09-30 16:16:30 INFO [HB] cooldown               | dayR=-0.83R weekR=-0.83R lossStreak=1 open=0 tradesToday=2 coolUntil=16:17:30
+2025-09-30 16:16:35 INFO [HB] cooldown               | dayR=-0.83R weekR=-0.83R lossStreak=1 open=0 tradesToday=2 coolUntil=16:17:30
+2025-09-30 16:16:40 INFO [HB] cooldown               | dayR=-0.83R weekR=-0.83R lossStreak=1 open=0 tradesToday=2 coolUntil=16:17:30
+2025-09-30 16:16:45 INFO [HB] cooldown               | dayR=-0.83R weekR=-0.83R lossStreak=1 open=0 tradesToday=2 coolUntil=16:17:30
+2025-09-30 16:16:50 INFO [HB] cooldown               | dayR=-0.83R weekR=-0.83R lossStreak=1 open=0 tradesToday=2 coolUntil=16:17:30
+2025-09-30 16:16:55 INFO [HB] cooldown               | dayR=-0.83R weekR=-0.83R lossStreak=1 open=0 tradesToday=2 coolUntil=16:17:30
+2025-09-30 16:17:00 INFO [HB] cooldown               | dayR=-0.83R weekR=-0.83R lossStreak=1 open=0 tradesToday=2 coolUntil=16:17:30
+2025-09-30 16:17:05 INFO [HB] cooldown               | dayR=-0.83R weekR=-0.83R lossStreak=1 open=0 tradesToday=2 coolUntil=16:17:30
+2025-09-30 16:17:10 INFO [HB] cooldown               | dayR=-0.83R weekR=-0.83R lossStreak=1 open=0 tradesToday=2 coolUntil=16:17:30
+2025-09-30 16:17:15 INFO [HB] cooldown               | dayR=-0.83R weekR=-0.83R lossStreak=1 open=0 tradesToday=2 coolUntil=16:17:30
+2025-09-30 16:17:20 INFO [HB] cooldown               | dayR=-0.83R weekR=-0.83R lossStreak=1 open=0 tradesToday=2 coolUntil=16:17:30
+2025-09-30 16:17:25 INFO [HB] cooldown               | dayR=-0.83R weekR=-0.83R lossStreak=1 open=0 tradesToday=2 coolUntil=16:17:30
+2025-09-30 16:17:30 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:17:35 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:17:40 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:17:45 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:17:50 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:17:55 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:18:00 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:18:05 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:18:10 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:18:15 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:18:20 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:18:25 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:18:30 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:18:35 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:18:40 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:18:45 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:18:50 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:18:55 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:19:00 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:19:05 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:19:10 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:19:15 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:19:21 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:19:26 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:19:31 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:19:36 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:19:41 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:19:46 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:19:51 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:19:56 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:20:01 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:20:06 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:20:11 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:20:16 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:20:21 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:20:26 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:20:31 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:20:36 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:20:41 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:20:46 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:20:51 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:20:56 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:21:01 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:21:06 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:21:11 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:21:16 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:21:21 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:21:26 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:21:31 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:21:36 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:21:41 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:21:46 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:21:51 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:21:56 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:22:01 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:22:06 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:22:11 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:22:16 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:22:21 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:22:26 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:22:31 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:22:36 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:22:41 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:22:46 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:22:51 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:22:56 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:23:01 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:23:06 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:23:11 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:23:16 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:23:21 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:23:26 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:23:31 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:23:36 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:23:41 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:23:46 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:23:51 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:23:56 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:24:01 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:24:06 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:24:11 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:24:16 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:24:21 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:24:26 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:24:31 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:24:36 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:24:41 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:24:46 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:24:51 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:24:56 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:25:01 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:25:06 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:25:11 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:25:16 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:25:21 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:25:26 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:25:31 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:25:36 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:25:41 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:25:46 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:25:51 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:25:56 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:26:01 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:26:06 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:26:11 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:26:16 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:26:21 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:26:26 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:26:31 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:26:36 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:26:41 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:26:46 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:26:51 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:26:56 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:27:01 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:27:06 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:27:11 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:27:16 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:27:21 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:27:26 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:27:31 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:27:36 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:27:41 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:27:46 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:27:51 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:27:56 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:28:01 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:28:06 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:28:11 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:28:16 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:28:21 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:28:26 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:28:31 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:28:36 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:28:42 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:28:47 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:28:52 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:28:57 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:29:02 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:29:07 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:29:12 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:29:17 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:29:22 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:29:27 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:29:32 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:29:37 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:29:42 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:29:47 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:29:52 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:29:57 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:30:02 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:30:07 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:30:12 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:30:17 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:30:22 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:30:27 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:30:32 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:30:37 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:30:42 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:30:47 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:30:52 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:30:57 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:31:02 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:31:07 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:31:12 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:31:17 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:31:22 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:31:27 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:31:32 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:31:37 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:31:42 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:31:47 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:31:52 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:31:57 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:32:02 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:32:07 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:32:12 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:32:17 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:32:22 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:32:27 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:32:32 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:32:37 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:32:42 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:32:47 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:32:52 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:32:57 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:33:02 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:33:07 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:33:12 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:33:17 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:33:22 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:33:27 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:33:32 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:33:37 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:33:42 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:33:47 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:33:52 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:33:57 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:34:02 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:34:07 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:34:12 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:34:17 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:34:22 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:34:27 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:34:32 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:34:37 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:34:42 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:34:47 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:34:52 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:34:57 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:35:02 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:35:07 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:35:12 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:35:17 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:35:22 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:35:27 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:35:32 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:35:37 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:35:42 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:35:47 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:35:52 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:35:57 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:36:02 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:36:07 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:36:12 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:36:17 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:36:22 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:36:27 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:36:32 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:36:37 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:36:42 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:36:47 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:36:52 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:36:57 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:37:02 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:37:07 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:37:12 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:37:17 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:37:22 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:37:27 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:37:32 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:37:37 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:37:42 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:37:47 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:37:53 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:37:58 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:38:03 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:38:08 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:38:13 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:38:18 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:38:23 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:38:28 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:38:33 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:38:38 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:38:43 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:38:48 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:38:53 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:38:58 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:39:03 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:39:08 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:39:13 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:39:18 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:39:23 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:39:28 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:39:33 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:39:38 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:39:43 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:39:48 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:39:53 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:39:58 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:40:03 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:40:08 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:40:13 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:40:18 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:40:23 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:40:28 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:40:33 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:40:38 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:40:43 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:40:48 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:40:53 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:40:58 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:41:03 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:41:08 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:41:13 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:41:18 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:41:23 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:41:28 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:41:33 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:41:38 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:41:43 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:41:48 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:41:53 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:41:58 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:42:03 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:42:08 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:42:13 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:42:18 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:42:23 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:42:28 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:42:33 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:42:38 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:42:43 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:42:48 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:42:53 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:42:58 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:43:03 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:43:08 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:43:13 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:43:18 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:43:23 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:43:28 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:43:33 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:43:38 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:43:43 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:43:48 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:43:53 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:43:58 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:44:03 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:44:08 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:44:13 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:44:18 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:44:23 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:44:28 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:44:33 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:44:38 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:44:43 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:44:48 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:44:53 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:44:58 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:45:03 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:45:08 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:45:13 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:45:18 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:45:23 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:45:28 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:45:33 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:45:38 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:45:43 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:45:48 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:45:53 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:45:58 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:46:03 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:46:08 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:46:13 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:46:18 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:46:23 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:46:28 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:46:33 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:46:38 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:46:43 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:46:48 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:46:53 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:46:58 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:47:03 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:47:08 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:47:14 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:47:19 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:47:24 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:47:29 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:47:34 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:47:39 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:47:44 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:47:49 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:47:54 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:47:59 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:48:04 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:48:09 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:48:14 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:48:19 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:48:24 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:48:29 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:48:34 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:48:39 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:48:44 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:48:49 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:48:54 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:48:59 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:49:04 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:49:09 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:49:14 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:49:19 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:49:24 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:49:29 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:49:34 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:49:39 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:49:44 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:49:49 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:49:54 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:49:59 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:50:04 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:50:09 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:50:14 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:50:19 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:50:24 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:50:29 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:50:34 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:50:39 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:50:44 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:50:49 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:50:54 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:50:59 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:51:04 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:51:09 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:51:14 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:51:19 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:51:24 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:51:29 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:51:34 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:51:39 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:51:44 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:51:49 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:51:54 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:51:59 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:52:04 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:52:09 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:52:14 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:52:19 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:52:24 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:52:29 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:52:34 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:52:39 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:52:44 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:52:49 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:52:54 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:52:59 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:53:04 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:53:09 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:53:14 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:53:19 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:53:24 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:53:29 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:53:34 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:53:39 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:53:44 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:53:49 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:53:54 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:53:59 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:54:04 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:54:09 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:54:14 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:54:19 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:54:24 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:54:29 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:54:34 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:54:39 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:54:44 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:54:49 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:54:54 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:54:59 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:55:04 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:55:09 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:55:14 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:55:19 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:55:24 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:55:29 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:55:34 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:55:39 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:55:44 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:55:49 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:55:54 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:55:59 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:56:05 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:56:10 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:56:15 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:56:20 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:56:25 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:56:30 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:56:35 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:56:40 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:56:45 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:56:50 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:56:55 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:57:00 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:57:05 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:57:10 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:57:15 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:57:20 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:57:25 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:57:30 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:57:35 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:57:40 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:57:45 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:57:50 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:57:55 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:58:00 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:58:05 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:58:10 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:58:15 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:58:20 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:58:25 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:58:30 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:58:35 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:58:40 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:58:45 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:58:50 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:58:55 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:59:00 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:59:05 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:59:10 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:59:15 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:59:20 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:59:25 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:59:30 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:59:35 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:59:40 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:59:45 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:59:50 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 16:59:55 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 17:00:00 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 17:00:05 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 17:00:10 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 17:00:15 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 17:00:20 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 17:00:25 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 17:00:30 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 17:00:35 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 17:00:40 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 17:00:45 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 17:00:50 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 17:00:55 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 17:01:00 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 17:01:05 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 17:01:10 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 17:01:15 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 17:01:20 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 17:01:25 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 17:01:30 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 17:01:35 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 17:01:40 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 17:01:45 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 17:01:50 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 17:01:55 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 17:02:00 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 17:02:05 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 17:02:10 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 17:02:15 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 17:02:20 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 17:02:25 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 17:02:30 WARNING [DATA] Historical fetch issue: Not connected
+2025-09-30 17:02:35 WARNING [DATA] Historical fetch issue: Not connected

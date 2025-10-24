@@ -1,0 +1,20 @@
+{
+  "totals": {
+    "date": "20250921",
+    "n_trades": 1,
+    "sum_R": 1.0,
+    "avg_R": 1.0,
+    "win_rate": 1.0,
+    "avg_mae_R": 0.0,
+    "avg_hold_hours": 0.04086524722222222,
+    "avg_slip_R": 0.0
+  },
+  "per_arm": [
+    {
+      "arm": "reversion",
+      "count": 1,
+      "sum": 1.0,
+      "mean": 1.0
+    }
+  ]
+}

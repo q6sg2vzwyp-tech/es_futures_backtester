@@ -1,0 +1,27 @@
+Traceback (most recent call last):
+  File "C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py", line 1453, in <module>
+    main()
+    ~~~~^^
+  File "C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py", line 1111, in main
+    print(
+    ~~~~~^
+        f"[GATE] floors: BBbw\u2265{reg.bbw_floor:.6f} ATR%\u2265{reg.atr_floor:.6f}  "
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        f"now: ADX={reg.adx:.1f} BBbw={reg.bb_bw:.6f} ATR%={reg.atr_pct:.6f} ok={reg.ok}",
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        flush=True,
+        ^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py", line 68, in write
+    self.stdout.write(s)
+    ~~~~~~~~~~~~~~~~~^^^
+  File "C:\Users\owner\AppData\Local\Programs\Python\Python313\Lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode character '\u2265' in position 19: character maps to <undefined>
+Exception ignored on flushing sys.stdout:
+Traceback (most recent call last):
+  File "C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py", line 73, in flush
+    self.f.flush()
+ValueError: I/O operation on closed file.

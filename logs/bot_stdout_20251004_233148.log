@@ -1,0 +1,19 @@
+2025-10-04 23:31:49 INFO Starting ES paper bot...
+2025-10-04 23:31:49 INFO [CONNECT] 127.0.0.1:7497 clientId=111
+2025-10-04 23:31:49 INFO Connecting to 127.0.0.1:7497 with clientId 111...
+2025-10-04 23:31:49 INFO Connected
+2025-10-04 23:31:49 INFO Logged on to server version 176
+2025-10-04 23:31:49 ERROR Peer closed connection. clientId 111 already in use?
+2025-10-04 23:31:49 ERROR Exception in callback _ProactorBasePipeTransport._call_connection_lost()
+handle: <Handle _ProactorBasePipeTransport._call_connection_lost()>
+Traceback (most recent call last):
+  File "C:\Users\owner\AppData\Local\Programs\Python\Python313\Lib\asyncio\events.py", line 89, in _run
+    self._context.run(self._callback, *self._args)
+    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\owner\AppData\Local\Programs\Python\Python313\Lib\asyncio\proactor_events.py", line 165, in _call_connection_lost
+    self._sock.shutdown(socket.SHUT_RDWR)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+ConnectionResetError: [WinError 10054] An existing connection was forcibly closed by the remote host
+2025-10-04 23:36:49 INFO Disconnecting
+2025-10-04 23:36:49 ERROR API connection failed: TimeoutError()
+2025-10-04 23:36:49 INFO Disconnecting

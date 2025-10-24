@@ -1,0 +1,208 @@
+# summarize_gates.py
+# Summarize GateReason + regime metrics from the latest session in results\...
+
+import json
+import logging
+import os
+from collections import Counter
+
+import pandas as pd
+
+logger = logging.getLogger(__name__)
+
+RESULTS_DIR = "results"
+
+
+def find_latest_session(base=RESULTS_DIR):
+    if not os.path.isdir(base):
+        raise SystemExit(f'No "{base}" directory found.')
+    # pick folders like ib_session_YYYYMMDD_HHMMSS, newest last
+    sessions = [
+        d
+        for d in os.listdir(base)
+        if os.path.isdir(os.path.join(base, d)) and d.startswith("ib_session_")
+    ]
+    if not sessions:
+        raise SystemExit("No session folders found under results\\")
+    sessions.sort()
+    return os.path.join(base, sessions[-1])
+
+
+def safe_to_datetime(s):
+    # robust tz parsing: mixed tz → force to UTC
+    try:
+        return pd.to_datetime(s, utc=True, errors="coerce")
+    except Exception:
+        # fallback: element-wise
+        return pd.to_datetime(
+            pd.Series(s).apply(lambda x: pd.to_datetime(x, utc=True, errors="coerce"))
+        )
+
+
+def tokenize_reasons(reason):
+    """Split GateReason into tokens; normalize Regime(...) -> 'Regime'."""
+    if not isinstance(reason, str) or not reason.strip():
+        return []
+    parts = [p.strip() for p in reason.split("/") if p.strip()]
+    out = []
+    for p in parts:
+        if p.startswith("Regime"):
+            out.append("Regime")
+        elif p.startswith("HTF"):
+            out.append("HTF")
+        elif p.startswith("RTH"):
+            out.append("RTH")
+        elif p.startswith("Spread"):
+            out.append("Spread")
+        elif p.startswith("ATR"):
+            out.append("ATR")
+        elif p.startswith("Cooldown"):
+            out.append("Cooldown")
+        elif p.startswith("RiskGuard"):
+            out.append("RiskGuard")
+        elif p.startswith("PlacedParent"):
+            out.append("PlacedParent")
+        else:
+            out.append(p)
+    return out
+
+
+def main():
+    session_dir = find_latest_session()
+    sig_path = os.path.join(session_dir, "signals.csv")
+    hb_path = os.path.join(session_dir, "heartbeat.log")
+    meta_path = os.path.join(session_dir, "session.json")
+
+    if not os.path.isfile(sig_path):
+        raise SystemExit(f'No signals.csv in "{session_dir}". Did the bot run?')
+
+    # Load signals
+    df = pd.read_csv(sig_path)
+    # expected columns from patched trader
+    for c in ["Time", "Signal", "GateReason", "ADX", "BBbw", "ATRpct", "RegimeMode"]:
+        if c not in df.columns:
+            # create if missing to keep code simple
+            df[c] = pd.NA
+
+    # Parse datetimes robustly
+    df["Time"] = safe_to_datetime(df["Time"])
+    df.sort_values("Time", inplace=True, ignore_index=True)
+
+    # Tokenize gate reasons
+    df["Tokens"] = df["GateReason"].apply(tokenize_reasons)
+
+    # Define "blocked" vs "placed"
+    # Blocked: has a GateReason that is not just empty and not only PlacedParent.
+    df["Blocked"] = df["Tokens"].apply(lambda toks: (len(toks) > 0) and (toks != ["PlacedParent"]))
+    df["PlacedParentFlag"] = df["Tokens"].apply(lambda toks: ("PlacedParent" in toks))
+
+    # Basic tallies
+    total_bars = len(df)
+    total_blocked_bars = int(df["Blocked"].sum())
+    placed_parent_bars = int(df["PlacedParentFlag"].sum())
+    signal_bars = int(df["Signal"].fillna("").astype(str).str.len().gt(0).sum())
+
+    # Reason counts (split tokens; exclude PlacedParent from "blocked reasons")
+    counts = Counter()
+    for toks in df["Tokens"]:
+        for t in toks:
+            if t != "PlacedParent":
+                counts[t] += 1
+
+    # Regime mode breakdown (strict/lenient)
+    regime_mode_counts = df["RegimeMode"].fillna("unknown").value_counts().to_dict()
+
+    # Regime metric stats
+    metrics = {}
+    for col in ["ADX", "BBbw", "ATRpct"]:
+        s = pd.to_numeric(df[col], errors="coerce")
+        s = s.dropna()
+        if len(s) == 0:
+            metrics[col] = {}
+        else:
+            metrics[col] = {
+                "count": int(s.size),
+                "mean": float(s.mean()),
+                "median": float(s.median()),
+                "min": float(s.min()),
+                "max": float(s.max()),
+                "p25": float(s.quantile(0.25)),
+                "p75": float(s.quantile(0.75)),
+            }
+
+    # Write outputs
+    # 1) reason_counts.csv
+    rc_rows = [
+        {"Reason": r, "Count": c} for r, c in sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))
+    ]
+    rc_path = os.path.join(session_dir, "reason_counts.csv")
+    pd.DataFrame(rc_rows).to_csv(rc_path, index=False)
+
+    # 2) regime_stats.csv
+    reg_rows = []
+    for k, d in metrics.items():
+        if d:
+            dd = {"Metric": k}
+            dd.update(d)
+            reg_rows.append(dd)
+    reg_path = os.path.join(session_dir, "regime_stats.csv")
+    pd.DataFrame(reg_rows).to_csv(reg_path, index=False)
+
+    # 3) gate_summary.txt (human-friendly)
+    summary_lines = []
+    summary_lines.append(f"Latest session: {session_dir}")
+    if os.path.isfile(meta_path):
+        try:
+            with open(meta_path) as f:
+                meta = json.load(f)
+            md = meta.get("market_data_type", "?")
+            rm = meta.get("regime_mode", "?")
+            qty = meta.get("qty", "?")
+            po = meta.get("place_orders", "?")
+            summary_lines.append(
+                f"MarketData={md} | PlaceOrders={po} | DefaultQty={qty} | RegimeMode={rm}"
+            )
+        except Exception as e:
+
+            logger.debug("Swallowed exception in summarize_gates.py: %s", e)
+    summary_lines.append("")
+    summary_lines.append(f"Bars total: {total_bars}")
+    summary_lines.append(
+        f"Bars blocked: {total_blocked_bars}  ({(100*total_blocked_bars/max(1,total_bars)):.1f}%)"
+    )
+    summary_lines.append(f"Bars with PlacedParent: {placed_parent_bars}")
+    summary_lines.append(f"Bars with Signal column filled: {signal_bars}")
+    summary_lines.append("")
+    summary_lines.append("Top blocked reasons:")
+    if rc_rows:
+        for row in rc_rows[:15]:
+            summary_lines.append(f"  {row['Reason']:12s} {row['Count']:5d}")
+    else:
+        summary_lines.append("  (none)")
+    summary_lines.append("")
+    summary_lines.append("RegimeMode mix:")
+    for k, v in sorted(regime_mode_counts.items(), key=lambda kv: (-kv[1], kv[0])):
+        summary_lines.append(f"  {k:8s} {v}")
+
+    summary_lines.append("")
+    summary_lines.append("Regime metric stats:")
+    for m in ["ADX", "BBbw", "ATRpct"]:
+        d = metrics.get(m, {})
+        if d:
+            summary_lines.append(
+                f"  {m}: mean={d['mean']:.4f} med={d['median']:.4f} min={d['min']:.4f} max={d['max']:.4f} p25={d['p25']:.4f} p75={d['p75']:.4f}"
+            )
+        else:
+            summary_lines.append(f"  {m}: (no data)")
+
+    sum_path = os.path.join(session_dir, "gate_summary.txt")
+    with open(sum_path, "w", encoding="utf-8") as f:
+        f.write("\n".join(summary_lines))
+
+    # Console echo
+    print(f"Analyzed latest session: {session_dir}")
+    print(f"Wrote:\n  {rc_path}\n  {reg_path}\n  {sum_path}")
+
+
+if __name__ == "__main__":
+    main()

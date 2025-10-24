@@ -1,0 +1,27 @@
+{"ts": "2025-10-23 13:46:55", "evt": "hb", "state": "-", "idle_reason": "starting_or_quiet", "net_qty": 0, "bars": 0, "rt_enabled": false, "rt_status": "disabled", "rt_age_sec": null, "rt_queue_len": 0, "in_session_window": false, "caps": [], "news_kill": false, "dayR": 0.0, "trades_today": 0, "cool_until": null, "orders_disabled_paper_safety": false}[CONNECT] Attempt 1/10 -> clientId=111
+
+{"ts": "2025-10-23 13:46:55", "evt": "boot_progress", "step": "connecting"}
+{"ts": "2025-10-23 13:46:55", "evt": "ib_error", "reqId": -1, "code": 2104, "msg": "Market data farm connection is OK:usfuture.nj"}
+{"ts": "2025-10-23 13:46:55", "evt": "ib_error", "reqId": -1, "code": 2104, "msg": "Market data farm connection is OK:usfarm.nj"}
+{"ts": "2025-10-23 13:46:55", "evt": "ib_error", "reqId": -1, "code": 2104, "msg": "Market data farm connection is OK:usfuture"}
+{"ts": "2025-10-23 13:46:55", "evt": "ib_error", "reqId": -1, "code": 2104, "msg": "Market data farm connection is OK:usfarm"}
+{"ts": "2025-10-23 13:46:55", "evt": "ib_error", "reqId": -1, "code": 2106, "msg": "HMDS data farm connection is OK:euhmds"}
+{"ts": "2025-10-23 13:46:55", "evt": "ib_error", "reqId": -1, "code": 2106, "msg": "HMDS data farm connection is OK:cashhmds"}
+{"ts": "2025-10-23 13:46:55", "evt": "ib_error", "reqId": -1, "code": 2106, "msg": "HMDS data farm connection is OK:fundfarm"}
+{"ts": "2025-10-23 13:46:55", "evt": "ib_error", "reqId": -1, "code": 2106, "msg": "HMDS data farm connection is OK:ushmds"}
+{"ts": "2025-10-23 13:46:55", "evt": "ib_error", "reqId": -1, "code": 2158, "msg": "Sec-def data farm connection is OK:secdefil"}
+Connected (clientId=111)
+[POST-CONNECT] isConnected=True host=127.0.0.1 port=7497 clientId=111
+[POST-CONNECT] managedAccounts: ['DU2660649']
+[MD] LIVE (1).
+[CONTRACT] Using ESZ5 conId=495512563 exp=20251219
+[CONTRACT] Multiplier detected: 50
+{"ts": "2025-10-23 13:46:56", "evt": "hb", "state": "-", "idle_reason": "booting", "net_qty": 0, "bars": 0, "rt_enabled": true, "rt_status": "booting", "rt_age_sec": null, "rt_queue_len": 0, "in_session_window": false, "caps": [], "news_kill": false, "dayR": 0.0, "trades_today": 0, "cool_until": null, "orders_disabled_paper_safety": false}
+cancelMktData: No reqId found for contract Ticker(contract=Contract(secType='FUT', conId=495512563, symbol='ES', lastTradeDateOrContractMonth='20251219', multiplier='50', exchange='CME', currency='USD', localSymbol='ESZ5', tradingClass='ES'), time=datetime.datetime(2025, 10, 23, 13, 46, 57, 399053, tzinfo=datetime.timezone.utc), minTick=0.25, bid=6754.5, bidSize=18.0, ask=6754.75, askSize=35.0, last=6754.75, lastSize=1.0, prevBidSize=32.0, prevAskSize=22.0, prevLast=6754.5, prevLastSize=14.0, volume=259808.0, open=6733.5, high=6759.25, low=6717.5, close=6737.0, halted=0.0, ticks=[TickData(time=datetime.datetime(2025, 10, 23, 13, 46, 57, 399053, tzinfo=datetime.timezone.utc), tickType=8, price=-1.0, size=259808.0), TickData(time=datetime.datetime(2025, 10, 23, 13, 46, 57, 399053, tzinfo=datetime.timezone.utc), tickType=4, price=6754.75, size=1.0)], bboExchange='50006', snapshotPermissions=3)
+{"ts": "2025-10-23 13:46:57", "evt": "md_warmup", "ok": true}
+{"ts": "2025-10-23 13:46:57", "evt": "hb", "state": "-", "idle_reason": "booting", "net_qty": 0, "bars": 0, "rt_enabled": true, "rt_status": "booting", "rt_age_sec": null, "rt_queue_len": 0, "in_session_window": false, "caps": [], "news_kill": false, "dayR": 0.0, "trades_today": 0, "cool_until": null, "orders_disabled_paper_safety": false}
+[BOOT] Hist seed: 361 bars
+{"ts": "2025-10-23 13:46:57", "evt": "daily_reset", "cutover": "2025-10-23#08:30"}
+{"ts": "2025-10-23 13:46:57", "evt": "learn_decision", "cand": ["trend", "breakout"], "probs": {"trend": 0.443, "breakout": 0.557}, "chosen": "breakout"}
+{"ts": "2025-10-23 13:46:57", "evt": "sim_no_place", "reason": "--place-orders not set"}
+{"ts": "2025-10-23 13:46:58", "evt": "hb", "state": "active", "idle_reason": "active_waiting", "net_qty": 0, "bars": 361, "rt_enabled": true, "rt_status": "booting", "rt_age_sec": null, "rt_queue_len": 0, "in_session_window": true, "caps": [], "news_kill": false, "dayR": 0.0, "trades_today": 0, "cool_until": null, "orders_disabled_paper_safety": false}

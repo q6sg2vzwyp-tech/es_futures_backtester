@@ -1,0 +1,13 @@
+Traceback (most recent call last):
+  File "C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py", line 854, in <module>
+    main()
+    ~~~~^^
+  File "C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py", line 851, in main
+    run_bot(cfg)
+    ~~~~~~~^^^^^
+  File "C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py", line 632, in run_bot
+    df = fetch_bars(ib, contract, cfg.bar_size, cfg.duration)
+  File "C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py", line 219, in fetch_bars
+    if df.empty:
+       ^^^^^^^^
+AttributeError: 'NoneType' object has no attribute 'empty'

@@ -1,0 +1,468 @@
+============================================================
+[START] 2025-09-10 12:57:50
+[CMD] C:\Users\owner\AppData\Local\Programs\Python\Python313\python.exe -X faulthandler -u paper_trader.py --host 127.0.0.1 --port 7497 --clientId 19 --conId 637533641 --tp-ladder 1.0R:50,2.0R:50 --place-orders --debug-regime --alpha 0.6 --epsilon 0.05 --epsilon-final 0.02 --epsilon-decay-min 120.0 --enable-arms trend,breakout --reward-mode linear --reward-penalty-time 0.1 --reward-penalty-dd 0.2 --reward-penalty-slip 0.05 --reward-regime-bonus 0.02 --arm-min-trades 12 --arm-good-thresh 0.08 --arm-bad-thresh -0.06 --auto-freeze-bad --alpha-boost-good --alpha-boost-mult 1.5 --alpha-boost-secs 600 --freeze-cooldown-secs 14400 --decay-every-secs 600 --decay-gamma 0.995 --rth-only --one-trade-at-a-time --strategy-cooldown-sec 60 --debounce-one-bar --persist-chooser --chooser-model-path C:\Users\owner\Desktop\es_futures_backtester\models\linucb_state.json
+============================================================
+[LOG] 2025-09-10 12:57:51 Enabled arms: trend,breakout
+[LOG] 2025-09-10 12:57:51 Loaded chooser state from C:\Users\owner\Desktop\es_futures_backtester\models\linucb_state.json
+[LOG] 2025-09-10 12:57:51 [PING 1] clientId=19 connected: False
+[LOG] 2025-09-10 12:57:51 Connected 127.0.0.1:7497 clientId=19 | Market data type: LIVE
+[LOG] 2025-09-10 12:57:51 Using contract: ESU5  (conId=637533641)
+[LOG] 2025-09-10 12:57:51 [WARMUP] Fetching 5d of 1m bars...
+[LOG] 2025-09-10 12:57:52 [WARMUP] Loaded 6718 historical 1m bars.
+[REGIME] ADX=40.6  BBbw=0.0013  ATR%=0.000238  (ok=True)
+[LOG] 2025-09-10 12:57:54 [ARMS] trend: EN n=0, avgR=+0.000, mu=+0.000, ucb=+1.733 | breakout: EN n=0, avgR=+0.000, mu=+0.000, ucb=+1.733
+[HB] 2025-09-10 12:57:54 CT OpenTrades=0 | ChooserArm=trend | Gate=yes | eps=0.050 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 12:57:55 CT OpenTrades=0 | ChooserArm=trend | Gate=yes | eps=0.050 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 12:57:56 CT OpenTrades=0 | ChooserArm=trend | Gate=yes | eps=0.050 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 12:57:57 CT OpenTrades=0 | ChooserArm=trend | Gate=yes | eps=0.050 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 12:57:58 CT OpenTrades=0 | ChooserArm=trend | Gate=yes | eps=0.050 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 12:57:59 CT OpenTrades=0 | ChooserArm=trend | Gate=yes | eps=0.050 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 12:58:00 CT OpenTrades=0 | ChooserArm=trend | Gate=yes | eps=0.050 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 12:58:01 CT OpenTrades=0 | ChooserArm=trend | Gate=yes | eps=0.050 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 12:58:02 CT OpenTrades=0 | ChooserArm=trend | Gate=yes | eps=0.050 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 12:58:03 CT OpenTrades=0 | ChooserArm=trend | Gate=yes | eps=0.050 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 12:58:05 CT OpenTrades=0 | ChooserArm=trend | Gate=yes | eps=0.050 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 12:58:06 CT OpenTrades=0 | ChooserArm=trend | Gate=yes | eps=0.050 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 12:58:07 CT OpenTrades=0 | ChooserArm=trend | Gate=yes | eps=0.050 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 12:58:08 CT OpenTrades=0 | ChooserArm=trend | Gate=yes | eps=0.050 | dayR=0.00 | dayN=0
+[REGIME] ADX=33.5  BBbw=0.0012  ATR%=0.000181  (ok=True)
+[HB] 2025-09-10 12:58:09 CT OpenTrades=0 | ChooserArm=trend | Gate=yes | eps=0.050 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 12:58:10 CT OpenTrades=0 | ChooserArm=trend | Gate=yes | eps=0.050 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 12:58:11 CT OpenTrades=0 | ChooserArm=trend | Gate=yes | eps=0.050 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 12:58:12 CT OpenTrades=0 | ChooserArm=trend | Gate=yes | eps=0.050 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 12:58:13 CT OpenTrades=0 | ChooserArm=breakout | Gate=yes | eps=0.050 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 12:58:14 CT OpenTrades=0 | ChooserArm=trend | Gate=yes | eps=0.050 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 12:58:15 CT OpenTrades=0 | ChooserArm=trend | Gate=yes | eps=0.050 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 12:58:16 CT OpenTrades=0 | ChooserArm=trend | Gate=yes | eps=0.050 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 12:58:17 CT OpenTrades=0 | ChooserArm=trend | Gate=yes | eps=0.050 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 12:58:19 CT OpenTrades=0 | ChooserArm=trend | Gate=yes | eps=0.050 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 12:58:20 CT OpenTrades=0 | ChooserArm=trend | Gate=yes | eps=0.050 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 12:58:21 CT OpenTrades=0 | ChooserArm=trend | Gate=yes | eps=0.050 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 12:58:22 CT OpenTrades=0 | ChooserArm=trend | Gate=yes | eps=0.050 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 12:58:23 CT OpenTrades=0 | ChooserArm=trend | Gate=yes | eps=0.050 | dayR=0.00 | dayN=0
+[REGIME] ADX=28.5  BBbw=0.0010  ATR%=0.000156  (ok=True)
+[HB] 2025-09-10 12:58:24 CT OpenTrades=0 | ChooserArm=trend | Gate=yes | eps=0.050 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 12:58:25 CT OpenTrades=0 | ChooserArm=trend | Gate=yes | eps=0.050 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 12:58:26 CT OpenTrades=0 | ChooserArm=trend | Gate=yes | eps=0.050 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 12:58:27 CT OpenTrades=0 | ChooserArm=trend | Gate=yes | eps=0.050 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 12:58:28 CT OpenTrades=0 | ChooserArm=trend | Gate=yes | eps=0.050 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 12:58:29 CT OpenTrades=0 | ChooserArm=trend | Gate=yes | eps=0.050 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 12:58:30 CT OpenTrades=0 | ChooserArm=trend | Gate=yes | eps=0.050 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 12:58:31 CT OpenTrades=0 | ChooserArm=trend | Gate=yes | eps=0.050 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 12:58:32 CT OpenTrades=0 | ChooserArm=trend | Gate=yes | eps=0.050 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 12:58:34 CT OpenTrades=0 | ChooserArm=trend | Gate=yes | eps=0.050 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 12:58:35 CT OpenTrades=0 | ChooserArm=trend | Gate=yes | eps=0.050 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 12:58:36 CT OpenTrades=0 | ChooserArm=trend | Gate=yes | eps=0.050 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 12:58:37 CT OpenTrades=0 | ChooserArm=trend | Gate=yes | eps=0.050 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 12:58:38 CT OpenTrades=0 | ChooserArm=trend | Gate=yes | eps=0.050 | dayR=0.00 | dayN=0
+[REGIME] ADX=31.2  BBbw=0.0008  ATR%=0.000124  (ok=True)
+[HB] 2025-09-10 12:58:39 CT OpenTrades=0 | ChooserArm=trend | Gate=yes | eps=0.050 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 12:58:40 CT OpenTrades=0 | ChooserArm=breakout | Gate=yes | eps=0.050 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 12:58:41 CT OpenTrades=0 | ChooserArm=trend | Gate=yes | eps=0.050 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 12:58:42 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 12:58:43 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 12:58:44 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 12:58:45 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 12:58:47 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 12:58:48 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 12:58:49 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 12:58:50 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 12:58:51 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 12:58:52 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 12:58:53 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | dayR=0.00 | dayN=0
+[REGIME] ADX=35.4  BBbw=0.0007  ATR%=0.000104  (ok=False)
+[LOG] 2025-09-10 12:58:54 [ARMS] trend: EN n=0, avgR=+0.000, mu=+0.000, ucb=+0.966 | breakout: EN n=0, avgR=+0.000, mu=+0.000, ucb=+0.966
+[HB] 2025-09-10 12:58:54 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 12:58:55 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 12:58:56 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 12:58:57 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 12:58:58 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 12:58:59 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 12:59:01 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 12:59:02 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 12:59:03 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 12:59:04 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 12:59:05 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 12:59:06 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 12:59:07 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 12:59:08 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | dayR=0.00 | dayN=0
+[REGIME] ADX=29.3  BBbw=0.0006  ATR%=0.000094  (ok=False)
+[HB] 2025-09-10 12:59:09 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 12:59:10 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 12:59:11 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 12:59:12 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 12:59:13 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 12:59:15 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 12:59:16 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 12:59:17 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 12:59:18 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 12:59:19 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 12:59:20 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 12:59:21 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 12:59:22 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 12:59:23 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | dayR=0.00 | dayN=0
+[REGIME] ADX=21.9  BBbw=0.0005  ATR%=0.000080  (ok=False)
+[HB] 2025-09-10 12:59:24 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 12:59:25 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 12:59:26 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 12:59:27 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 12:59:28 CT OpenTrades=0 | ChooserArm=breakout | Gate=no | eps=0.050 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 12:59:30 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 12:59:31 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 12:59:32 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 12:59:33 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 12:59:34 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 12:59:35 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 12:59:36 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 12:59:37 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 12:59:38 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | dayR=0.00 | dayN=0
+[REGIME] ADX=26.7  BBbw=0.0004  ATR%=0.000070  (ok=False)
+[HB] 2025-09-10 12:59:39 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 12:59:40 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 12:59:41 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 12:59:42 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 12:59:43 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 12:59:45 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 12:59:46 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 12:59:47 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 12:59:48 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 12:59:49 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 12:59:50 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 12:59:51 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 12:59:52 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 12:59:53 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[REGIME] ADX=39.9  BBbw=0.0003  ATR%=0.000070  (ok=False)
+[LOG] 2025-09-10 12:59:54 [ARMS] trend: EN n=0, avgR=+0.000, mu=+0.000, ucb=+0.877 | breakout: EN n=0, avgR=+0.000, mu=+0.000, ucb=+0.877
+[HB] 2025-09-10 12:59:54 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 12:59:55 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 12:59:56 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 12:59:57 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 12:59:59 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:00:00 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:00:01 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:00:02 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:00:03 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:00:04 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:00:05 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:00:06 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:00:07 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:00:08 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:00:09 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[REGIME] ADX=39.9  BBbw=0.0003  ATR%=0.000073  (ok=False)
+[HB] 2025-09-10 13:00:10 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:00:11 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:00:12 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:00:13 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:00:15 CT OpenTrades=0 | ChooserArm=breakout | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:00:16 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:00:17 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:00:18 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:00:19 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:00:20 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:00:21 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:00:22 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:00:23 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:00:24 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[REGIME] ADX=32.1  BBbw=0.0003  ATR%=0.000078  (ok=False)
+[HB] 2025-09-10 13:00:25 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:00:26 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:00:27 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:00:29 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:00:30 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:00:31 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:00:32 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:00:33 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:00:34 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:00:35 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:00:36 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:00:37 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:00:38 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:00:39 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[REGIME] ADX=31.7  BBbw=0.0003  ATR%=0.000087  (ok=False)
+[HB] 2025-09-10 13:00:40 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:00:41 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:00:42 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:00:43 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:00:45 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:00:46 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:00:47 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:00:48 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:00:49 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:00:50 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:00:51 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:00:52 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:00:53 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[LOG] 2025-09-10 13:00:54 [ARMS] trend: EN n=0, avgR=+0.000, mu=+0.000, ucb=+0.839 | breakout: EN n=0, avgR=+0.000, mu=+0.000, ucb=+0.839
+[HB] 2025-09-10 13:00:54 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[REGIME] ADX=29.0  BBbw=0.0003  ATR%=0.000079  (ok=False)
+[HB] 2025-09-10 13:00:55 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:00:56 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:00:58 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:00:59 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:01:00 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:01:01 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:01:02 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:01:03 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:01:04 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:01:05 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:01:06 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:01:07 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:01:08 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:01:09 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[REGIME] ADX=27.3  BBbw=0.0003  ATR%=0.000074  (ok=False)
+[HB] 2025-09-10 13:01:10 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:01:11 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:01:13 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:01:14 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:01:15 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:01:16 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:01:17 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:01:18 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:01:19 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:01:20 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:01:21 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:01:22 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:01:23 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:01:24 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:01:25 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[REGIME] ADX=33.2  BBbw=0.0003  ATR%=0.000071  (ok=False)
+[HB] 2025-09-10 13:01:26 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:01:28 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:01:29 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:01:30 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:01:31 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:01:32 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:01:33 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:01:34 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:01:35 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:01:36 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:01:37 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:01:38 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:01:39 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:01:40 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[REGIME] ADX=33.7  BBbw=0.0003  ATR%=0.000065  (ok=False)
+[HB] 2025-09-10 13:01:42 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:01:43 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:01:44 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:01:45 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:01:46 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:01:47 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:01:48 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:01:49 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:01:50 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:01:51 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:01:52 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:01:53 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[LOG] 2025-09-10 13:01:55 [ARMS] trend: EN n=0, avgR=+0.000, mu=+0.000, ucb=+0.787 | breakout: EN n=0, avgR=+0.000, mu=+0.000, ucb=+0.787
+[HB] 2025-09-10 13:01:55 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:01:56 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[REGIME] ADX=33.7  BBbw=0.0003  ATR%=0.000052  (ok=False)
+[HB] 2025-09-10 13:01:57 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:01:58 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:01:59 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:02:00 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:02:01 CT OpenTrades=0 | ChooserArm=breakout | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:02:02 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:02:03 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:02:04 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:02:05 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:02:06 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:02:07 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:02:09 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:02:10 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:02:11 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[REGIME] ADX=35.4  BBbw=0.0003  ATR%=0.000070  (ok=False)
+[HB] 2025-09-10 13:02:12 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:02:13 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:02:14 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:02:15 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:02:16 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:02:17 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:02:18 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:02:19 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:02:20 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:02:21 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:02:22 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:02:24 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:02:25 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:02:26 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[REGIME] ADX=41.6  BBbw=0.0004  ATR%=0.000078  (ok=False)
+[HB] 2025-09-10 13:02:27 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:02:28 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:02:29 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:02:30 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:02:31 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:02:32 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:02:33 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:02:34 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:02:35 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:02:36 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:02:38 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:02:39 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:02:40 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:02:41 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[REGIME] ADX=45.2  BBbw=0.0005  ATR%=0.000073  (ok=False)
+[HB] 2025-09-10 13:02:42 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:02:43 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:02:44 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:02:45 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:02:46 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:02:47 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:02:48 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:02:49 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:02:50 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:02:52 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:02:53 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:02:54 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[LOG] 2025-09-10 13:02:55 [ARMS] trend: EN n=0, avgR=+0.000, mu=+0.000, ucb=+0.885 | breakout: EN n=0, avgR=+0.000, mu=+0.000, ucb=+0.885
+[HB] 2025-09-10 13:02:55 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:02:56 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[REGIME] ADX=36.5  BBbw=0.0005  ATR%=0.000066  (ok=False)
+[HB] 2025-09-10 13:02:57 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:02:58 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:02:59 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:03:00 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:03:01 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:03:02 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:03:04 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:03:05 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:03:06 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:03:07 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:03:08 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:03:09 CT OpenTrades=0 | ChooserArm=breakout | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:03:10 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:03:11 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[REGIME] ADX=26.5  BBbw=0.0004  ATR%=0.000066  (ok=False)
+[HB] 2025-09-10 13:03:12 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:03:13 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:03:14 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:03:15 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:03:16 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:03:18 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:03:19 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:03:20 CT OpenTrades=0 | ChooserArm=breakout | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:03:21 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:03:22 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:03:23 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:03:24 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:03:25 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:03:26 CT OpenTrades=0 | ChooserArm=breakout | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[REGIME] ADX=27.8  BBbw=0.0003  ATR%=0.000059  (ok=False)
+[HB] 2025-09-10 13:03:27 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:03:28 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:03:29 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:03:30 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:03:32 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:03:33 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:03:34 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:03:35 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:03:36 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:03:37 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:03:38 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:03:39 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:03:40 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:03:41 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:03:42 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[REGIME] ADX=30.2  BBbw=0.0002  ATR%=0.000065  (ok=False)
+[HB] 2025-09-10 13:03:43 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:03:44 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:03:45 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:03:47 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:03:48 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:03:49 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:03:50 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:03:51 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:03:52 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:03:53 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.048 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:03:54 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.048 | dayR=0.00 | dayN=0
+[LOG] 2025-09-10 13:03:55 [ARMS] trend: EN n=0, avgR=+0.000, mu=+0.000, ucb=+0.784 | breakout: EN n=0, avgR=+0.000, mu=+0.000, ucb=+0.784
+[HB] 2025-09-10 13:03:55 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.048 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:03:56 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.048 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:03:57 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.048 | dayR=0.00 | dayN=0
+[REGIME] ADX=22.3  BBbw=0.0002  ATR%=0.000064  (ok=False)
+[HB] 2025-09-10 13:03:58 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.048 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:03:59 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.048 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:04:00 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.048 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:04:02 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.048 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:04:03 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.048 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:04:04 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.048 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:04:05 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.048 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:04:06 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.048 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:04:07 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.048 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:04:08 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.048 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:04:09 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.048 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:04:10 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.048 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:04:11 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.048 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:04:12 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.048 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:04:13 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.048 | dayR=0.00 | dayN=0
+[REGIME] ADX=24.1  BBbw=0.0002  ATR%=0.000059  (ok=False)
+[HB] 2025-09-10 13:04:14 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.048 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:04:15 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.048 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:04:17 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.048 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:04:18 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.048 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:04:19 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.048 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:04:20 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.048 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:04:21 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.048 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:04:22 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.048 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:04:23 CT OpenTrades=0 | ChooserArm=breakout | Gate=no | eps=0.048 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:04:24 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.048 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:04:25 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.048 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:04:26 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.048 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:04:27 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.048 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:04:28 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.048 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:04:29 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.048 | dayR=0.00 | dayN=0
+[REGIME] ADX=20.3  BBbw=0.0002  ATR%=0.000052  (ok=False)
+[HB] 2025-09-10 13:04:30 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.048 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:04:31 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.048 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:04:33 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.048 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:04:34 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.048 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:04:35 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.048 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:04:36 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.048 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:04:37 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.048 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:04:38 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.048 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:04:39 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.048 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:04:40 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.048 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:04:41 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.048 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:04:42 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.048 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:04:43 CT OpenTrades=0 | ChooserArm=breakout | Gate=no | eps=0.048 | dayR=0.00 | dayN=0
+[HB] 2025-09-10 13:04:44 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.048 | dayR=0.00 | dayN=0
+Peer closed connection.
+[LOG] 2025-09-10 13:04:45 Saved chooser state to C:\Users\owner\Desktop\es_futures_backtester\models\linucb_state.json
+Traceback (most recent call last):
+  File "C:\Users\owner\AppData\Local\Programs\Python\Python313\Lib\site-packages\ib_insync\util.py", line 341, in run
+    result = loop.run_until_complete(task)
+  File "C:\Users\owner\AppData\Local\Programs\Python\Python313\Lib\site-packages\nest_asyncio.py", line 98, in run_until_complete
+    return f.result()
+           ~~~~~~~~^^
+  File "C:\Users\owner\AppData\Local\Programs\Python\Python313\Lib\asyncio\futures.py", line 194, in result
+    raise self._make_cancelled_error()
+  File "C:\Users\owner\AppData\Local\Programs\Python\Python313\Lib\asyncio\tasks.py", line 306, in __step_run_and_handle_result
+    result = coro.throw(exc)
+  File "C:\Users\owner\AppData\Local\Programs\Python\Python313\Lib\asyncio\tasks.py", line 718, in sleep
+    return await future
+           ^^^^^^^^^^^^
+  File "C:\Users\owner\AppData\Local\Programs\Python\Python313\Lib\asyncio\futures.py", line 286, in __await__
+    yield self  # This tells Task to wait for completion.
+    ^^^^^^^^^^
+  File "C:\Users\owner\AppData\Local\Programs\Python\Python313\Lib\asyncio\tasks.py", line 375, in __wakeup
+    future.result()
+    ~~~~~~~~~~~~~^^
+  File "C:\Users\owner\AppData\Local\Programs\Python\Python313\Lib\asyncio\futures.py", line 194, in result
+    raise self._make_cancelled_error()
+asyncio.exceptions.CancelledError
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py", line 959, in <module>
+    main()
+    ~~~~^^
+  File "C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py", line 676, in main
+    ib.sleep(1.0)
+    ~~~~~~~~^^^^^
+  File "C:\Users\owner\AppData\Local\Programs\Python\Python313\Lib\site-packages\ib_insync\util.py", line 386, in sleep
+    run(asyncio.sleep(secs))
+    ~~~^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\owner\AppData\Local\Programs\Python\Python313\Lib\site-packages\ib_insync\util.py", line 343, in run
+    raise globalErrorEvent.value() or e
+ConnectionError: Socket disconnect

@@ -1,0 +1,164 @@
+2025-08-29 14:25:22,036 ================== PAPER MODE ==================
+2025-08-29 14:25:22,036 Host:127.0.0.1  Port:7497  ClientId:auto
+2025-08-29 14:25:22,036 Paper account required (TWS/Gateway set to Paper). Orders WILL be sent (paper).
+2025-08-29 14:25:22,037 Writing log to logs\run_Fri0829_142522.log
+2025-08-29 14:25:22,590 [PING 1] clientId=40522 connected: True
+2025-08-29 14:25:22,591 [CONNECT] Attempt 1/12 to 127.0.0.1:7497 (clientId=38702, timeout=90s)
+2025-08-29 14:25:22,898 Connected 127.0.0.1:7497 clientId=38702 | Market data type: LIVE (1)
+2025-08-29 14:25:22,898 [AUTO] Selecting front quarter for ES/CME ...
+2025-08-29 14:25:22,938 [AUTO] Front month chosen: ESU5 exp=20250919
+2025-08-29 14:25:22,941 Using contract: ESU5  (conId=637533641)
+2025-08-29 14:25:23,194 [RECON] open_orders=0 positions=0
+2025-08-29 14:25:23,194 [RISK] Daily loss cap: $1,250.00
+2025-08-29 14:25:23,506 [WARMUP] Loaded 6806 historical 1m bars.
+2025-08-29 14:25:23,565 >> LIVE paper trading with brackets (BE/trail, TP ladder). Ctrl+C to stop.
+2025-08-29 14:26:06,220 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=5.3 | Sprd=1.0
+2025-08-29 14:27:05,218 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=5.2 | Sprd=1.0
+2025-08-29 14:27:05,218 [Gate] Regime fail
+2025-08-29 14:28:06,348 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=5.2 | Sprd=1.0
+2025-08-29 14:28:06,349 [Gate] Regime fail
+2025-08-29 14:29:06,189 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=5.2 | Sprd=1.0
+2025-08-29 14:29:06,190 [Gate] Regime fail
+2025-08-29 14:30:05,302 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=5.4 | Sprd=1.0
+2025-08-29 14:30:05,303 [Gate] Regime fail
+2025-08-29 14:31:05,872 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=5.3 | Sprd=1.0
+2025-08-29 14:31:05,872 [Gate] Regime fail
+2025-08-29 14:32:05,867 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=5.3 | Sprd=1.0
+2025-08-29 14:32:05,867 [Gate] Regime fail
+2025-08-29 14:33:05,444 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=5.2 | Sprd=1.0
+2025-08-29 14:33:05,445 [Gate] Regime fail
+2025-08-29 14:34:05,889 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=5.0 | Sprd=1.0
+2025-08-29 14:34:05,889 [Gate] Regime fail
+2025-08-29 14:35:06,509 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=5.0 | Sprd=1.0
+2025-08-29 14:35:06,510 [Gate] Regime fail
+2025-08-29 14:36:05,835 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=5.7 | Sprd=1.0
+2025-08-29 14:36:05,836 [Gate] Regime fail
+2025-08-29 14:37:06,416 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=5.4 | Sprd=1.0
+2025-08-29 14:37:06,417 [Gate] Regime fail
+2025-08-29 14:38:06,851 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=5.3 | Sprd=1.0
+2025-08-29 14:39:06,466 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=5.3 | Sprd=1.0
+2025-08-29 14:40:05,888 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=5.1 | Sprd=1.0
+2025-08-29 14:41:05,173 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=5.1 | Sprd=1.0
+2025-08-29 14:42:05,488 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=5.0 | Sprd=1.0
+2025-08-29 14:42:05,489 [Gate] Regime fail
+2025-08-29 14:43:05,809 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=5.0 | Sprd=1.0
+2025-08-29 14:43:05,810 [Gate] Regime fail
+2025-08-29 14:44:06,130 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=5.1 | Sprd=1.0
+2025-08-29 14:44:06,131 [Gate] Regime fail
+2025-08-29 14:45:05,376 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=5.2 | Sprd=1.0
+2025-08-29 14:46:05,704 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=5.2 | Sprd=1.0
+2025-08-29 14:47:06,184 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=5.0 | Sprd=1.0
+2025-08-29 14:48:05,615 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=5.5 | Sprd=1.0
+2025-08-29 14:49:06,090 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=6.0 | Sprd=1.0
+2025-08-29 14:50:05,873 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=6.7 | Sprd=1.0
+2025-08-29 14:51:05,635 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=8.1 | Sprd=1.0
+2025-08-29 14:51:05,689 [ORDER] SHORT STP_LMT qty=1 stop=6463.25 sl=6467.00 TP @ 1.0R playbook=trend (parentId 1508, OCA OCA_1508_65638_136)
+2025-08-29 14:52:05,791 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=8.0 | Sprd=1.0
+2025-08-29 14:53:05,488 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=8.3 | Sprd=1.0
+2025-08-29 14:54:06,170 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=8.5 | Sprd=1.0
+2025-08-29 14:55:05,798 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=8.8 | Sprd=1.0
+2025-08-29 14:56:05,585 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=8.6 | Sprd=1.0
+2025-08-29 14:57:05,225 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=8.6 | Sprd=1.0
+2025-08-29 14:57:05,226 [FLAT] Enforced flat time; blocking new entries.
+2025-08-29 14:58:05,951 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=9.2 | Sprd=1.0
+2025-08-29 14:58:05,952 [FLAT] Enforced flat time; blocking new entries.
+2025-08-29 14:59:05,231 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=9.1 | Sprd=1.0
+2025-08-29 14:59:05,231 [FLAT] Enforced flat time; blocking new entries.
+2025-08-29 15:00:06,091 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=10.1 | Sprd=1.0
+2025-08-29 15:00:06,092 [Gate] Outside RTH 2025-08-29 20:00:00+00:00
+2025-08-29 15:01:05,829 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=10.5 | Sprd=1.0
+2025-08-29 15:01:05,831 [Gate] Outside RTH 2025-08-29 20:01:00+00:00
+2025-08-29 15:02:05,611 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=10.1 | Sprd=1.0
+2025-08-29 15:02:05,612 [Gate] Outside RTH 2025-08-29 20:02:00+00:00
+2025-08-29 15:03:06,103 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=10.0 | Sprd=1.0
+2025-08-29 15:03:06,104 [Gate] Outside RTH 2025-08-29 20:03:00+00:00
+2025-08-29 15:04:05,904 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=10.3 | Sprd=1.0
+2025-08-29 15:04:05,905 [Gate] Outside RTH 2025-08-29 20:04:00+00:00
+2025-08-29 15:05:05,606 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=9.7 | Sprd=1.0
+2025-08-29 15:05:05,607 [Gate] Outside RTH 2025-08-29 20:05:00+00:00
+2025-08-29 15:06:05,810 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=9.3 | Sprd=1.0
+2025-08-29 15:06:05,811 [Gate] Outside RTH 2025-08-29 20:06:00+00:00
+2025-08-29 15:07:05,558 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=8.8 | Sprd=1.0
+2025-08-29 15:07:05,559 [Gate] Outside RTH 2025-08-29 20:07:00+00:00
+2025-08-29 15:08:06,293 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=8.3 | Sprd=1.0
+2025-08-29 15:08:06,294 [Gate] Outside RTH 2025-08-29 20:08:00+00:00
+2025-08-29 15:09:06,001 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=7.9 | Sprd=1.0
+2025-08-29 15:09:06,002 [Gate] Outside RTH 2025-08-29 20:09:00+00:00
+2025-08-29 15:10:05,663 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=7.5 | Sprd=1.0
+2025-08-29 15:10:05,664 [Gate] Outside RTH 2025-08-29 20:10:00+00:00
+2025-08-29 15:11:06,403 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=7.1 | Sprd=1.0
+2025-08-29 15:11:06,403 [Gate] Outside RTH 2025-08-29 20:11:00+00:00
+2025-08-29 15:12:06,639 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=6.7 | Sprd=1.0
+2025-08-29 15:12:06,639 [Gate] Outside RTH 2025-08-29 20:12:00+00:00
+2025-08-29 15:13:06,458 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=6.5 | Sprd=1.0
+2025-08-29 15:13:06,458 [Gate] Outside RTH 2025-08-29 20:13:00+00:00
+2025-08-29 15:14:06,167 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=6.3 | Sprd=1.0
+2025-08-29 15:14:06,174 [Gate] Outside RTH 2025-08-29 20:14:00+00:00
+2025-08-29 15:15:06,059 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=6.4 | Sprd=1.0
+2025-08-29 15:15:06,059 [Gate] Outside RTH 2025-08-29 20:15:00+00:00
+2025-08-29 15:16:06,855 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=6.2 | Sprd=1.0
+2025-08-29 15:16:06,856 [Gate] Outside RTH 2025-08-29 20:16:00+00:00
+2025-08-29 15:17:05,541 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=6.0 | Sprd=1.0
+2025-08-29 15:17:05,541 [Gate] Outside RTH 2025-08-29 20:17:00+00:00
+2025-08-29 15:18:06,274 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=5.7 | Sprd=1.0
+2025-08-29 15:18:06,276 [Gate] Regime fail
+2025-08-29 15:19:06,322 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=5.4 | Sprd=1.0
+2025-08-29 15:19:06,323 [Gate] Regime fail
+2025-08-29 15:20:06,028 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=5.3 | Sprd=1.0
+2025-08-29 15:20:06,029 [Gate] Regime fail
+2025-08-29 15:21:06,728 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=4.9 | Sprd=1.0
+2025-08-29 15:21:06,728 [Gate] Regime fail
+2025-08-29 15:22:06,519 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=4.6 | Sprd=1.0
+2025-08-29 15:22:06,519 [Gate] Regime fail
+2025-08-29 15:23:06,215 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=4.6 | Sprd=1.0
+2025-08-29 15:23:06,216 [Gate] Regime fail
+2025-08-29 15:24:06,166 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=4.4 | Sprd=1.0
+2025-08-29 15:24:06,166 [Gate] Regime fail
+2025-08-29 15:25:06,152 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=4.2 | Sprd=1.0
+2025-08-29 15:25:06,152 [Gate] Regime fail
+2025-08-29 15:26:05,883 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=4.3 | Sprd=1.0
+2025-08-29 15:26:05,894 [Gate] Regime fail
+2025-08-29 15:27:06,618 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=4.0 | Sprd=1.0
+2025-08-29 15:27:06,618 [Gate] Regime fail
+2025-08-29 15:28:06,377 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=3.9 | Sprd=1.0
+2025-08-29 15:28:06,378 [Gate] Regime fail
+2025-08-29 15:29:06,055 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=3.8 | Sprd=1.0
+2025-08-29 15:29:06,056 [Gate] Regime fail
+2025-08-29 15:30:05,875 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=3.7 | Sprd=1.0
+2025-08-29 15:30:05,876 [Gate] Regime fail
+2025-08-29 15:31:06,664 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=3.5 | Sprd=1.0
+2025-08-29 15:31:06,665 [Gate] Regime fail
+2025-08-29 15:32:06,466 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=3.3 | Sprd=1.0
+2025-08-29 15:32:06,467 [Gate] Regime fail
+2025-08-29 15:33:06,368 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=3.2 | Sprd=1.0
+2025-08-29 15:33:06,369 [Gate] Regime fail
+2025-08-29 15:34:06,130 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=2.9 | Sprd=1.0
+2025-08-29 15:34:06,131 [Gate] Regime fail
+2025-08-29 15:35:06,859 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=2.9 | Sprd=1.0
+2025-08-29 15:35:06,859 [Gate] Regime fail
+2025-08-29 15:36:06,607 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=2.9 | Sprd=1.0
+2025-08-29 15:36:06,607 [Gate] Regime fail
+2025-08-29 15:37:06,295 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=2.7 | Sprd=1.0
+2025-08-29 15:37:06,295 [Gate] Regime fail
+2025-08-29 15:38:05,983 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=2.5 | Sprd=1.0
+2025-08-29 15:38:05,983 [Gate] Regime fail
+2025-08-29 15:39:06,656 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=2.5 | Sprd=1.0
+2025-08-29 15:39:06,658 [Gate] Regime fail
+2025-08-29 15:40:06,312 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=2.5 | Sprd=1.0
+2025-08-29 15:40:06,313 [Gate] Regime fail
+2025-08-29 15:41:05,993 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=2.4 | Sprd=1.0
+2025-08-29 15:41:05,993 [Gate] Regime fail
+2025-08-29 15:42:06,726 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=2.3 | Sprd=1.0
+2025-08-29 15:42:06,726 [Gate] Regime fail
+2025-08-29 15:43:06,468 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=2.2 | Sprd=1.0
+2025-08-29 15:43:06,468 [Gate] Regime fail
+2025-08-29 15:44:06,174 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=2.2 | Sprd=1.0
+2025-08-29 15:44:06,175 [Gate] Regime fail
+2025-08-29 15:45:06,839 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=2.1 | Sprd=1.0
+2025-08-29 15:45:06,839 [Gate] Regime fail
+2025-08-29 15:46:06,544 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=2.0 | Sprd=1.0
+2025-08-29 15:46:06,544 [Gate] Regime fail
+2025-08-29 15:47:06,248 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=1.9 | Sprd=1.0
+2025-08-29 15:47:06,248 [Gate] Regime fail
+2025-08-29 15:48:05,931 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=1.9 | Sprd=1.0
+2025-08-29 15:48:05,932 [Gate] Regime fail

@@ -1,0 +1,51 @@
+{
+  "contract": {
+    "symbol": "ES",
+    "localSymbol": "ESU5",
+    "conId": 637533641
+  },
+  "accounts": [
+    "DU2660649"
+  ],
+  "safety": {
+    "live_detected": false,
+    "allow_live": false,
+    "cancel_on_disconnect": true,
+    "parent_type": "STP_LMT",
+    "stop_limit_slip_ticks": 4,
+    "rth_only": true,
+    "outsideRth": false
+  },
+  "gates": {
+    "rth_only": true,
+    "min_atr_ticks": 4.0,
+    "max_spread_ticks": 4.0
+  },
+  "smart": {
+    "adx_min": 8.0,
+    "bb_bw_min": 0.002,
+    "atr_pct_min": 5e-05,
+    "stop_entry_atr_mult": 0.5,
+    "atr_init_mult": 1.8,
+    "chand_mult": 3.0,
+    "chand_len": 22,
+    "time_stop_bars": 30,
+    "progress_needed_r": 0.5,
+    "partial_frac": 0.5,
+    "r_take_partial": 1.0,
+    "cooldown_signals": 3,
+    "disable_hours": null,
+    "parent_ttl_bars": 10
+  },
+  "place_orders": true,
+  "qty": 1,
+  "market_data_type": "LIVE (1)",
+  "risk": {
+    "risk_per_trade": 100.0,
+    "daily_loss_limit": 400.0,
+    "max_consec_losses": 3,
+    "fees_per_rt": 4.0,
+    "max_qty": 4,
+    "min_stop_ticks": 8
+  }
+}

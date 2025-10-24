@@ -1,0 +1,5 @@
+TimeEntry,Playbook,Context,Side,Qty,EntryStop,EntryType,StopDist,ATRt,TPs,SL,Reason,ParentId,ParamTag,SizeLevel,AssumedSlipTicks,TimeExit,ExitPx,ExitReason,RealizedPnL,Rmultiple,EqAfter
+2025-09-02 17:34:06+0000,meanrev,trendH/volH/bandH|mid,SHORT,1,6402.5,STP_LMT,3.74371547963706,8.3193677325268,6398.75:0;6395.0:1,6406.25,signal,394,v1,0,0.5966403221886166,,,,,,
+2025-09-02 18:05:05+0000,trend,trendM/volM/bandM|mid,SHORT,1,6407.0,STP_LMT,2.5173649724829352,5.594144383295411,6404.5:0;6402.0:1,6409.5,signal,2823,v1,0,0.5,,,,,,
+2025-09-02 18:17:06+0000,meanrev,trendM/volM/bandM|mid,LONG,1,6404.25,STP_LMT,2.378184215552362,5.284853812338581,6406.75:0;6409.0:1,6401.75,signal,3790,v1,0,0.5,,,,,,
+2025-09-02 18:18:06+0000,meanrev,trendM/volM/bandM|mid,LONG,1,6404.0,STP_LMT,2.2725996287271935,5.050221397171541,6406.25:0;6408.5:1,6401.75,signal,3873,v1,0,0.5,,,,,,

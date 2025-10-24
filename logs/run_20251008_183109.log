@@ -1,0 +1,219 @@
+
+[2025-10-08 18:31:09] CMD: C:\Users\owner\AppData\Local\Programs\Python\Python313\python.exe -X faulthandler -u C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py --local-symbol ESZ5 --host 127.0.0.1 --port 7497 --clientId 111 --symbol ES --auto-front-month --entry-slippage-ticks 2 --atomic-bracket --qty 1 --risk-ticks 12 --tick-size 0.25 --tp-R 1.0 --enable-arms trend,breakout --gate-adx 19 --gate-bbbw 0.00020 --gate-atrp 0.000055 --min-hold-sec 60 --breakeven-after-R 2.2 --trail-atr-mult 3.2 --trail-delay-sec 240 --trail-on-bar-close --max-trades-per-day 12 --day-loss-cap-R 3 --strategy-cooldown-sec 150 --trade-start-ct 00:00 --trade-end-ct 23:59 --tif GTC --outsideRth --require-new-bar-after-start --startup-delay-sec 10 --debounce-one-bar --duration 1D --connect-timeout-sec 300 --timeout-sec 300 --bandit meta --bandit-state .\data\learn\bandit_state.json --learn-log --learn-log-dir .\logs\learn --decay-half-life-trades 400 --meta-eta 0.2 --switching-cost 0.05 --ph-delta 0.002 --ph-lambda 0.98 --poll-hist-when-no-rt --poll-interval-sec 10 --place-orders -v
+[2025-10-08 18:31:14] [WD] hb uptime=5s restarts=0 child_alive=True
+[2025-10-08 18:31:19] [WD] hb uptime=10s restarts=0 child_alive=True
+[2025-10-08 18:31:24] [WD] hb uptime=15s restarts=0 child_alive=True
+[2025-10-08 18:31:29] [WD] hb uptime=20s restarts=0 child_alive=True
+[2025-10-08 18:31:34] [WD] hb uptime=25s restarts=0 child_alive=True
+[2025-10-08 18:31:39] [WD] hb uptime=30s restarts=0 child_alive=True
+[2025-10-08 18:31:44] [WD] hb uptime=35s restarts=0 child_alive=True
+[2025-10-08 18:31:49] [WD] hb uptime=40s restarts=0 child_alive=True
+Starting ES paper bot...
+[CONNECT] 127.0.0.1:7497 clientId=111
+Connected
+[MD] Market data type set to LIVE (1)
+[CONTRACT] Using localSymbol=ESZ5 conId=495512563 expiry=20251219
+[BOOT] Hist seed: 361 bars
+[MD] POLL appended bar 2025-10-08 18:31:15-05:00 close=6811.75 total=362
+2025-10-08 18:31:20 INFO [HB] active | src=POLL dayR=0.00 open=0 tradesToday=0 bars=362 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:31:20 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=363 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:31:21 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=363 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:31:21 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=363 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:31:22 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=363 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:31:22 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=363 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:31:23 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=363 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:31:23 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=363 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:31:24 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=363 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:31:24 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=363 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:31:25 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=363 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:31:25 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=363 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:31:26 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=363 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:31:26 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=363 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:31:27 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=363 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:31:27 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=363 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:31:28 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=363 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:31:28 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=363 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:31:29 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=363 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:31:29 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=363 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:31:30 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=363 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:31:30 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=363 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:31:31 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=363 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:31:31 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=363 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:31:32 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=363 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:31:32 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=363 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:31:33 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=363 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:31:33 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=363 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:31:34 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=363 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:31:34 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=363 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:31:35 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=363 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:31:35 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=363 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:31:36 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=363 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:31:36 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=363 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:31:37 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=363 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:31:37 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=363 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:31:38 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=363 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:31:38 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=363 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:31:39 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=363 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:31:39 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=363 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:31:40 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=363 | arms=trend 0/0.00, breakout 0/0.00
+[MD] POLL appended bar 2025-10-08 18:31:35-05:00 close=6811.50 total=364
+2025-10-08 18:31:40 INFO [HB] active | src=POLL dayR=0.00 open=0 tradesToday=0 bars=364 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:31:41 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=365 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:31:42 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=365 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:31:42 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=365 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:31:43 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=365 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:31:43 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=365 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:31:44 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=365 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:31:44 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=365 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:31:45 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=365 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:31:45 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=365 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:31:46 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=365 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:31:46 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=365 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:31:47 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=365 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:31:47 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=365 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:31:48 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=365 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:31:48 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=365 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:31:49 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=365 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:31:49 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=365 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:31:50 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=365 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:31:50 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=365 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:31:51 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=365 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:31:51 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=365 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:31:52 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=365 | arms=trend 0/0.00, breakout 0/0.00
+[2025-10-08 18:31:54] [WD] hb uptime=45s restarts=0 child_alive=True
+[2025-10-08 18:31:59] [WD] hb uptime=50s restarts=0 child_alive=True
+[2025-10-08 18:32:04] [WD] hb uptime=55s restarts=0 child_alive=True
+[2025-10-08 18:32:09] [WD] hb uptime=60s restarts=0 child_alive=True
+[2025-10-08 18:32:14] [WD] hb uptime=65s restarts=0 child_alive=True
+[2025-10-08 18:32:19] [WD] hb uptime=70s restarts=0 child_alive=True
+2025-10-08 18:31:52 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=365 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:31:53 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=365 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:31:53 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=365 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:31:54 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=365 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:31:54 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=365 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:31:55 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=365 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:31:55 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=365 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:31:56 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=365 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:31:56 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=365 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:31:57 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=365 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:31:57 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=365 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:31:58 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=365 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:31:58 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=365 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:31:59 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=365 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:31:59 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=365 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:32:00 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=365 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:32:00 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=365 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:32:01 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=365 | arms=trend 0/0.00, breakout 0/0.00
+[MD] POLL appended bar 2025-10-08 18:32:00-05:00 close=6811.50 total=366
+2025-10-08 18:32:01 INFO [HB] active | src=POLL dayR=0.00 open=0 tradesToday=0 bars=366 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:32:02 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=367 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:32:02 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=367 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:32:03 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=367 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:32:03 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=367 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:32:04 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=367 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:32:04 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=367 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:32:05 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=367 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:32:05 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=367 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:32:06 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=367 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:32:06 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=367 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:32:07 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=367 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:32:07 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=367 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:32:08 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=367 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:32:08 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=367 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:32:09 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=367 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:32:09 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=367 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:32:10 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=367 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:32:10 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=367 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:32:11 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=367 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:32:11 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=367 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:32:12 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=367 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:32:12 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=367 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:32:13 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=367 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:32:13 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=367 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:32:14 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=367 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:32:14 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=367 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:32:15 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=367 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:32:15 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=367 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:32:16 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=367 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:32:16 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=367 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:32:17 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=367 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:32:17 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=367 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:32:18 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=367 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:32:18 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=367 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:32:19 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=367 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:32:19 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=367 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:32:20 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=367 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:32:20 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=367 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:32:21 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=367 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:32:21 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=367 | arms=trend 0/0.00, breakout 0/0.00
+[MD] POLL appended bar 2025-10-08 18:32:20-05:00 close=6811.25 total=368
+2025-10-08 18:32:22 INFO [HB] active | src=POLL dayR=0.00 open=0 tradesToday=0 bars=368 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:32:22 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=369 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:32:23 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=369 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:32:23 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=369 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:32:24 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=369 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:32:24 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=369 | arms=trend 0/0.00, breakout 0/0.00
+[2025-10-08 18:32:24] [WD] hb uptime=75s restarts=0 child_alive=True
+[2025-10-08 18:32:29] [WD] hb uptime=80s restarts=0 child_alive=True
+[2025-10-08 18:32:34] [WD] hb uptime=85s restarts=0 child_alive=True
+[2025-10-08 18:32:39] [WD] hb uptime=90s restarts=0 child_alive=True
+[2025-10-08 18:32:44] [WD] hb uptime=95s restarts=0 child_alive=True
+[2025-10-08 18:32:49] [WD] hb uptime=100s restarts=0 child_alive=True
+2025-10-08 18:32:25 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=369 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:32:25 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=369 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:32:26 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=369 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:32:26 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=369 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:32:27 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=369 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:32:27 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=369 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:32:28 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=369 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:32:28 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=369 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:32:29 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=369 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:32:29 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=369 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:32:30 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=369 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:32:30 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=369 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:32:31 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=369 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:32:31 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=369 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:32:32 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=369 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:32:32 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=369 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:32:33 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=369 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:32:33 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=369 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:32:34 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=369 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:32:34 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=369 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:32:35 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=369 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:32:35 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=369 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:32:36 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=369 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:32:36 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=369 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:32:37 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=369 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:32:37 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=369 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:32:38 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=369 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:32:38 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=369 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:32:39 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=369 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:32:39 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=369 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:32:40 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=369 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:32:40 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=369 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:32:41 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=369 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:32:41 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=369 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:32:42 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=369 | arms=trend 0/0.00, breakout 0/0.00
+[MD] POLL appended bar 2025-10-08 18:32:40-05:00 close=6811.25 total=370
+2025-10-08 18:32:42 INFO [HB] active | src=POLL dayR=0.00 open=0 tradesToday=0 bars=370 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:32:43 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=371 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:32:43 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=371 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:32:44 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=371 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:32:44 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=371 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:32:45 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=371 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:32:45 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=371 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:32:46 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=371 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:32:46 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=371 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:32:47 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=371 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:32:47 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=371 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:32:48 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=371 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:32:48 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=371 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:32:49 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=371 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:32:49 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=371 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:32:50 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=371 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:32:50 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=371 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:32:51 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=371 | arms=trend 0/0.00, breakout 0/0.00
+2025-10-08 18:32:51 INFO [HB] active | src=RT dayR=0.00 open=0 tradesToday=0 bars=371 | arms=trend 0/0.00, breakout 0/0.00
+[2025-10-08 18:32:52] EXIT CODE: 1
+[2025-10-08 18:32:54] [WD] hb uptime=105s restarts=1 child_alive=False
+[2025-10-08 18:32:59] [WD] hb uptime=110s restarts=1 child_alive=False

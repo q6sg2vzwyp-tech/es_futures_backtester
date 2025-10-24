@@ -1,0 +1,32 @@
+{
+  "place_orders": false,
+  "long_only": false,
+  "exits": {
+    "use_bracket": false,
+    "tp_ticks": 12,
+    "sl_ticks": 8,
+    "trail_ticks": 0
+  },
+  "entry": {
+    "entry_limit_offset": 2,
+    "entry_timeout_s": 8
+  },
+  "pyramiding": {
+    "pyramid_max": 0,
+    "pyramid_step_atr": 0.5
+  },
+  "gates": {
+    "rth_only": false,
+    "min_atr_ticks": 0.0,
+    "max_spread_ticks": 0.0
+  },
+  "auto_flat": {
+    "flat_at": null,
+    "preclose_flat_3m": true
+  },
+  "contract": {
+    "symbol": "ES",
+    "localSymbol": "ESU5",
+    "conId": 637533641
+  }
+}

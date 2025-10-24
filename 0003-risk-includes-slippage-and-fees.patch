@@ -1,0 +1,54 @@
+﻿diff --git a/paper_trader.py b/paper_trader.py
+index 3333333..4444444 100644
+--- a/paper_trader.py
++++ b/paper_trader.py
+@@ -198,6 +198,9 @@ def build_argparser():
+     ap.add_argument("--tp-R", type=float, default=1.0)
+ 
+     # Margin awareness
+     ap.add_argument("--margin-per-contract", type=float, default=13200.0)
+     ap.add_argument("--margin-reserve-pct", type=float, default=0.10)
++    # Fees & risk modeling
++    ap.add_argument("--commission-per-contract", type=float, default=2.25,
++                    help="Estimate per contract per side (USD); used for risk if --risk-includes-slippage")
+@@ -243,6 +246,8 @@ def build_argparser():
+     ap.add_argument("--rt-starve-sec", type=float, default=3.0,
+                     help="Seconds with 0 RT bars before declaring 'starved'")
++    # Risk modeling toggle
++    ap.add_argument("--risk-includes-slippage", action="store_true")
+ 
+     # Learning
+     ap.add_argument("--bandit", choices=["thompson"], default="thompson")
+@@ -420,8 +425,23 @@ def main():
+     day_guard_dollars = -float(args.day_guard_pct) * start_of_day_equity
+ 
+     # Sizing helpers
+-    def per_contract_risk_dollars() -> float:
+-        return float(args.risk_ticks) * float(args.tick_size) * float(px_mult)
++    def per_contract_risk_dollars() -> float:
++        """Base risk is ticks*tick*mult; optionally add expected slippage+fees."""
++        base = float(args.risk_ticks) * float(args.tick_size) * float(px_mult)
++        if not args.risk_includes_slippage:
++            return base
++        # expected slippage on entry AND rough exit (use entry_slippage as proxy)
++        slip_ticks = max(0, int(getattr(args, "entry_slippage_ticks", 0)))
++        slip_dollars = slip_ticks * float(args.tick_size) * float(px_mult)
++        # round-trip commissions per contract (entry + exit)
++        rt_commissions = 2.0 * float(getattr(args, "commission_per_contract", 0.0) or 0.0)
++        return max(1e-6, base + slip_dollars + rt_commissions)
+@@ -657,12 +677,12 @@ def main():
+             if prev_net_qty != 0 and net_qty == 0 and entry_price is not None:
+                 exit_px = last_exec_price if last_exec_price is not None else (C[-1] if C else entry_price)
+                 signed = 1 if prev_net_qty > 0 else -1
+-                pc_risk = float(args.risk_ticks) * float(args.tick_size) * float(px_mult)
++                pc_risk = per_contract_risk_dollars()
+                 risk_dollars_total = pc_risk * max(1, cycle_entry_qty)
+                 pnl_dollars = (exit_px - entry_price) * px_mult * signed * max(1, cycle_entry_qty) - cycle_commission
+                 reward_R = (pnl_dollars / risk_dollars_total) if risk_dollars_total > 0 else 0.0
+@@ -909,6 +929,9 @@ def main():
+                             else:
+                                 stop_price = round_to_tick(last_px + risk_px + tick, tick)
+                                 targ_price = round_to_tick(last_px - tp_px - tick, tick)
++                            # NOTE: risk-includes-slippage only affects R math and sizing/reporting,
++                            # not the physical stop distance (behavior stays consistent).
++

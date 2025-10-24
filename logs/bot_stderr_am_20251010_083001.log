@@ -1,0 +1,2 @@
+C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py:1005: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  print(f"{dt.datetime.utcnow():%Y-%m-%d %H:%M:%S} INFO submitted bracket parentId={oid} entry={entry:.2f} stop={sl:.2f} tp={tp:.2f}")

@@ -1,0 +1,34 @@
+--place-orders
+--use-ib-pnl
+--learn-mode advisory
+--risk-profile balanced
+--local-symbol ESZ5
+
+--trade-start-ct 00:00
+--trade-end-ct 23:59
+--startup-delay-sec 0
+--gate-bbbw 0
+
+--poll-hist-when-no-rt
+--poll-interval-sec 10
+--rt-staleness-sec 45
+
+--session-reset-cts 08:30,16:00,17:00
+--vwap-reset-on-session
+--short-guard-vwap
+--short-guard-lower-high
+
+--pos-age-cap-sec 1200
+--pos-age-minR 0.5
+--hwm-stepdown
+--hwm-stepdown-dollars 5000
+
+--day-guard-pct 0.025
+--day-loss-cap-R 3
+--max-trades-per-day 12
+--max-consec-losses 3
+
+--tick-size 0.25
+--risk-ticks 12
+--tp-R 1.0
+--entry-slippage-ticks 2

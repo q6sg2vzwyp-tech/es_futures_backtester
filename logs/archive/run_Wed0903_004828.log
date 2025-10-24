@@ -1,0 +1,42 @@
+2025-09-03 00:48:28,264 ================== PAPER MODE ==================
+2025-09-03 00:48:28,265 Host:127.0.0.1  Port:7497  ClientId:19
+2025-09-03 00:48:28,265 Paper account required (TWS/Gateway set to Paper). Orders WILL be sent (paper).
+2025-09-03 00:48:28,265 Writing log to logs\run_Wed0903_004828.log
+2025-09-03 00:48:28,775 [PING 1] clientId=40508 connected: True
+2025-09-03 00:48:28,776 [CONNECT] Attempt 1/8 to 127.0.0.1:7497 (clientId=19, timeout=60s)
+2025-09-03 00:48:29,184 Connected 127.0.0.1:7497 clientId=19 | Market data type: LIVE (1)
+2025-09-03 00:48:29,190 Using contract: ESU5  (conId=637533641)
+2025-09-03 00:48:29,232 [AUTOROLL] Will warn 7 days before expiry (print-only).
+2025-09-03 00:48:29,232 [RISK] Daily loss cap: $1,250.00
+2025-09-03 00:48:29,780 [WARMUP] Loaded 7129 historical 1m bars.
+2025-09-03 00:48:29,913 >> LIVE paper trading with adaptive chooser + promotion ladder. Ctrl+C to stop.
+2025-09-03 00:49:06,705 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=3.0 | Sprd=1.0
+2025-09-03 00:49:06,705 [REGIME] ADX=28.2  BBbw=0.0007  ATR%=0.000115  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+2025-09-03 00:49:06,705 [Gate] Freeze window (open/news)
+2025-09-03 00:50:06,993 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=2.9 | Sprd=1.0
+2025-09-03 00:50:06,993 [REGIME] ADX=30.8  BBbw=0.0008  ATR%=0.000112  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+2025-09-03 00:50:06,993 [Gate] Freeze window (open/news)
+2025-09-03 00:51:06,856 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=3.0 | Sprd=1.0
+2025-09-03 00:51:06,856 [REGIME] ADX=30.7  BBbw=0.0008  ATR%=0.000118  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+2025-09-03 00:51:06,856 [Gate] Freeze window (open/news)
+2025-09-03 00:52:06,839 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=3.0 | Sprd=1.0
+2025-09-03 00:52:06,839 [REGIME] ADX=31.0  BBbw=0.0009  ATR%=0.000118  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+2025-09-03 00:52:06,839 [Gate] Freeze window (open/news)
+2025-09-03 00:53:07,221 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=3.2 | Sprd=1.0
+2025-09-03 00:53:07,221 [REGIME] ADX=30.2  BBbw=0.0008  ATR%=0.000123  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+2025-09-03 00:53:07,221 [Gate] Freeze window (open/news)
+2025-09-03 00:54:06,971 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=3.1 | Sprd=1.0
+2025-09-03 00:54:06,971 [REGIME] ADX=29.9  BBbw=0.0008  ATR%=0.000120  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+2025-09-03 00:54:06,972 [Gate] Freeze window (open/news)
+2025-09-03 00:55:06,885 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=2.9 | Sprd=1.0
+2025-09-03 00:55:06,885 [REGIME] ADX=29.6  BBbw=0.0008  ATR%=0.000112  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+2025-09-03 00:55:06,885 [Gate] Freeze window (open/news)
+2025-09-03 00:56:07,089 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=2.8 | Sprd=1.0
+2025-09-03 00:56:07,089 [REGIME] ADX=29.8  BBbw=0.0008  ATR%=0.000109  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+2025-09-03 00:56:07,089 [Gate] Freeze window (open/news)
+2025-09-03 00:57:07,080 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=2.8 | Sprd=1.0
+2025-09-03 00:57:07,080 [REGIME] ADX=30.5  BBbw=0.0007  ATR%=0.000110  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+2025-09-03 00:57:07,080 [Gate] Freeze window (open/news)
+2025-09-03 00:58:06,288 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=3.0 | Sprd=1.0
+2025-09-03 00:58:06,288 [REGIME] ADX=29.5  BBbw=0.0007  ATR%=0.000116  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+2025-09-03 00:58:06,288 [Gate] Freeze window (open/news)

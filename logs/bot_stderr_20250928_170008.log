@@ -1,0 +1,13 @@
+Error 1100, reqId -1: Connectivity between Gar Wood Securities, LLC and Gar Wood Pro has been lost.
+Error 1102, reqId -1: Connectivity between Gar Wood Securities, LLC and Gar Wood Pro has been restored - data maintained. All data farms are connected: usfarm.nj; usfuture; cashfarm; usfarm; ushmds; secdefil.
+Error 1100, reqId -1: Connectivity between Gar Wood Securities, LLC and Gar Wood Pro has been lost.
+reqHistoricalData: Timeout for Contract(secType='FUT', conId=495512563, symbol='ES', lastTradeDateOrContractMonth='20251219', multiplier='50', exchange='CME', currency='USD', localSymbol='ESZ5', tradingClass='ES')
+Error 366, reqId 6996: No historical data query found for ticker id:6996, contract: Contract(secType='FUT', conId=495512563, symbol='ES', lastTradeDateOrContractMonth='20251219', multiplier='50', exchange='CME', currency='USD', localSymbol='ESZ5', tradingClass='ES')
+Error 1102, reqId -1: Connectivity between Gar Wood Securities, LLC and Gar Wood Pro has been restored - data maintained. All data farms are connected: usfarm.nj; usfuture; cashfarm; usfarm; ushmds; secdefil.
+Error 1100, reqId -1: Connectivity between Gar Wood Securities, LLC and Gar Wood Pro has been lost.
+Error 1100, reqId -1: Connectivity between Gar Wood Securities, LLC and Gar Wood Pro has been lost.
+Error 1100, reqId -1: Connectivity between Gar Wood Securities, LLC and Gar Wood Pro has been lost.
+Error 1100, reqId -1: Connectivity between Gar Wood Securities, LLC and Gar Wood Pro has been lost.
+Error 1100, reqId -1: Connectivity between Gar Wood Securities, LLC and Gar Wood Pro has been lost.
+Error 1100, reqId -1: Connectivity between Gar Wood Securities, LLC and Gar Wood Pro has been lost.
+Error 1102, reqId -1: Connectivity between Gar Wood Securities, LLC and Gar Wood Pro has been restored - data maintained. All data farms are connected: usfarm.nj; usfuture; cashfarm; usfarm; ushmds; secdefil.

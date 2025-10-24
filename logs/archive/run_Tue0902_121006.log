@@ -1,0 +1,12 @@
+2025-09-02 12:10:06,154 ================== PAPER MODE ==================
+2025-09-02 12:10:06,155 Host:127.0.0.1  Port:7497  ClientId:19
+2025-09-02 12:10:06,155 Paper account required (TWS/Gateway set to Paper). Orders WILL be sent (paper).
+2025-09-02 12:10:06,155 Writing log to logs\run_Tue0902_121006.log
+2025-09-02 12:10:06,273 [PING 1] clientId=40006 connected: True
+2025-09-02 12:10:06,275 [CONNECT] Attempt 1/8 to 127.0.0.1:7497 (clientId=19, timeout=60s)
+2025-09-02 12:10:06,387 Connected 127.0.0.1:7497 clientId=19 | Market data type: LIVE (1)
+2025-09-02 12:10:06,390 Using contract: ESU5  (conId=637533641)
+2025-09-02 12:10:06,392 [AUTOROLL] Will warn 7 days before expiry (print-only).
+2025-09-02 12:10:06,392 [RISK] Daily loss cap: $1,250.00
+2025-09-02 12:10:06,806 [WARMUP] Loaded 7811 historical 1m bars.
+2025-09-02 12:10:06,907 [CRASH] Saved traceback to: results/ib_session_20250902_171006/crash_20250902_171006.log

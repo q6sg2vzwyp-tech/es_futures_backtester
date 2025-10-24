@@ -1,0 +1,9 @@
+Traceback (most recent call last):
+  File "C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py", line 1025, in main
+    run_trader(args, session_dir)
+    ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py", line 668, in run_trader
+    ladder_spec = parse_tp_ladder(args.tp_ladder)
+  File "C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py", line 658, in parse_tp_ladder
+    mult = float(mult_str)
+ValueError: could not convert string to float: '"1.0'

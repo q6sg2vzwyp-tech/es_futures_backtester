@@ -1,0 +1,8 @@
+Starting ES paper bot...
+[CONNECT] 127.0.0.1:7497 clientId=111
+[CONNECT] Attempt 1/24 -> clientId=111
+Connected (clientId=111)
+[MD] LIVE (1).
+[CONTRACT] Auto-picked ESZ5 conId=495512563 expiry=20251219
+[CONTRACT] Multiplier detected: 50
+[BOOT] Hist seed: 360 bars

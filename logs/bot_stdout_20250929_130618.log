@@ -1,0 +1,14 @@
+2025-09-29 13:06:19 ERROR Error 200, reqId 11878: No security definition has been found for the request, contract: Contract(secType='FUT', conId=495512563, exchange='GLOBEX')
+2025-09-29 13:06:19 WARNING Unknown contract: Contract(secType='FUT', conId=495512563, exchange='GLOBEX')
+2025-09-29 13:06:19 ERROR Error 200, reqId 11879: No security definition has been found for the request, contract: Contract(secType='FUT', conId=495512563, exchange='GLOBEX')
+2025-09-29 13:06:19 ERROR Fatal error: 'NoneType' object has no attribute 'empty'
+Traceback (most recent call last):
+  File "C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py", line 727, in main
+    run_bot(cfg)
+    ~~~~~~~^^^^^
+  File "C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py", line 472, in run_bot
+    df = fetch_bars(ib, contract, cfg.bar_size, cfg.duration)
+  File "C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py", line 261, in fetch_bars
+    if df.empty:
+       ^^^^^^^^
+AttributeError: 'NoneType' object has no attribute 'empty'

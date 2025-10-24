@@ -1,0 +1,44 @@
+[tool.black]
+line-length = 100
+target-version = ["py311", "py312", "py313"]
+
+[tool.ruff]
+line-length = 100
+fix = true
+target-version = "py311"
+select = [
+  "E","F","W",    # pycodestyle/pyflakes
+  "I",            # import sorting
+  "UP",           # pyupgrade
+  "B",            # bugbear
+  "C4",           # comprehensions
+  "SIM",          # simplifications
+  "PIE",
+  "RUF"
+]
+ignore = [
+  "E203",         # black compatibility around slices
+]
+exclude = ["build/", "dist/", ".venv/"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["your_package_name"]
+combine-as-imports = true
+
+[tool.mypy]
+python_version = "3.11"
+ignore_missing_imports = true          # flip to false as you add stubs
+show_error_codes = true
+warn_unused_ignores = true
+disallow_untyped_defs = false          # set true once you add types
+exclude = '(^.venv/|^tests/data/)'
+
+[tool.pytest.ini_options]
+addopts = "-q -ra"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+filterwarnings = ["ignore::DeprecationWarning"]
+
+# (Optional) bandit config (you can also use a bandit.yaml)
+[tool.bandit]
+skips = ["B101"]  # example: assert-used; remove if you want to flag asserts

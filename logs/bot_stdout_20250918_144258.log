@@ -1,0 +1,10 @@
+[INFO] 2025-09-18 14:43:05 Enabled arms: trend,breakout,reversion,vwap
+[INFO] 2025-09-18 14:43:05 Loaded chooser state from C:\Users\owner\Desktop\es_futures_backtester\models\linucb_es.json
+[INFO] 2025-09-18 14:43:05 [PING 1] clientId=19 connected: False
+[INFO] 2025-09-18 14:43:05 Connected 127.0.0.1:7497 clientId=19 | Market data type: LIVE
+[INFO] 2025-09-18 14:43:06 Using contract: ESZ5  (conId=495512563)
+[INFO] 2025-09-18 14:43:06 [WARMUP] Fetching 5d of 1m bars...
+[INFO] 2025-09-18 14:43:07 [WARMUP] Loaded 6823 historical 1m bars.
+[INFO] 2025-09-18 14:43:09 Interrupted; shutting down.
+[INFO] 2025-09-18 14:43:09 Saved chooser state to C:\Users\owner\Desktop\es_futures_backtester\models\linucb_es.json
+[INFO] 2025-09-18 14:43:09 [SNAPSHOT] Wrote logs\chooser_snapshots\linucb_es_20250918_20250918_144309.json

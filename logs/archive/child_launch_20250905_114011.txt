@@ -1,0 +1,656 @@
+============================================================
+[START] 2025-09-05 11:40:11
+[CMD] C:\Users\owner\AppData\Local\Programs\Python\Python313\python.exe -X faulthandler -u paper_trader.py --host 127.0.0.1 --port 7497 --clientId 19 --symbol ES --expiry 202509 --exchange CME --tp-ladder 1.0R:50,2.0R:50 --no-confirm --place-orders --debug-regime
+============================================================
+==================================================
+================== PAPER MODE ====================
+Host:127.0.0.1  Port:7497  ClientId:19
+Paper account required (TWS/Gateway set to Paper). Orders WILL be sent (paper).
+Writing log to logs/run_Fri0905_114012.log
+[CONNECT] Attempt 1/8 to 127.0.0.1:7497 (clientId=19, timeout=60s)
+Connected 127.0.0.1:7497 clientId=19 | Market data type: LIVE (1)
+Using contract: ESU5  (conId=637533641)
+C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py:273: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  return (dt_exp.date() - datetime.utcnow().date()).days
+[AUTOROLL] Will warn 7 days before expiry (print-only).
+Error 321, reqId 4772: Error validating request.-'bM' : cause - Historical data request for durations longer than 12 months must be made in years., contract: Contract(secType='FUT', conId=637533641, symbol='ES', lastTradeDateOrContractMonth='20250919', multiplier='50', exchange='CME', currency='USD', localSymbol='ESU5', tradingClass='ES')
+[WARMUP] No historical data.
+[CHOOSER] In-memory LinUCB (not persisted) with arms=25
+[TP] Ladder: 1.0R:50%, 2.0R:50% | risk=$250.00
+>> LIVE paper trading with adaptive chooser + promotion ladder. Ctrl+C to stop.
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=nan  BBbw=nan  ATR%=nan  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py:171: DeprecationWarning: Conversion of an array with ndim > 0 to a scalar is deprecated, and will error in future. Ensure you extract a single element from your array before performing this operation. (Deprecated NumPy 1.25.)
+  p = float((theta.T @ x) + self.alpha * math.sqrt((x.T @ A_inv @ x)))
+C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py:171: DeprecationWarning: Conversion of an array with ndim > 0 to a scalar is deprecated, and will error in future. Ensure you extract a single element from your array before performing this operation. (Deprecated NumPy 1.25.)
+  p = float((theta.T @ x) + self.alpha * math.sqrt((x.T @ A_inv @ x)))
+C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py:171: DeprecationWarning: Conversion of an array with ndim > 0 to a scalar is deprecated, and will error in future. Ensure you extract a single element from your array before performing this operation. (Deprecated NumPy 1.25.)
+  p = float((theta.T @ x) + self.alpha * math.sqrt((x.T @ A_inv @ x)))
+C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py:171: DeprecationWarning: Conversion of an array with ndim > 0 to a scalar is deprecated, and will error in future. Ensure you extract a single element from your array before performing this operation. (Deprecated NumPy 1.25.)
+  p = float((theta.T @ x) + self.alpha * math.sqrt((x.T @ A_inv @ x)))
+C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py:171: DeprecationWarning: Conversion of an array with ndim > 0 to a scalar is deprecated, and will error in future. Ensure you extract a single element from your array before performing this operation. (Deprecated NumPy 1.25.)
+  p = float((theta.T @ x) + self.alpha * math.sqrt((x.T @ A_inv @ x)))
+C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py:171: DeprecationWarning: Conversion of an array with ndim > 0 to a scalar is deprecated, and will error in future. Ensure you extract a single element from your array before performing this operation. (Deprecated NumPy 1.25.)
+  p = float((theta.T @ x) + self.alpha * math.sqrt((x.T @ A_inv @ x)))
+C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py:171: DeprecationWarning: Conversion of an array with ndim > 0 to a scalar is deprecated, and will error in future. Ensure you extract a single element from your array before performing this operation. (Deprecated NumPy 1.25.)
+  p = float((theta.T @ x) + self.alpha * math.sqrt((x.T @ A_inv @ x)))
+C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py:171: DeprecationWarning: Conversion of an array with ndim > 0 to a scalar is deprecated, and will error in future. Ensure you extract a single element from your array before performing this operation. (Deprecated NumPy 1.25.)
+  p = float((theta.T @ x) + self.alpha * math.sqrt((x.T @ A_inv @ x)))
+C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py:171: DeprecationWarning: Conversion of an array with ndim > 0 to a scalar is deprecated, and will error in future. Ensure you extract a single element from your array before performing this operation. (Deprecated NumPy 1.25.)
+  p = float((theta.T @ x) + self.alpha * math.sqrt((x.T @ A_inv @ x)))
+C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py:171: DeprecationWarning: Conversion of an array with ndim > 0 to a scalar is deprecated, and will error in future. Ensure you extract a single element from your array before performing this operation. (Deprecated NumPy 1.25.)
+  p = float((theta.T @ x) + self.alpha * math.sqrt((x.T @ A_inv @ x)))
+C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py:171: DeprecationWarning: Conversion of an array with ndim > 0 to a scalar is deprecated, and will error in future. Ensure you extract a single element from your array before performing this operation. (Deprecated NumPy 1.25.)
+  p = float((theta.T @ x) + self.alpha * math.sqrt((x.T @ A_inv @ x)))
+C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py:171: DeprecationWarning: Conversion of an array with ndim > 0 to a scalar is deprecated, and will error in future. Ensure you extract a single element from your array before performing this operation. (Deprecated NumPy 1.25.)
+  p = float((theta.T @ x) + self.alpha * math.sqrt((x.T @ A_inv @ x)))
+C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py:171: DeprecationWarning: Conversion of an array with ndim > 0 to a scalar is deprecated, and will error in future. Ensure you extract a single element from your array before performing this operation. (Deprecated NumPy 1.25.)
+  p = float((theta.T @ x) + self.alpha * math.sqrt((x.T @ A_inv @ x)))
+C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py:171: DeprecationWarning: Conversion of an array with ndim > 0 to a scalar is deprecated, and will error in future. Ensure you extract a single element from your array before performing this operation. (Deprecated NumPy 1.25.)
+  p = float((theta.T @ x) + self.alpha * math.sqrt((x.T @ A_inv @ x)))
+C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py:171: DeprecationWarning: Conversion of an array with ndim > 0 to a scalar is deprecated, and will error in future. Ensure you extract a single element from your array before performing this operation. (Deprecated NumPy 1.25.)
+  p = float((theta.T @ x) + self.alpha * math.sqrt((x.T @ A_inv @ x)))
+C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py:171: DeprecationWarning: Conversion of an array with ndim > 0 to a scalar is deprecated, and will error in future. Ensure you extract a single element from your array before performing this operation. (Deprecated NumPy 1.25.)
+  p = float((theta.T @ x) + self.alpha * math.sqrt((x.T @ A_inv @ x)))
+C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py:171: DeprecationWarning: Conversion of an array with ndim > 0 to a scalar is deprecated, and will error in future. Ensure you extract a single element from your array before performing this operation. (Deprecated NumPy 1.25.)
+  p = float((theta.T @ x) + self.alpha * math.sqrt((x.T @ A_inv @ x)))
+C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py:171: DeprecationWarning: Conversion of an array with ndim > 0 to a scalar is deprecated, and will error in future. Ensure you extract a single element from your array before performing this operation. (Deprecated NumPy 1.25.)
+  p = float((theta.T @ x) + self.alpha * math.sqrt((x.T @ A_inv @ x)))
+C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py:171: DeprecationWarning: Conversion of an array with ndim > 0 to a scalar is deprecated, and will error in future. Ensure you extract a single element from your array before performing this operation. (Deprecated NumPy 1.25.)
+  p = float((theta.T @ x) + self.alpha * math.sqrt((x.T @ A_inv @ x)))
+C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py:171: DeprecationWarning: Conversion of an array with ndim > 0 to a scalar is deprecated, and will error in future. Ensure you extract a single element from your array before performing this operation. (Deprecated NumPy 1.25.)
+  p = float((theta.T @ x) + self.alpha * math.sqrt((x.T @ A_inv @ x)))
+C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py:171: DeprecationWarning: Conversion of an array with ndim > 0 to a scalar is deprecated, and will error in future. Ensure you extract a single element from your array before performing this operation. (Deprecated NumPy 1.25.)
+  p = float((theta.T @ x) + self.alpha * math.sqrt((x.T @ A_inv @ x)))
+C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py:171: DeprecationWarning: Conversion of an array with ndim > 0 to a scalar is deprecated, and will error in future. Ensure you extract a single element from your array before performing this operation. (Deprecated NumPy 1.25.)
+  p = float((theta.T @ x) + self.alpha * math.sqrt((x.T @ A_inv @ x)))
+C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py:171: DeprecationWarning: Conversion of an array with ndim > 0 to a scalar is deprecated, and will error in future. Ensure you extract a single element from your array before performing this operation. (Deprecated NumPy 1.25.)
+  p = float((theta.T @ x) + self.alpha * math.sqrt((x.T @ A_inv @ x)))
+C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py:171: DeprecationWarning: Conversion of an array with ndim > 0 to a scalar is deprecated, and will error in future. Ensure you extract a single element from your array before performing this operation. (Deprecated NumPy 1.25.)
+  p = float((theta.T @ x) + self.alpha * math.sqrt((x.T @ A_inv @ x)))
+C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py:171: DeprecationWarning: Conversion of an array with ndim > 0 to a scalar is deprecated, and will error in future. Ensure you extract a single element from your array before performing this operation. (Deprecated NumPy 1.25.)
+  p = float((theta.T @ x) + self.alpha * math.sqrt((x.T @ A_inv @ x)))
+C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py:171: DeprecationWarning: Conversion of an array with ndim > 0 to a scalar is deprecated, and will error in future. Ensure you extract a single element from your array before performing this operation. (Deprecated NumPy 1.25.)
+  p = float((theta.T @ x) + self.alpha * math.sqrt((x.T @ A_inv @ x)))
+C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py:171: DeprecationWarning: Conversion of an array with ndim > 0 to a scalar is deprecated, and will error in future. Ensure you extract a single element from your array before performing this operation. (Deprecated NumPy 1.25.)
+  p = float((theta.T @ x) + self.alpha * math.sqrt((x.T @ A_inv @ x)))
+C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py:171: DeprecationWarning: Conversion of an array with ndim > 0 to a scalar is deprecated, and will error in future. Ensure you extract a single element from your array before performing this operation. (Deprecated NumPy 1.25.)
+  p = float((theta.T @ x) + self.alpha * math.sqrt((x.T @ A_inv @ x)))
+C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py:171: DeprecationWarning: Conversion of an array with ndim > 0 to a scalar is deprecated, and will error in future. Ensure you extract a single element from your array before performing this operation. (Deprecated NumPy 1.25.)
+  p = float((theta.T @ x) + self.alpha * math.sqrt((x.T @ A_inv @ x)))
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=nan  BBbw=nan  ATR%=nan  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=43.7  BBbw=0.0002  ATR%=0.000019  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=24.1  BBbw=0.0001  ATR%=0.000011  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=32.1  BBbw=0.0002  ATR%=0.000025  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=41.7  BBbw=0.0003  ATR%=0.000017  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=7.5  BBbw=0.0001  ATR%=0.000022  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=30.3  BBbw=0.0002  ATR%=0.000019  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=21.9  BBbw=0.0002  ATR%=0.000022  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=59.3  BBbw=0.0002  ATR%=0.000014  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=8.3  BBbw=0.0002  ATR%=0.000041  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=14.3  BBbw=0.0001  ATR%=0.000014  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=59.5  BBbw=0.0001  ATR%=0.000008  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=44.5  BBbw=0.0002  ATR%=0.000014  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=53.6  BBbw=0.0001  ATR%=0.000008  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=33.8  BBbw=0.0002  ATR%=0.000019  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=18.9  BBbw=0.0002  ATR%=0.000022  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=26.6  BBbw=0.0001  ATR%=0.000006  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=27.3  BBbw=0.0001  ATR%=0.000017  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=49.0  BBbw=0.0003  ATR%=0.000028  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=11.0  BBbw=0.0001  ATR%=0.000017  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=42.5  BBbw=0.0002  ATR%=0.000028  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=18.7  BBbw=0.0001  ATR%=0.000017  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=42.9  BBbw=0.0002  ATR%=0.000017  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=30.4  BBbw=0.0002  ATR%=0.000019  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=10.2  BBbw=0.0001  ATR%=0.000017  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=20.7  BBbw=0.0002  ATR%=0.000019  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=25.3  BBbw=0.0002  ATR%=0.000014  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=15.6  BBbw=0.0003  ATR%=0.000039  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=23.5  BBbw=0.0002  ATR%=0.000030  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=49.8  BBbw=0.0005  ATR%=0.000039  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=20.8  BBbw=0.0003  ATR%=0.000030  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=39.4  BBbw=0.0003  ATR%=0.000025  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=31.5  BBbw=0.0002  ATR%=0.000025  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=56.0  BBbw=0.0001  ATR%=0.000008  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=42.2  BBbw=0.0002  ATR%=0.000017  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=25.6  BBbw=0.0002  ATR%=0.000017  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=6.2  BBbw=0.0001  ATR%=0.000011  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=16.2  BBbw=0.0001  ATR%=0.000028  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=23.2  BBbw=0.0001  ATR%=0.000019  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=30.8  BBbw=0.0002  ATR%=0.000019  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=58.4  BBbw=0.0004  ATR%=0.000019  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=41.7  BBbw=0.0001  ATR%=0.000014  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=48.1  BBbw=0.0003  ATR%=0.000028  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=20.7  BBbw=0.0001  ATR%=0.000022  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=16.1  BBbw=0.0002  ATR%=0.000017  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=nan  BBbw=0.0001  ATR%=0.000017  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=25.7  BBbw=0.0001  ATR%=0.000008  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=25.5  BBbw=0.0002  ATR%=0.000025  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=29.3  BBbw=0.0002  ATR%=0.000017  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=28.6  BBbw=0.0001  ATR%=0.000011  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=12.9  BBbw=0.0001  ATR%=0.000011  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=55.9  BBbw=0.0003  ATR%=0.000025  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=18.5  BBbw=0.0002  ATR%=0.000028  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=27.9  BBbw=0.0002  ATR%=0.000019  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=58.9  BBbw=0.0004  ATR%=0.000028  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=25.0  BBbw=0.0002  ATR%=0.000017  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=16.2  BBbw=0.0001  ATR%=0.000011  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=63.2  BBbw=0.0002  ATR%=0.000019  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=59.0  BBbw=0.0004  ATR%=0.000028  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=65.9  BBbw=0.0004  ATR%=0.000022  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=18.6  BBbw=0.0002  ATR%=0.000022  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=66.6  BBbw=0.0005  ATR%=0.000030  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=48.2  BBbw=0.0003  ATR%=0.000019  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=49.4  BBbw=0.0003  ATR%=0.000036  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=35.6  BBbw=0.0003  ATR%=0.000022  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=80.6  BBbw=0.0003  ATR%=0.000022  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=14.8  BBbw=0.0001  ATR%=0.000006  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=20.9  BBbw=0.0002  ATR%=0.000019  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=33.7  BBbw=0.0002  ATR%=0.000025  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=60.4  BBbw=0.0002  ATR%=0.000019  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=28.4  BBbw=0.0002  ATR%=0.000022  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=12.4  BBbw=0.0002  ATR%=0.000028  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=16.2  BBbw=0.0002  ATR%=0.000028  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=10.7  BBbw=0.0001  ATR%=0.000008  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=21.2  BBbw=0.0001  ATR%=0.000008  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=27.5  BBbw=0.0001  ATR%=0.000014  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=12.0  BBbw=0.0001  ATR%=0.000019  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=16.4  BBbw=0.0001  ATR%=0.000019  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=17.1  BBbw=0.0001  ATR%=0.000008  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=45.6  BBbw=0.0004  ATR%=0.000028  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=54.6  BBbw=0.0004  ATR%=0.000022  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=27.0  BBbw=0.0002  ATR%=0.000014  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=42.7  BBbw=0.0002  ATR%=0.000017  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=47.4  BBbw=0.0003  ATR%=0.000033  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=13.9  BBbw=0.0001  ATR%=0.000028  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=41.3  BBbw=0.0003  ATR%=0.000025  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=25.2  BBbw=0.0002  ATR%=0.000022  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=52.0  BBbw=0.0002  ATR%=0.000014  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=40.3  BBbw=0.0005  ATR%=0.000039  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=45.1  BBbw=0.0003  ATR%=0.000030  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=13.8  BBbw=0.0001  ATR%=0.000014  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=21.0  BBbw=0.0001  ATR%=0.000014  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=26.2  BBbw=0.0003  ATR%=0.000028  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=46.4  BBbw=0.0001  ATR%=0.000011  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=31.3  BBbw=0.0002  ATR%=0.000028  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=26.3  BBbw=0.0002  ATR%=0.000025  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=18.8  BBbw=0.0002  ATR%=0.000017  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=39.0  BBbw=0.0002  ATR%=0.000019  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=43.9  BBbw=0.0001  ATR%=0.000006  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=25.0  BBbw=0.0002  ATR%=0.000017  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=28.8  BBbw=0.0002  ATR%=0.000022  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=10.7  BBbw=0.0002  ATR%=0.000025  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=14.5  BBbw=0.0001  ATR%=0.000017  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=55.0  BBbw=0.0001  ATR%=0.000006  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=45.6  BBbw=0.0003  ATR%=0.000022  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=21.5  BBbw=0.0004  ATR%=0.000033  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=17.3  BBbw=0.0001  ATR%=0.000017  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=50.8  BBbw=0.0003  ATR%=0.000022  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=23.9  BBbw=0.0001  ATR%=0.000006  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=42.4  BBbw=0.0003  ATR%=0.000030  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=33.0  BBbw=0.0003  ATR%=0.000022  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=16.0  BBbw=0.0001  ATR%=0.000014  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=78.6  BBbw=0.0003  ATR%=0.000011  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=51.6  BBbw=0.0003  ATR%=0.000019  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=37.8  BBbw=0.0002  ATR%=0.000022  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=15.9  BBbw=0.0001  ATR%=0.000011  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=28.0  BBbw=0.0001  ATR%=0.000025  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=31.2  BBbw=0.0001  ATR%=0.000014  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=22.1  BBbw=0.0002  ATR%=0.000022  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=20.1  BBbw=0.0001  ATR%=0.000014  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=14.2  BBbw=0.0001  ATR%=0.000006  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=43.7  BBbw=0.0003  ATR%=0.000014  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=28.8  BBbw=0.0003  ATR%=0.000019  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=15.9  BBbw=0.0001  ATR%=0.000022  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=24.0  BBbw=0.0002  ATR%=0.000033  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=11.3  BBbw=0.0001  ATR%=0.000022  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=15.0  BBbw=0.0002  ATR%=0.000036  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=32.2  BBbw=0.0002  ATR%=0.000025  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=35.9  BBbw=0.0001  ATR%=0.000006  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=31.5  BBbw=0.0002  ATR%=0.000028  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=22.0  BBbw=0.0002  ATR%=0.000022  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=26.7  BBbw=0.0002  ATR%=0.000017  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=19.1  BBbw=0.0002  ATR%=0.000025  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=17.0  BBbw=0.0001  ATR%=0.000019  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=23.7  BBbw=0.0002  ATR%=0.000028  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=44.0  BBbw=0.0001  ATR%=0.000006  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=26.2  BBbw=0.0001  ATR%=0.000008  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=17.3  BBbw=0.0001  ATR%=0.000019  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=30.1  BBbw=0.0001  ATR%=0.000014  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=33.8  BBbw=0.0001  ATR%=0.000014  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=42.3  BBbw=0.0002  ATR%=0.000022  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=19.8  BBbw=0.0002  ATR%=0.000025  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=25.4  BBbw=0.0003  ATR%=0.000039  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=31.0  BBbw=0.0001  ATR%=0.000006  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=20.2  BBbw=0.0001  ATR%=0.000011  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=35.1  BBbw=0.0003  ATR%=0.000014  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=17.3  BBbw=0.0002  ATR%=0.000028  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=28.9  BBbw=0.0002  ATR%=0.000033  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=26.0  BBbw=0.0002  ATR%=0.000011  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=58.2  BBbw=0.0002  ATR%=0.000011  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=23.9  BBbw=0.0001  ATR%=0.000014  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=56.9  BBbw=0.0004  ATR%=0.000039  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=24.8  BBbw=0.0002  ATR%=0.000019  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=20.2  BBbw=0.0002  ATR%=0.000019  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=24.7  BBbw=0.0002  ATR%=0.000022  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=46.9  BBbw=0.0001  ATR%=0.000022  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=17.4  BBbw=0.0001  ATR%=0.000017  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=42.0  BBbw=0.0001  ATR%=0.000019  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=18.6  BBbw=0.0001  ATR%=0.000022  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=18.3  BBbw=0.0001  ATR%=0.000011  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=33.8  BBbw=0.0003  ATR%=0.000028  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=35.5  BBbw=0.0002  ATR%=0.000017  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=21.1  BBbw=0.0003  ATR%=0.000033  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=37.7  BBbw=0.0002  ATR%=0.000022  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=52.5  BBbw=0.0002  ATR%=0.000014  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=40.0  BBbw=0.0001  ATR%=0.000019  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=14.4  BBbw=0.0001  ATR%=0.000011  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=22.5  BBbw=0.0001  ATR%=0.000014  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=21.4  BBbw=0.0001  ATR%=0.000008  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=49.8  BBbw=0.0003  ATR%=0.000011  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=68.5  BBbw=0.0003  ATR%=0.000025  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=41.0  BBbw=0.0002  ATR%=0.000011  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=89.5  BBbw=0.0002  ATR%=0.000014  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=17.1  BBbw=0.0001  ATR%=0.000006  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=50.9  BBbw=0.0003  ATR%=0.000025  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=48.8  BBbw=0.0002  ATR%=0.000011  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=42.3  BBbw=0.0003  ATR%=0.000028  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=41.7  BBbw=0.0001  ATR%=0.000008  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=19.2  BBbw=0.0001  ATR%=0.000025  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=13.4  BBbw=0.0001  ATR%=0.000022  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=24.4  BBbw=0.0002  ATR%=0.000022  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=26.9  BBbw=0.0002  ATR%=0.000014  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=29.3  BBbw=0.0002  ATR%=0.000028  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=36.5  BBbw=0.0001  ATR%=0.000017  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=14.6  BBbw=0.0001  ATR%=0.000008  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=44.8  BBbw=0.0002  ATR%=0.000017  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=45.2  BBbw=0.0001  ATR%=0.000008  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=83.1  BBbw=0.0002  ATR%=0.000019  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=95.2  BBbw=0.0003  ATR%=0.000017  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=26.9  BBbw=0.0003  ATR%=0.000025  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=21.7  BBbw=0.0001  ATR%=0.000011  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=24.2  BBbw=0.0002  ATR%=0.000019  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=28.0  BBbw=0.0002  ATR%=0.000022  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=12.8  BBbw=0.0001  ATR%=0.000025  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=21.9  BBbw=0.0002  ATR%=0.000033  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=29.4  BBbw=0.0001  ATR%=0.000025  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=37.4  BBbw=0.0003  ATR%=0.000017  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=33.6  BBbw=0.0002  ATR%=0.000030  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=28.7  BBbw=0.0003  ATR%=0.000019  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=19.4  BBbw=0.0002  ATR%=0.000022  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=14.1  BBbw=0.0001  ATR%=0.000017  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=14.9  BBbw=0.0001  ATR%=0.000019  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=39.5  BBbw=0.0003  ATR%=0.000025  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=61.7  BBbw=0.0004  ATR%=0.000011  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=59.3  BBbw=0.0001  ATR%=0.000011  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=27.5  BBbw=0.0002  ATR%=0.000017  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=22.2  BBbw=0.0003  ATR%=0.000014  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=43.6  BBbw=0.0002  ATR%=0.000011  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=23.6  BBbw=0.0002  ATR%=0.000022  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=57.5  BBbw=0.0003  ATR%=0.000014  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=26.7  BBbw=0.0002  ATR%=0.000011  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=21.1  BBbw=0.0001  ATR%=0.000014  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=31.1  BBbw=0.0002  ATR%=0.000022  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=20.8  BBbw=0.0001  ATR%=0.000017  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=21.2  BBbw=0.0001  ATR%=0.000006  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=39.5  BBbw=0.0001  ATR%=0.000006  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=27.4  BBbw=0.0001  ATR%=0.000008  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=31.8  BBbw=0.0002  ATR%=0.000014  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=46.3  BBbw=0.0002  ATR%=0.000030  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=82.1  BBbw=0.0002  ATR%=0.000011  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=91.1  BBbw=0.0005  ATR%=0.000022  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=22.7  BBbw=0.0002  ATR%=0.000022  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=44.3  BBbw=0.0002  ATR%=0.000022  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=30.0  BBbw=0.0002  ATR%=0.000017  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=37.2  BBbw=0.0004  ATR%=0.000033  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=36.9  BBbw=0.0001  ATR%=0.000011  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=33.2  BBbw=0.0003  ATR%=0.000022  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=16.5  BBbw=0.0002  ATR%=0.000033  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=30.5  BBbw=0.0001  ATR%=0.000019  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=44.2  BBbw=0.0003  ATR%=0.000019  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=13.3  BBbw=0.0001  ATR%=0.000011  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=17.0  BBbw=0.0001  ATR%=0.000017  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=7.8  BBbw=0.0001  ATR%=0.000011  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=15.2  BBbw=0.0001  ATR%=0.000014  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=35.5  BBbw=0.0003  ATR%=0.000017  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=49.5  BBbw=0.0001  ATR%=0.000014  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=15.4  BBbw=0.0001  ATR%=0.000014  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=9.3  BBbw=0.0001  ATR%=0.000011  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=60.0  BBbw=0.0002  ATR%=0.000014  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=36.8  BBbw=0.0002  ATR%=0.000022  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=31.2  BBbw=0.0001  ATR%=0.000022  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=17.7  BBbw=0.0002  ATR%=0.000022  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=64.8  BBbw=0.0003  ATR%=0.000019  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=33.9  BBbw=0.0004  ATR%=0.000030  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=53.8  BBbw=0.0004  ATR%=0.000033  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=17.7  BBbw=0.0001  ATR%=0.000019  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=24.6  BBbw=0.0005  ATR%=0.000033  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=48.3  BBbw=0.0004  ATR%=0.000036  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=26.0  BBbw=0.0003  ATR%=0.000028  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=18.9  BBbw=0.0002  ATR%=0.000017  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=26.5  BBbw=0.0003  ATR%=0.000030  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=73.7  BBbw=0.0005  ATR%=0.000030  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=13.1  BBbw=0.0001  ATR%=0.000022  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=72.3  BBbw=0.0003  ATR%=0.000025  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=13.0  BBbw=0.0002  ATR%=0.000022  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=29.3  BBbw=0.0003  ATR%=0.000033  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=35.6  BBbw=0.0004  ATR%=0.000028  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=55.3  BBbw=0.0004  ATR%=0.000017  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=25.2  BBbw=0.0002  ATR%=0.000028  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=29.1  BBbw=0.0003  ATR%=0.000033  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=26.9  BBbw=0.0003  ATR%=0.000030  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=47.1  BBbw=0.0002  ATR%=0.000008  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=82.2  BBbw=0.0003  ATR%=0.000019  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=43.0  BBbw=0.0002  ATR%=0.000014  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=6.7  BBbw=0.0001  ATR%=0.000014  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=19.3  BBbw=0.0001  ATR%=0.000017  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=23.5  BBbw=0.0002  ATR%=0.000022  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=32.4  BBbw=0.0001  ATR%=0.000014  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=16.4  BBbw=0.0001  ATR%=0.000014  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=34.5  BBbw=0.0003  ATR%=0.000025  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=21.8  BBbw=0.0002  ATR%=0.000022  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=26.8  BBbw=0.0002  ATR%=0.000022  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=34.3  BBbw=0.0002  ATR%=0.000014  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=34.0  BBbw=0.0002  ATR%=0.000011  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=46.5  BBbw=0.0001  ATR%=0.000014  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=23.1  BBbw=0.0002  ATR%=0.000030  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=30.1  BBbw=0.0002  ATR%=0.000025  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=22.8  BBbw=0.0001  ATR%=0.000011  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=34.1  BBbw=0.0002  ATR%=0.000022  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=48.9  BBbw=0.0003  ATR%=0.000011  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=38.3  BBbw=0.0002  ATR%=0.000022  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=17.6  BBbw=0.0003  ATR%=0.000039  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=nan  BBbw=0.0001  ATR%=0.000006  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=9.5  BBbw=0.0001  ATR%=0.000022  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=35.0  BBbw=0.0002  ATR%=0.000014  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=18.6  BBbw=0.0001  ATR%=0.000011  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=54.6  BBbw=0.0002  ATR%=0.000011  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=15.2  BBbw=0.0001  ATR%=0.000019  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)

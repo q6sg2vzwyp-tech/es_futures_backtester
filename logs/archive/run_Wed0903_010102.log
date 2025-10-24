@@ -1,0 +1,27 @@
+2025-09-03 01:01:02,700 ================== PAPER MODE ==================
+2025-09-03 01:01:02,700 Host:127.0.0.1  Port:7497  ClientId:auto
+2025-09-03 01:01:02,700 Paper account required (TWS/Gateway set to Paper). Orders WILL be sent (paper).
+2025-09-03 01:01:02,701 Writing log to logs\run_Wed0903_010102.log
+2025-09-03 01:01:02,701 Type YES to continue, or anything else to abort. Confirm (YES/no): 
+2025-09-03 01:01:11,010 [PING 1] clientId=40270 connected: True
+2025-09-03 01:01:11,011 [CONNECT] Attempt 1/8 to 127.0.0.1:7497 (clientId=32254, timeout=60s)
+2025-09-03 01:01:11,120 Connected 127.0.0.1:7497 clientId=32254 | Market data type: LIVE (1)
+2025-09-03 01:01:11,122 [AUTO] Selecting front quarter for ES/CME ...
+2025-09-03 01:01:11,154 [AUTO] Front month chosen: ESU5 exp=20250919
+2025-09-03 01:01:11,157 Using contract: ESU5  (conId=637533641)
+2025-09-03 01:01:11,157 [AUTOROLL] Will warn 7 days before expiry (print-only).
+2025-09-03 01:01:11,157 [RISK] Daily loss cap: $1,250.00
+2025-09-03 01:01:11,498 [WARMUP] Loaded 7142 historical 1m bars.
+2025-09-03 01:01:11,711 >> LIVE paper trading with adaptive chooser + promotion ladder. Ctrl+C to stop.
+2025-09-03 01:02:07,219 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=3.2 | Sprd=1.0
+2025-09-03 01:02:07,220 [Gate] Freeze window (open/news)
+2025-09-03 01:03:06,632 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=3.1 | Sprd=1.0
+2025-09-03 01:03:06,633 [Gate] Freeze window (open/news)
+2025-09-03 01:04:06,881 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=3.1 | Sprd=1.0
+2025-09-03 01:04:06,881 [Gate] Freeze window (open/news)
+2025-09-03 01:05:06,548 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=2.9 | Sprd=1.0
+2025-09-03 01:05:06,548 [Gate] Freeze window (open/news)
+2025-09-03 01:06:06,651 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=2.9 | Sprd=1.0
+2025-09-03 01:06:06,652 [Gate] Freeze window (open/news)
+2025-09-03 01:07:07,308 [HB] PnL=0.00 | ConsecLoss=0 | Blocked=no | ATRt=2.8 | Sprd=1.0
+2025-09-03 01:07:07,309 [Gate] Freeze window (open/news)

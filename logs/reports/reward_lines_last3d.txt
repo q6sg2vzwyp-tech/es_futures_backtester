@@ -1,0 +1,16 @@
+C:\Users\owner\Desktop\es_futures_backtester\logs\bot_stdout_20250917_064534.log:16256:[INFO] 2025-09-17 09:09:30 [REWARD] arm=reversion R=0.500 slipR=0.000 hrs=0.01 maeR=0.000 reward=0.519 dailyR=0.50
+C:\Users\owner\Desktop\es_futures_backtester\logs\bot_stdout_20250917_064534.log:17469:[INFO] 2025-09-17 09:20:22 [REWARD] arm=reversion R=0.250 slipR=0.000 hrs=0.00 maeR=0.000 reward=0.270 dailyR=0.75
+C:\Users\owner\Desktop\es_futures_backtester\logs\bot_stdout_20250917_142141.log:100:[INFO] 2025-09-17 14:22:49 [REWARD] arm=trend R=1.000 slipR=0.000 hrs=0.00 maeR=0.000 reward=1.020 dailyR=1.00
+C:\Users\owner\Desktop\es_futures_backtester\logs\bot_stdout_20250918_215428.log:47460:[INFO] 2025-09-19 04:31:08 [REWARD] arm=reversion R=0.000 slipR=0.000 hrs=1.50 maeR=2.583 reward=-0.647 dailyR=0.00
+C:\Users\owner\Desktop\es_futures_backtester\logs\bot_stdout_20250918_215428.log:72208:[INFO] 2025-09-19 07:53:11 [REWARD] arm=reversion R=5.083 slipR=0.000 hrs=0.00 maeR=0.000 reward=5.103 dailyR=5.08
+C:\Users\owner\Desktop\es_futures_backtester\logs\bot_stdout_20250918_215428.log:76769:[INFO] 2025-09-19 08:30:01 [REWARD] arm=reversion R=-1.083 slipR=0.000 hrs=0.36 maeR=2.750 reward=-1.650 dailyR=-1.08
+C:\Users\owner\Desktop\es_futures_backtester\logs\bot_stdout_20250918_215428.log:83741:[INFO] 2025-09-19 09:18:03 [REWARD] arm=reversion R=-1.083 slipR=0.000 hrs=0.36 maeR=0.917 reward=-1.283 dailyR=-2.17
+C:\Users\owner\Desktop\es_futures_backtester\logs\bot_stdout_20250918_215428.log:90008:[INFO] 2025-09-19 10:09:27 [REWARD] arm=reversion R=-4.417 slipR=0.000 hrs=0.00 maeR=4.583 reward=-5.314 dailyR=-6.58
+C:\Users\owner\Desktop\es_futures_backtester\logs\runtime_20250917.txt:16256:[INFO] 2025-09-17 09:09:30 [REWARD] arm=reversion R=0.500 slipR=0.000 hrs=0.01 maeR=0.000 reward=0.519 dailyR=0.50
+C:\Users\owner\Desktop\es_futures_backtester\logs\runtime_20250917.txt:17469:[INFO] 2025-09-17 09:20:22 [REWARD] arm=reversion R=0.250 slipR=0.000 hrs=0.00 maeR=0.000 reward=0.270 dailyR=0.75
+C:\Users\owner\Desktop\es_futures_backtester\logs\runtime_20250917.txt:48290:[INFO] 2025-09-17 14:22:49 [REWARD] arm=trend R=1.000 slipR=0.000 hrs=0.00 maeR=0.000 reward=1.020 dailyR=1.00
+C:\Users\owner\Desktop\es_futures_backtester\logs\runtime_20250918.txt:92735:[INFO] 2025-09-19 04:31:08 [REWARD] arm=reversion R=0.000 slipR=0.000 hrs=1.50 maeR=2.583 reward=-0.647 dailyR=0.00
+C:\Users\owner\Desktop\es_futures_backtester\logs\runtime_20250918.txt:117483:[INFO] 2025-09-19 07:53:11 [REWARD] arm=reversion R=5.083 slipR=0.000 hrs=0.00 maeR=0.000 reward=5.103 dailyR=5.08
+C:\Users\owner\Desktop\es_futures_backtester\logs\runtime_20250918.txt:122044:[INFO] 2025-09-19 08:30:01 [REWARD] arm=reversion R=-1.083 slipR=0.000 hrs=0.36 maeR=2.750 reward=-1.650 dailyR=-1.08
+C:\Users\owner\Desktop\es_futures_backtester\logs\runtime_20250918.txt:129016:[INFO] 2025-09-19 09:18:03 [REWARD] arm=reversion R=-1.083 slipR=0.000 hrs=0.36 maeR=0.917 reward=-1.283 dailyR=-2.17
+C:\Users\owner\Desktop\es_futures_backtester\logs\runtime_20250918.txt:135283:[INFO] 2025-09-19 10:09:27 [REWARD] arm=reversion R=-4.417 slipR=0.000 hrs=0.00 maeR=4.583 reward=-5.314 dailyR=-6.58

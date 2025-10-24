@@ -1,0 +1,59 @@
+[INFO] 2025-09-13 10:04:24 Enabled arms: trend,breakout
+[INFO] 2025-09-13 10:04:24 Loaded chooser state from .\models\linucb_es.json
+[INFO] 2025-09-13 10:04:24 [PING 1] clientId=19 connected: False
+[INFO] 2025-09-13 10:04:24 Connected 127.0.0.1:7497 clientId=19 | Market data type: LIVE
+[INFO] 2025-09-13 10:04:24 Using contract: ESZ5  (conId=495512563)
+[INFO] 2025-09-13 10:04:24 [WARMUP] Fetching 5d of 1m bars...
+[INFO] 2025-09-13 10:04:26 [WARMUP] Loaded 6900 historical 1m bars.
+[INFO] 2025-09-13 10:04:27 [ARMS] trend: EN n=0, avgR=+0.000, mu=+0.000, ucb=+0.842 | breakout: EN n=0, avgR=+0.000, mu=+0.000, ucb=+0.842
+[HB] 2025-09-13 10:04:27 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | dayR=0.00 | dayN=0 | stall=no
+[HB] 2025-09-13 10:04:28 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | dayR=0.00 | dayN=0 | stall=no
+[HB] 2025-09-13 10:04:29 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | dayR=0.00 | dayN=0 | stall=no
+[HB] 2025-09-13 10:04:30 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | dayR=0.00 | dayN=0 | stall=no
+[HB] 2025-09-13 10:04:31 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | dayR=0.00 | dayN=0 | stall=no
+[HB] 2025-09-13 10:04:32 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | dayR=0.00 | dayN=0 | stall=no
+[HB] 2025-09-13 10:04:33 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | dayR=0.00 | dayN=0 | stall=no
+[HB] 2025-09-13 10:04:34 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | dayR=0.00 | dayN=0 | stall=no
+[HB] 2025-09-13 10:04:35 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | dayR=0.00 | dayN=0 | stall=no
+[HB] 2025-09-13 10:04:36 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | dayR=0.00 | dayN=0 | stall=no
+[HB] 2025-09-13 10:04:37 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | dayR=0.00 | dayN=0 | stall=no
+[HB] 2025-09-13 10:04:38 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | dayR=0.00 | dayN=0 | stall=no
+[HB] 2025-09-13 10:04:40 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | dayR=0.00 | dayN=0 | stall=no
+[HB] 2025-09-13 10:04:41 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | dayR=0.00 | dayN=0 | stall=no
+[HB] 2025-09-13 10:04:42 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | dayR=0.00 | dayN=0 | stall=no
+[HB] 2025-09-13 10:04:43 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | dayR=0.00 | dayN=0 | stall=no
+[HB] 2025-09-13 10:04:44 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | dayR=0.00 | dayN=0 | stall=no
+[HB] 2025-09-13 10:04:45 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | dayR=0.00 | dayN=0 | stall=no
+[HB] 2025-09-13 10:04:46 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | dayR=0.00 | dayN=0 | stall=no
+[HB] 2025-09-13 10:04:47 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | dayR=0.00 | dayN=0 | stall=no
+[HB] 2025-09-13 10:04:48 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | dayR=0.00 | dayN=0 | stall=no
+[HB] 2025-09-13 10:04:49 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | dayR=0.00 | dayN=0 | stall=no
+[HB] 2025-09-13 10:04:50 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | dayR=0.00 | dayN=0 | stall=no
+[HB] 2025-09-13 10:04:51 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | dayR=0.00 | dayN=0 | stall=no
+[HB] 2025-09-13 10:04:52 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | dayR=0.00 | dayN=0 | stall=no
+[HB] 2025-09-13 10:04:53 CT OpenTrades=0 | ChooserArm=breakout | Gate=no | eps=0.050 | dayR=0.00 | dayN=0 | stall=no
+[HB] 2025-09-13 10:04:54 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | dayR=0.00 | dayN=0 | stall=no
+[HB] 2025-09-13 10:04:55 CT OpenTrades=0 | ChooserArm=breakout | Gate=no | eps=0.050 | dayR=0.00 | dayN=0 | stall=no
+[HB] 2025-09-13 10:04:56 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | dayR=0.00 | dayN=0 | stall=no
+[WARN] 2025-09-13 10:04:57 [HEALTH] Data stall > 30s — pausing entries & refreshing bars.
+[HB] 2025-09-13 10:04:57 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | dayR=0.00 | dayN=0 | stall=yes
+[HB] 2025-09-13 10:04:58 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | dayR=0.00 | dayN=0 | stall=yes
+[HB] 2025-09-13 10:04:59 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | dayR=0.00 | dayN=0 | stall=yes
+[HB] 2025-09-13 10:05:00 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | dayR=0.00 | dayN=0 | stall=yes
+[HB] 2025-09-13 10:05:01 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | dayR=0.00 | dayN=0 | stall=yes
+[HB] 2025-09-13 10:05:02 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | dayR=0.00 | dayN=0 | stall=yes
+[HB] 2025-09-13 10:05:03 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | dayR=0.00 | dayN=0 | stall=yes
+[HB] 2025-09-13 10:05:04 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | dayR=0.00 | dayN=0 | stall=yes
+[HB] 2025-09-13 10:05:05 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | dayR=0.00 | dayN=0 | stall=yes
+[HB] 2025-09-13 10:05:06 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | dayR=0.00 | dayN=0 | stall=yes
+[HB] 2025-09-13 10:05:07 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | dayR=0.00 | dayN=0 | stall=yes
+[HB] 2025-09-13 10:05:08 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | dayR=0.00 | dayN=0 | stall=yes
+[HB] 2025-09-13 10:05:09 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | dayR=0.00 | dayN=0 | stall=yes
+[HB] 2025-09-13 10:05:10 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | dayR=0.00 | dayN=0 | stall=yes
+[HB] 2025-09-13 10:05:11 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | dayR=0.00 | dayN=0 | stall=yes
+[HB] 2025-09-13 10:05:12 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | dayR=0.00 | dayN=0 | stall=yes
+[HB] 2025-09-13 10:05:13 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | dayR=0.00 | dayN=0 | stall=yes
+[HB] 2025-09-13 10:05:14 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | dayR=0.00 | dayN=0 | stall=yes
+[HB] 2025-09-13 10:05:15 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | dayR=0.00 | dayN=0 | stall=yes
+[INFO] 2025-09-13 10:05:16 Interrupted; shutting down.
+[INFO] 2025-09-13 10:05:16 Saved chooser state to .\models\linucb_es.json

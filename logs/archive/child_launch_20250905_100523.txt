@@ -1,0 +1,130 @@
+============================================================
+[START] 2025-09-05 10:05:23
+[CMD] C:\Users\owner\AppData\Local\Programs\Python\Python313\python.exe -X faulthandler -u paper_trader.py --host 127.0.0.1 --port 7497 --clientId 19 --conId 637533641 --tp-ladder 1.0R:50,2.0R:50 --no-confirm --place-orders --debug-regime
+============================================================
+==================================================
+================== PAPER MODE ====================
+Host:127.0.0.1  Port:7497  ClientId:19
+Paper account required (TWS/Gateway set to Paper). Orders WILL be sent (paper).
+Writing log to logs/run_Fri0905_100524.log
+[CONNECT] Attempt 1/8 to 127.0.0.1:7497 (clientId=19, timeout=60s)
+Connected 127.0.0.1:7497 clientId=19 | Market data type: LIVE (1)
+Using contract: ESU5  (conId=637533641)
+C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py:273: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  return (dt_exp.date() - datetime.utcnow().date()).days
+[AUTOROLL] Will warn 7 days before expiry (print-only).
+Error 321, reqId 4772: Error validating request.-'bM' : cause - Historical data request for durations longer than 12 months must be made in years., contract: Contract(secType='FUT', conId=637533641, symbol='ES', lastTradeDateOrContractMonth='20250919', multiplier='50', exchange='CME', currency='USD', localSymbol='ESU5', tradingClass='ES')
+[WARMUP] No historical data.
+[CHOOSER] In-memory LinUCB (not persisted) with arms=25
+[TP] Ladder: 1.0R:50%, 2.0R:50% | risk=$250.00
+>> LIVE paper trading with adaptive chooser + promotion ladder. Ctrl+C to stop.
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=nan  BBbw=nan  ATR%=nan  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py:171: DeprecationWarning: Conversion of an array with ndim > 0 to a scalar is deprecated, and will error in future. Ensure you extract a single element from your array before performing this operation. (Deprecated NumPy 1.25.)
+  p = float((theta.T @ x) + self.alpha * math.sqrt((x.T @ A_inv @ x)))
+C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py:171: DeprecationWarning: Conversion of an array with ndim > 0 to a scalar is deprecated, and will error in future. Ensure you extract a single element from your array before performing this operation. (Deprecated NumPy 1.25.)
+  p = float((theta.T @ x) + self.alpha * math.sqrt((x.T @ A_inv @ x)))
+C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py:171: DeprecationWarning: Conversion of an array with ndim > 0 to a scalar is deprecated, and will error in future. Ensure you extract a single element from your array before performing this operation. (Deprecated NumPy 1.25.)
+  p = float((theta.T @ x) + self.alpha * math.sqrt((x.T @ A_inv @ x)))
+C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py:171: DeprecationWarning: Conversion of an array with ndim > 0 to a scalar is deprecated, and will error in future. Ensure you extract a single element from your array before performing this operation. (Deprecated NumPy 1.25.)
+  p = float((theta.T @ x) + self.alpha * math.sqrt((x.T @ A_inv @ x)))
+C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py:171: DeprecationWarning: Conversion of an array with ndim > 0 to a scalar is deprecated, and will error in future. Ensure you extract a single element from your array before performing this operation. (Deprecated NumPy 1.25.)
+  p = float((theta.T @ x) + self.alpha * math.sqrt((x.T @ A_inv @ x)))
+C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py:171: DeprecationWarning: Conversion of an array with ndim > 0 to a scalar is deprecated, and will error in future. Ensure you extract a single element from your array before performing this operation. (Deprecated NumPy 1.25.)
+  p = float((theta.T @ x) + self.alpha * math.sqrt((x.T @ A_inv @ x)))
+C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py:171: DeprecationWarning: Conversion of an array with ndim > 0 to a scalar is deprecated, and will error in future. Ensure you extract a single element from your array before performing this operation. (Deprecated NumPy 1.25.)
+  p = float((theta.T @ x) + self.alpha * math.sqrt((x.T @ A_inv @ x)))
+C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py:171: DeprecationWarning: Conversion of an array with ndim > 0 to a scalar is deprecated, and will error in future. Ensure you extract a single element from your array before performing this operation. (Deprecated NumPy 1.25.)
+  p = float((theta.T @ x) + self.alpha * math.sqrt((x.T @ A_inv @ x)))
+C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py:171: DeprecationWarning: Conversion of an array with ndim > 0 to a scalar is deprecated, and will error in future. Ensure you extract a single element from your array before performing this operation. (Deprecated NumPy 1.25.)
+  p = float((theta.T @ x) + self.alpha * math.sqrt((x.T @ A_inv @ x)))
+C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py:171: DeprecationWarning: Conversion of an array with ndim > 0 to a scalar is deprecated, and will error in future. Ensure you extract a single element from your array before performing this operation. (Deprecated NumPy 1.25.)
+  p = float((theta.T @ x) + self.alpha * math.sqrt((x.T @ A_inv @ x)))
+C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py:171: DeprecationWarning: Conversion of an array with ndim > 0 to a scalar is deprecated, and will error in future. Ensure you extract a single element from your array before performing this operation. (Deprecated NumPy 1.25.)
+  p = float((theta.T @ x) + self.alpha * math.sqrt((x.T @ A_inv @ x)))
+C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py:171: DeprecationWarning: Conversion of an array with ndim > 0 to a scalar is deprecated, and will error in future. Ensure you extract a single element from your array before performing this operation. (Deprecated NumPy 1.25.)
+  p = float((theta.T @ x) + self.alpha * math.sqrt((x.T @ A_inv @ x)))
+C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py:171: DeprecationWarning: Conversion of an array with ndim > 0 to a scalar is deprecated, and will error in future. Ensure you extract a single element from your array before performing this operation. (Deprecated NumPy 1.25.)
+  p = float((theta.T @ x) + self.alpha * math.sqrt((x.T @ A_inv @ x)))
+C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py:171: DeprecationWarning: Conversion of an array with ndim > 0 to a scalar is deprecated, and will error in future. Ensure you extract a single element from your array before performing this operation. (Deprecated NumPy 1.25.)
+  p = float((theta.T @ x) + self.alpha * math.sqrt((x.T @ A_inv @ x)))
+C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py:171: DeprecationWarning: Conversion of an array with ndim > 0 to a scalar is deprecated, and will error in future. Ensure you extract a single element from your array before performing this operation. (Deprecated NumPy 1.25.)
+  p = float((theta.T @ x) + self.alpha * math.sqrt((x.T @ A_inv @ x)))
+C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py:171: DeprecationWarning: Conversion of an array with ndim > 0 to a scalar is deprecated, and will error in future. Ensure you extract a single element from your array before performing this operation. (Deprecated NumPy 1.25.)
+  p = float((theta.T @ x) + self.alpha * math.sqrt((x.T @ A_inv @ x)))
+C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py:171: DeprecationWarning: Conversion of an array with ndim > 0 to a scalar is deprecated, and will error in future. Ensure you extract a single element from your array before performing this operation. (Deprecated NumPy 1.25.)
+  p = float((theta.T @ x) + self.alpha * math.sqrt((x.T @ A_inv @ x)))
+C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py:171: DeprecationWarning: Conversion of an array with ndim > 0 to a scalar is deprecated, and will error in future. Ensure you extract a single element from your array before performing this operation. (Deprecated NumPy 1.25.)
+  p = float((theta.T @ x) + self.alpha * math.sqrt((x.T @ A_inv @ x)))
+C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py:171: DeprecationWarning: Conversion of an array with ndim > 0 to a scalar is deprecated, and will error in future. Ensure you extract a single element from your array before performing this operation. (Deprecated NumPy 1.25.)
+  p = float((theta.T @ x) + self.alpha * math.sqrt((x.T @ A_inv @ x)))
+C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py:171: DeprecationWarning: Conversion of an array with ndim > 0 to a scalar is deprecated, and will error in future. Ensure you extract a single element from your array before performing this operation. (Deprecated NumPy 1.25.)
+  p = float((theta.T @ x) + self.alpha * math.sqrt((x.T @ A_inv @ x)))
+C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py:171: DeprecationWarning: Conversion of an array with ndim > 0 to a scalar is deprecated, and will error in future. Ensure you extract a single element from your array before performing this operation. (Deprecated NumPy 1.25.)
+  p = float((theta.T @ x) + self.alpha * math.sqrt((x.T @ A_inv @ x)))
+C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py:171: DeprecationWarning: Conversion of an array with ndim > 0 to a scalar is deprecated, and will error in future. Ensure you extract a single element from your array before performing this operation. (Deprecated NumPy 1.25.)
+  p = float((theta.T @ x) + self.alpha * math.sqrt((x.T @ A_inv @ x)))
+C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py:171: DeprecationWarning: Conversion of an array with ndim > 0 to a scalar is deprecated, and will error in future. Ensure you extract a single element from your array before performing this operation. (Deprecated NumPy 1.25.)
+  p = float((theta.T @ x) + self.alpha * math.sqrt((x.T @ A_inv @ x)))
+C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py:171: DeprecationWarning: Conversion of an array with ndim > 0 to a scalar is deprecated, and will error in future. Ensure you extract a single element from your array before performing this operation. (Deprecated NumPy 1.25.)
+  p = float((theta.T @ x) + self.alpha * math.sqrt((x.T @ A_inv @ x)))
+C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py:171: DeprecationWarning: Conversion of an array with ndim > 0 to a scalar is deprecated, and will error in future. Ensure you extract a single element from your array before performing this operation. (Deprecated NumPy 1.25.)
+  p = float((theta.T @ x) + self.alpha * math.sqrt((x.T @ A_inv @ x)))
+C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py:171: DeprecationWarning: Conversion of an array with ndim > 0 to a scalar is deprecated, and will error in future. Ensure you extract a single element from your array before performing this operation. (Deprecated NumPy 1.25.)
+  p = float((theta.T @ x) + self.alpha * math.sqrt((x.T @ A_inv @ x)))
+C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py:171: DeprecationWarning: Conversion of an array with ndim > 0 to a scalar is deprecated, and will error in future. Ensure you extract a single element from your array before performing this operation. (Deprecated NumPy 1.25.)
+  p = float((theta.T @ x) + self.alpha * math.sqrt((x.T @ A_inv @ x)))
+C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py:171: DeprecationWarning: Conversion of an array with ndim > 0 to a scalar is deprecated, and will error in future. Ensure you extract a single element from your array before performing this operation. (Deprecated NumPy 1.25.)
+  p = float((theta.T @ x) + self.alpha * math.sqrt((x.T @ A_inv @ x)))
+C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py:171: DeprecationWarning: Conversion of an array with ndim > 0 to a scalar is deprecated, and will error in future. Ensure you extract a single element from your array before performing this operation. (Deprecated NumPy 1.25.)
+  p = float((theta.T @ x) + self.alpha * math.sqrt((x.T @ A_inv @ x)))
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=nan  BBbw=nan  ATR%=nan  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=27.6  BBbw=0.0003  ATR%=0.000025  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=18.6  BBbw=0.0003  ATR%=0.000039  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=17.3  BBbw=0.0002  ATR%=0.000025  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=29.5  BBbw=0.0004  ATR%=0.000052  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=45.9  BBbw=0.0004  ATR%=0.000030  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=15.2  BBbw=0.0002  ATR%=0.000033  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=17.1  BBbw=0.0002  ATR%=0.000030  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=33.7  BBbw=0.0004  ATR%=0.000028  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=79.4  BBbw=0.0007  ATR%=0.000039  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=31.3  BBbw=0.0004  ATR%=0.000047  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=14.6  BBbw=0.0003  ATR%=0.000036  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=31.1  BBbw=0.0004  ATR%=0.000030  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=31.2  BBbw=0.0001  ATR%=0.000033  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=9.8  BBbw=0.0002  ATR%=0.000036  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=46.0  BBbw=0.0002  ATR%=0.000030  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=20.3  BBbw=0.0002  ATR%=0.000022  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=21.0  BBbw=0.0002  ATR%=0.000014  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=24.5  BBbw=0.0004  ATR%=0.000022  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=52.8  BBbw=0.0009  ATR%=0.000061  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=21.6  BBbw=0.0002  ATR%=0.000017  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=28.5  BBbw=0.0003  ATR%=0.000039  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=28.4  BBbw=0.0004  ATR%=0.000022  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=15.7  BBbw=0.0002  ATR%=0.000030  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)
+[HB] PnL=0.00 | ConsecLoss=0 | Blocked=no
+[REGIME] ADX=24.7  BBbw=0.0003  ATR%=0.000030  (mins eff: ADX>=8.0, BBbw>=0.0010, ATR%>=0.000050)

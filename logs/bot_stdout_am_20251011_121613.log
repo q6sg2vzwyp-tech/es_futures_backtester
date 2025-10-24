@@ -1,0 +1,52 @@
+{"ts":"2025-10-11 17:16:18","level":"WARN","event":"CLI_IGNORING_UNKNOWN","unknown":["--qty","1","--min-hold-sec","60","--breakeven-after-R","2.2","--trail-atr-mult","3.2","--trail-delay-sec","240","--trail-on-bar-close"]}
+{"ts":"2025-10-11 17:16:18","level":"INFO","event":"BOOT_START","host":"127.0.0.1","port":7497,"clientId":111}
+{"ts":"2025-10-11 17:16:18","level":"INFO","event":"CONNECT_ATTEMPT","idx":1,"attempts":24,"clientId":111}
+{"ts":"2025-10-11 17:16:20","level":"WARN","event":"CONNECT_FAIL","clientId":111,"error":"ConnectionRefusedError(22, 'The remote computer refused the network connection', None, 1225, None)"}
+{"ts":"2025-10-11 17:16:20","level":"INFO","event":"CONNECT_ATTEMPT","idx":2,"attempts":24,"clientId":112}
+{"ts":"2025-10-11 17:16:22","level":"WARN","event":"CONNECT_FAIL","clientId":112,"error":"ConnectionRefusedError(22, 'The remote computer refused the network connection', None, 1225, None)"}
+{"ts":"2025-10-11 17:16:23","level":"INFO","event":"CONNECT_ATTEMPT","idx":3,"attempts":24,"clientId":113}
+{"ts":"2025-10-11 17:16:25","level":"WARN","event":"CONNECT_FAIL","clientId":113,"error":"ConnectionRefusedError(22, 'The remote computer refused the network connection', None, 1225, None)"}
+{"ts":"2025-10-11 17:16:26","level":"INFO","event":"CONNECT_ATTEMPT","idx":4,"attempts":24,"clientId":114}
+{"ts":"2025-10-11 17:16:28","level":"WARN","event":"CONNECT_FAIL","clientId":114,"error":"ConnectionRefusedError(22, 'The remote computer refused the network connection', None, 1225, None)"}
+{"ts":"2025-10-11 17:16:29","level":"INFO","event":"CONNECT_ATTEMPT","idx":5,"attempts":24,"clientId":115}
+{"ts":"2025-10-11 17:16:31","level":"WARN","event":"CONNECT_FAIL","clientId":115,"error":"ConnectionRefusedError(22, 'The remote computer refused the network connection', None, 1225, None)"}
+{"ts":"2025-10-11 17:16:33","level":"INFO","event":"CONNECT_ATTEMPT","idx":6,"attempts":24,"clientId":116}
+{"ts":"2025-10-11 17:16:35","level":"WARN","event":"CONNECT_FAIL","clientId":116,"error":"ConnectionRefusedError(22, 'The remote computer refused the network connection', None, 1225, None)"}
+{"ts":"2025-10-11 17:16:37","level":"INFO","event":"CONNECT_ATTEMPT","idx":7,"attempts":24,"clientId":117}
+{"ts":"2025-10-11 17:16:39","level":"WARN","event":"CONNECT_FAIL","clientId":117,"error":"ConnectionRefusedError(22, 'The remote computer refused the network connection', None, 1225, None)"}
+{"ts":"2025-10-11 17:16:41","level":"INFO","event":"CONNECT_ATTEMPT","idx":8,"attempts":24,"clientId":118}
+{"ts":"2025-10-11 17:16:43","level":"WARN","event":"CONNECT_FAIL","clientId":118,"error":"ConnectionRefusedError(22, 'The remote computer refused the network connection', None, 1225, None)"}
+{"ts":"2025-10-11 17:16:45","level":"INFO","event":"CONNECT_ATTEMPT","idx":9,"attempts":24,"clientId":119}
+{"ts":"2025-10-11 17:16:47","level":"WARN","event":"CONNECT_FAIL","clientId":119,"error":"ConnectionRefusedError(22, 'The remote computer refused the network connection', None, 1225, None)"}
+{"ts":"2025-10-11 17:16:49","level":"INFO","event":"CONNECT_ATTEMPT","idx":10,"attempts":24,"clientId":120}
+{"ts":"2025-10-11 17:16:51","level":"WARN","event":"CONNECT_FAIL","clientId":120,"error":"ConnectionRefusedError(22, 'The remote computer refused the network connection', None, 1225, None)"}
+{"ts":"2025-10-11 17:16:54","level":"INFO","event":"CONNECT_ATTEMPT","idx":11,"attempts":24,"clientId":121}
+{"ts":"2025-10-11 17:16:56","level":"WARN","event":"CONNECT_FAIL","clientId":121,"error":"ConnectionRefusedError(22, 'The remote computer refused the network connection', None, 1225, None)"}
+{"ts":"2025-10-11 17:16:59","level":"INFO","event":"CONNECT_ATTEMPT","idx":12,"attempts":24,"clientId":122}
+{"ts":"2025-10-11 17:17:01","level":"WARN","event":"CONNECT_FAIL","clientId":122,"error":"ConnectionRefusedError(22, 'The remote computer refused the network connection', None, 1225, None)"}
+{"ts":"2025-10-11 17:17:05","level":"INFO","event":"CONNECT_ATTEMPT","idx":13,"attempts":24,"clientId":123}
+{"ts":"2025-10-11 17:17:07","level":"WARN","event":"CONNECT_FAIL","clientId":123,"error":"ConnectionRefusedError(22, 'The remote computer refused the network connection', None, 1225, None)"}
+{"ts":"2025-10-11 17:17:10","level":"INFO","event":"CONNECT_ATTEMPT","idx":14,"attempts":24,"clientId":124}
+{"ts":"2025-10-11 17:17:12","level":"WARN","event":"CONNECT_FAIL","clientId":124,"error":"ConnectionRefusedError(22, 'The remote computer refused the network connection', None, 1225, None)"}
+{"ts":"2025-10-11 17:17:16","level":"INFO","event":"CONNECT_ATTEMPT","idx":15,"attempts":24,"clientId":125}
+{"ts":"2025-10-11 17:17:18","level":"WARN","event":"CONNECT_FAIL","clientId":125,"error":"ConnectionRefusedError(22, 'The remote computer refused the network connection', None, 1225, None)"}
+{"ts":"2025-10-11 17:17:22","level":"INFO","event":"CONNECT_ATTEMPT","idx":16,"attempts":24,"clientId":126}
+{"ts":"2025-10-11 17:17:24","level":"WARN","event":"CONNECT_FAIL","clientId":126,"error":"ConnectionRefusedError(22, 'The remote computer refused the network connection', None, 1225, None)"}
+{"ts":"2025-10-11 17:17:28","level":"INFO","event":"CONNECT_ATTEMPT","idx":17,"attempts":24,"clientId":127}
+{"ts":"2025-10-11 17:17:30","level":"WARN","event":"CONNECT_FAIL","clientId":127,"error":"ConnectionRefusedError(22, 'The remote computer refused the network connection', None, 1225, None)"}
+{"ts":"2025-10-11 17:17:35","level":"INFO","event":"CONNECT_ATTEMPT","idx":18,"attempts":24,"clientId":128}
+{"ts":"2025-10-11 17:17:37","level":"WARN","event":"CONNECT_FAIL","clientId":128,"error":"ConnectionRefusedError(22, 'The remote computer refused the network connection', None, 1225, None)"}
+{"ts":"2025-10-11 17:17:42","level":"INFO","event":"CONNECT_ATTEMPT","idx":19,"attempts":24,"clientId":129}
+{"ts":"2025-10-11 17:17:44","level":"WARN","event":"CONNECT_FAIL","clientId":129,"error":"ConnectionRefusedError(22, 'The remote computer refused the network connection', None, 1225, None)"}
+{"ts":"2025-10-11 17:17:49","level":"INFO","event":"CONNECT_ATTEMPT","idx":20,"attempts":24,"clientId":130}
+{"ts":"2025-10-11 17:17:51","level":"WARN","event":"CONNECT_FAIL","clientId":130,"error":"ConnectionRefusedError(22, 'The remote computer refused the network connection', None, 1225, None)"}
+{"ts":"2025-10-11 17:17:56","level":"INFO","event":"CONNECT_ATTEMPT","idx":21,"attempts":24,"clientId":131}
+{"ts":"2025-10-11 17:17:58","level":"WARN","event":"CONNECT_FAIL","clientId":131,"error":"ConnectionRefusedError(22, 'The remote computer refused the network connection', None, 1225, None)"}
+{"ts":"2025-10-11 17:18:03","level":"INFO","event":"CONNECT_ATTEMPT","idx":22,"attempts":24,"clientId":132}
+{"ts":"2025-10-11 17:18:05","level":"WARN","event":"CONNECT_FAIL","clientId":132,"error":"ConnectionRefusedError(22, 'The remote computer refused the network connection', None, 1225, None)"}
+{"ts":"2025-10-11 17:18:11","level":"INFO","event":"CONNECT_ATTEMPT","idx":23,"attempts":24,"clientId":133}
+{"ts":"2025-10-11 17:18:13","level":"WARN","event":"CONNECT_FAIL","clientId":133,"error":"ConnectionRefusedError(22, 'The remote computer refused the network connection', None, 1225, None)"}
+{"ts":"2025-10-11 17:18:19","level":"INFO","event":"CONNECT_ATTEMPT","idx":24,"attempts":24,"clientId":134}
+{"ts":"2025-10-11 17:18:21","level":"WARN","event":"CONNECT_FAIL","clientId":134,"error":"ConnectionRefusedError(22, 'The remote computer refused the network connection', None, 1225, None)"}
+{"ts":"2025-10-11 17:18:27","level":"ERROR","event":"CONNECT_EXHAUSTED"}
+{"ts":"2025-10-11 17:18:27","level":"ERROR","event":"CONNECT_ABORT"}

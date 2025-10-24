@@ -1,0 +1,6 @@
+2025-10-13 01:38:07 [WD] pid=2708
+Starting ES paper bot...
+[CONNECT] 127.0.0.1:7497 clientId=111
+[CONNECT] Attempt 1/24 -> clientId=111
+Error 326, reqId -1: Unable to connect as the client id is already in use. Retry with a unique client id.
+Peer closed connection. clientId 111 already in use?

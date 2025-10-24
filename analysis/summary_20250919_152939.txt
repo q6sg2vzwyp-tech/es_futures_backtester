@@ -1,0 +1,30 @@
+TRADES: 16
+
+=== OVERALL ===
+n: 16
+win_rate: 50.0
+avg_R: 0.031250000000000056
+median_R: 0.125
+expectancy_R: 0.031250000000000056
+avg_hours: 0.27875
+quick_stop_rate_pct: 12.5
+
+=== PER ARM ===
+[reversion]
+  n: 14
+  win_rate: 42.857142857142854
+  avg_R: -0.10714285714285708
+  median_R: 0.0
+  expectancy_R: -0.10714285714285708
+  avg_hours: 0.31857142857142856
+  quick_stop_rate_pct: 14.285714285714285
+
+[trend]
+  n: 2
+  win_rate: 100.0
+  avg_R: 1.0
+  median_R: 1.0
+  expectancy_R: 1.0
+  avg_hours: 0.0
+  quick_stop_rate_pct: 0.0
+

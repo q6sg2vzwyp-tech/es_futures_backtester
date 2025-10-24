@@ -1,0 +1,9 @@
+2025-10-02 16:15:02 INFO Starting ES paper bot...
+2025-10-02 16:15:02 INFO [CONNECT] 127.0.0.1:7497 clientId=111
+2025-10-02 16:15:02 INFO Connecting to 127.0.0.1:7497 with clientId 111...
+2025-10-02 16:15:02 INFO Connected
+2025-10-02 16:15:05 INFO Disconnected.
+2025-10-02 16:15:05 ERROR [WinError 64] The specified network name is no longer available
+2025-10-02 16:20:02 INFO Disconnecting
+2025-10-02 16:20:02 ERROR API connection failed: TimeoutError()
+2025-10-02 16:20:02 ERROR [CONNECT] Failed: 

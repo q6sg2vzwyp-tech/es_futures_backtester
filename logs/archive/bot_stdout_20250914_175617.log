@@ -1,0 +1,209 @@
+[INFO] 2025-09-14 17:56:17 Enabled arms: trend,breakout,reversion,vwap
+[INFO] 2025-09-14 17:56:17 Loaded chooser state from models\linucb_es.json
+[INFO] 2025-09-14 17:56:17 [PING 1] clientId=19 connected: False
+[INFO] 2025-09-14 17:56:18 Connected 127.0.0.1:7497 clientId=19 | Market data type: LIVE
+[INFO] 2025-09-14 17:56:18 Using contract: ESZ5  (conId=495512563)
+[INFO] 2025-09-14 17:56:18 [WARMUP] Fetching 5d of 1m bars...
+[INFO] 2025-09-14 17:56:19 [WARMUP] Loaded 5577 historical 1m bars.
+[REGIME] ADX=17.4  BBbw=0.0002  ATR%=0.000046  (ok=False)
+[INFO] 2025-09-14 17:56:20 [ARMS] trend: EN n=0, avgR=+0.000, mu=+0.000, ucb=+0.694 | breakout: EN n=0, avgR=+0.000, mu=+0.000, ucb=+0.694 | reversion: EN n=0, avgR=+0.000, mu=+0.000, ucb=+0.694 | vwap: EN n=0, avgR=+0.000, mu=+0.000, ucb=+0.694
+[HB] 2025-09-14 17:56:20 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:56:22 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:56:23 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:56:24 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:56:25 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:56:26 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:56:27 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:56:28 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:56:29 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:56:30 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:56:31 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:56:32 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:56:34 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:56:35 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | sessionR=0.00 | sessionN=0 | stall=no
+[REGIME] ADX=15.3  BBbw=0.0002  ATR%=0.000030  (ok=False)
+[HB] 2025-09-14 17:56:36 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:56:37 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:56:38 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:56:39 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:56:40 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:56:41 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:56:42 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:56:43 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:56:44 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:56:45 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:56:47 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:56:48 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:56:49 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:56:50 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | sessionR=0.00 | sessionN=0 | stall=no
+[REGIME] ADX=14.0  BBbw=0.0003  ATR%=0.000020  (ok=False)
+[HB] 2025-09-14 17:56:51 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:56:52 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:56:53 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:56:54 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:56:55 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:56:56 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:56:57 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:56:59 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:57:00 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:57:01 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:57:02 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:57:03 CT OpenTrades=0 | ChooserArm=vwap | Gate=no | eps=0.050 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:57:04 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:57:05 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | sessionR=0.00 | sessionN=0 | stall=no
+[REGIME] ADX=13.1  BBbw=0.0002  ATR%=0.000013  (ok=False)
+[HB] 2025-09-14 17:57:06 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:57:07 CT OpenTrades=0 | ChooserArm=breakout | Gate=no | eps=0.050 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:57:08 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:57:10 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:57:11 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:57:12 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:57:13 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:57:14 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:57:15 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:57:16 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:57:17 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:57:18 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:57:19 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:57:20 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | sessionR=0.00 | sessionN=0 | stall=no
+[REGIME] ADX=21.2  BBbw=0.0001  ATR%=0.000018  (ok=False)
+[INFO] 2025-09-14 17:57:22 [ARMS] trend: EN n=0, avgR=+0.000, mu=+0.000, ucb=+0.661 | breakout: EN n=0, avgR=+0.000, mu=+0.000, ucb=+0.661 | reversion: EN n=0, avgR=+0.000, mu=+0.000, ucb=+0.661 | vwap: EN n=0, avgR=+0.000, mu=+0.000, ucb=+0.661
+[HB] 2025-09-14 17:57:22 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:57:23 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:57:24 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:57:25 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:57:26 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:57:27 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:57:28 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:57:29 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:57:30 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:57:31 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:57:32 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:57:34 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:57:35 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:57:36 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | sessionR=0.00 | sessionN=0 | stall=no
+[REGIME] ADX=36.2  BBbw=0.0001  ATR%=0.000015  (ok=False)
+[HB] 2025-09-14 17:57:37 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:57:38 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:57:39 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:57:40 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:57:41 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:57:42 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:57:43 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:57:45 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:57:46 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:57:47 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:57:48 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:57:49 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:57:50 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:57:51 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | sessionR=0.00 | sessionN=0 | stall=no
+[REGIME] ADX=25.9  BBbw=0.0001  ATR%=0.000010  (ok=False)
+[HB] 2025-09-14 17:57:52 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:57:53 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:57:54 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:57:55 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:57:57 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:57:58 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:57:59 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:58:00 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:58:01 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:58:02 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:58:03 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:58:04 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:58:05 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:58:06 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | sessionR=0.00 | sessionN=0 | stall=no
+[REGIME] ADX=19.3  BBbw=0.0001  ATR%=0.000007  (ok=False)
+[HB] 2025-09-14 17:58:07 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:58:09 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:58:10 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:58:11 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:58:12 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:58:13 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:58:14 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:58:15 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:58:16 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:58:17 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:58:18 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.050 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:58:20 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:58:21 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | sessionR=0.00 | sessionN=0 | stall=no
+[INFO] 2025-09-14 17:58:22 [ARMS] trend: EN n=0, avgR=+0.000, mu=+0.000, ucb=+0.656 | breakout: EN n=0, avgR=+0.000, mu=+0.000, ucb=+0.656 | reversion: EN n=0, avgR=+0.000, mu=+0.000, ucb=+0.656 | vwap: EN n=0, avgR=+0.000, mu=+0.000, ucb=+0.656
+[HB] 2025-09-14 17:58:22 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | sessionR=0.00 | sessionN=0 | stall=no
+[REGIME] ADX=21.5  BBbw=0.0001  ATR%=0.000009  (ok=False)
+[HB] 2025-09-14 17:58:23 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:58:24 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:58:25 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:58:26 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:58:27 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:58:28 CT OpenTrades=0 | ChooserArm=breakout | Gate=no | eps=0.049 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:58:29 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:58:30 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:58:32 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:58:33 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:58:34 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:58:35 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:58:36 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:58:37 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | sessionR=0.00 | sessionN=0 | stall=no
+[REGIME] ADX=33.6  BBbw=0.0001  ATR%=0.000006  (ok=False)
+[HB] 2025-09-14 17:58:38 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:58:39 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:58:40 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:58:41 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:58:42 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:58:43 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:58:45 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:58:46 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:58:47 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:58:48 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:58:49 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:58:50 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:58:51 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:58:52 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | sessionR=0.00 | sessionN=0 | stall=no
+[REGIME] ADX=38.6  BBbw=0.0001  ATR%=0.000009  (ok=False)
+[HB] 2025-09-14 17:58:53 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:58:54 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:58:55 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:58:57 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:58:58 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:58:59 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:59:00 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:59:01 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:59:02 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:59:03 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:59:04 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:59:05 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:59:06 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:59:07 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | sessionR=0.00 | sessionN=0 | stall=no
+[REGIME] ADX=37.2  BBbw=0.0001  ATR%=0.000006  (ok=False)
+[HB] 2025-09-14 17:59:09 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:59:10 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:59:11 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:59:12 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:59:13 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:59:14 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:59:15 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:59:16 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:59:17 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:59:18 CT OpenTrades=0 | ChooserArm=breakout | Gate=no | eps=0.049 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:59:19 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:59:21 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:59:22 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | sessionR=0.00 | sessionN=0 | stall=no
+[INFO] 2025-09-14 17:59:23 [ARMS] trend: EN n=0, avgR=+0.000, mu=+0.000, ucb=+0.752 | breakout: EN n=0, avgR=+0.000, mu=+0.000, ucb=+0.752 | reversion: EN n=0, avgR=+0.000, mu=+0.000, ucb=+0.752 | vwap: EN n=0, avgR=+0.000, mu=+0.000, ucb=+0.752
+[HB] 2025-09-14 17:59:23 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | sessionR=0.00 | sessionN=0 | stall=no
+[REGIME] ADX=37.5  BBbw=0.0001  ATR%=0.000009  (ok=False)
+[HB] 2025-09-14 17:59:24 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:59:25 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:59:26 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:59:27 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:59:28 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:59:29 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:59:30 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:59:32 CT OpenTrades=0 | ChooserArm=vwap | Gate=no | eps=0.049 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:59:33 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:59:34 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:59:35 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:59:36 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:59:37 CT OpenTrades=0 | ChooserArm=vwap | Gate=no | eps=0.049 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:59:38 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | sessionR=0.00 | sessionN=0 | stall=no
+[REGIME] ADX=39.5  BBbw=0.0001  ATR%=0.000006  (ok=False)
+[HB] 2025-09-14 17:59:39 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | sessionR=0.00 | sessionN=0 | stall=no
+[HB] 2025-09-14 17:59:40 CT OpenTrades=0 | ChooserArm=trend | Gate=no | eps=0.049 | sessionR=0.00 | sessionN=0 | stall=no

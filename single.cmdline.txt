@@ -1,0 +1,46 @@
+--host 127.0.0.1
+--port 7497
+--clientId 111
+--place-orders
+--auto-front-month
+--require-rt-before-trading
+--rt-staleness-sec 45
+--enable-breaking-news-guard
+--news-pause-sec 900
+--tod-blackouts 08:28-08:31,12:59-13:01
+--loss-graded-cooldown
+--pos-age-cap-sec 1200
+--pos-age-minR 0.5
+--hwm-stepdown
+--hwm-stepdown-dollars 5000
+--learn-log
+--require-new-bar-after-start
+--local-symbol ESZ5
+--symbol ES
+--entry-slippage-ticks 2
+--risk-ticks 12
+--tick-size 0.25
+--tp-R 1.0
+--enable-arms trend,breakout
+--gate-adx 19
+--gate-bbbw 0.00020
+--gate-atrp 0.000055
+--day-loss-cap-R 5
+--max-consec-losses 3
+--max-trades-per-day 12
+--strategy-cooldown-sec 150
+--trade-start-ct 00:00
+--trade-end-ct 23:59
+--tif GTC
+--outsideRth
+--startup-delay-sec 10
+--debounce-one-bar
+--duration "1 D"
+--connect-timeout-sec 300
+--poll-hist-when-no-rt
+--poll-interval-sec 15
+--risk-pct 0.01
+--day-guard-pct 0.025
+--peak-dd-min-profit 1500
+--peak-dd-guard-pct 0.60
+-v

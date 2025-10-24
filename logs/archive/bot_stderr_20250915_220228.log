@@ -1,0 +1,35 @@
+Error 1100, reqId -1: Connectivity between Gar Wood Securities, LLC and Gar Wood Pro has been lost.
+Error 1100, reqId -1: Connectivity between Gar Wood Securities, LLC and Gar Wood Pro has been lost.
+Error 1100, reqId -1: Connectivity between Gar Wood Securities, LLC and Gar Wood Pro has been lost.
+Error 1100, reqId -1: Connectivity between Gar Wood Securities, LLC and Gar Wood Pro has been lost.
+Error 1100, reqId -1: Connectivity between Gar Wood Securities, LLC and Gar Wood Pro has been lost.
+Error 1100, reqId -1: Connectivity between Gar Wood Securities, LLC and Gar Wood Pro has been lost.
+Error 1100, reqId -1: Connectivity between Gar Wood Securities, LLC and Gar Wood Pro has been lost.
+Error 1100, reqId -1: Connectivity between Gar Wood Securities, LLC and Gar Wood Pro has been lost.
+Error 1100, reqId -1: Connectivity between Gar Wood Securities, LLC and Gar Wood Pro has been lost.
+Error 1100, reqId -1: Connectivity between Gar Wood Securities, LLC and Gar Wood Pro has been lost.
+Error 1100, reqId -1: Connectivity between Gar Wood Securities, LLC and Gar Wood Pro has been lost.
+Error 1100, reqId -1: Connectivity between Gar Wood Securities, LLC and Gar Wood Pro has been lost.
+Error 1102, reqId -1: Connectivity between Gar Wood Securities, LLC and Gar Wood Pro has been restored - data maintained. All data farms are connected: usfuture.nj; usfarm.nj; usfuture; cashfarm; usfarm; ushmds; secdefil.
+Traceback (most recent call last):
+  File "C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py", line 1453, in <module>
+    main()
+    ~~~~^^
+  File "C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py", line 1138, in main
+    log(f"New session {next_reset_dt.strftime('%Y%m%d')} \u2192 resetting session stats.")
+    ~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py", line 48, in log
+    print(f"[INFO] {_ts()} {msg}", flush=True)
+    ~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py", line 68, in write
+    self.stdout.write(s)
+    ~~~~~~~~~~~~~~~~~^^^
+  File "C:\Users\owner\AppData\Local\Programs\Python\Python313\Lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode character '\u2192' in position 48: character maps to <undefined>
+Exception ignored on flushing sys.stdout:
+Traceback (most recent call last):
+  File "C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py", line 73, in flush
+    self.f.flush()
+ValueError: I/O operation on closed file.

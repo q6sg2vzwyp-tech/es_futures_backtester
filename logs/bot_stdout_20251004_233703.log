@@ -1,0 +1,195 @@
+2025-10-04 23:37:04 INFO Starting ES paper bot...
+2025-10-04 23:37:04 INFO [CONNECT] 127.0.0.1:7497 clientId=111
+2025-10-04 23:37:04 INFO Connecting to 127.0.0.1:7497 with clientId 111...
+2025-10-04 23:37:04 INFO Connected
+2025-10-04 23:37:04 INFO Logged on to server version 176
+2025-10-04 23:37:04 INFO API connection ready
+2025-10-04 23:37:04 INFO Warning 2104, reqId -1: Market data farm connection is OK:usfarm.nj
+2025-10-04 23:37:04 INFO Warning 2104, reqId -1: Market data farm connection is OK:usfuture
+2025-10-04 23:37:04 INFO Warning 2104, reqId -1: Market data farm connection is OK:cashfarm
+2025-10-04 23:37:04 INFO Warning 2104, reqId -1: Market data farm connection is OK:usfarm
+2025-10-04 23:37:04 INFO Warning 2106, reqId -1: HMDS data farm connection is OK:euhmds
+2025-10-04 23:37:04 INFO Warning 2106, reqId -1: HMDS data farm connection is OK:cashhmds
+2025-10-04 23:37:04 INFO Warning 2106, reqId -1: HMDS data farm connection is OK:fundfarm
+2025-10-04 23:37:04 INFO Warning 2106, reqId -1: HMDS data farm connection is OK:ushmds
+2025-10-04 23:37:04 INFO Warning 2158, reqId -1: Sec-def data farm connection is OK:secdefil
+2025-10-04 23:37:04 INFO position: Position(account='DU2660649', contract=Future(conId=495512563, symbol='ES', lastTradeDateOrContractMonth='20251219', multiplier='50', currency='USD', localSymbol='ESZ5', tradingClass='ES'), position=0.0, avgCost=0.0)
+2025-10-04 23:37:04 INFO Synchronization complete
+2025-10-04 23:37:04 INFO Connected
+2025-10-04 23:37:16 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:37:22 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:37:27 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:37:33 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:37:38 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:37:44 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:37:49 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:37:55 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:38:00 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:38:06 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:38:12 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:38:17 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:38:23 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:38:28 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:38:34 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:38:40 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:38:45 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:38:51 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:38:56 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:39:02 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:39:07 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:39:13 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:39:19 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:39:24 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:39:30 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:39:35 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:39:41 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:39:46 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:39:52 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:39:57 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:40:03 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:40:08 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:40:14 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:40:20 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:40:25 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:40:31 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:40:36 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:40:42 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:40:48 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:40:53 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:40:59 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:41:04 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:41:10 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:41:15 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:41:21 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:41:26 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:41:32 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:41:37 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:41:43 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:41:48 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:41:54 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:41:59 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:42:05 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:42:11 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:42:16 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:42:22 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:42:27 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:42:33 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:42:38 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:42:44 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:42:50 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:42:55 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:43:01 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:43:06 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:43:12 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:43:18 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:43:23 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:43:29 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:43:34 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:43:40 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:43:46 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:43:51 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:43:57 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:44:02 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:44:08 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:44:14 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:44:19 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:44:25 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:44:30 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:44:36 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:44:41 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:44:47 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:44:53 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:44:58 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:45:04 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:45:09 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:45:15 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:45:21 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:45:26 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:45:32 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:45:37 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:45:43 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:45:49 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:45:54 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:46:00 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:46:05 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:46:11 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:46:17 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:46:22 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:46:28 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:46:34 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:46:39 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:46:45 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:46:50 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:46:56 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:47:02 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:47:07 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:47:13 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:47:18 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:47:24 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:47:29 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:47:35 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:47:41 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:47:46 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:47:52 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:47:57 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:48:03 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:48:09 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:48:14 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:48:20 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:48:25 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:48:31 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:48:36 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:48:42 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:48:48 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:48:53 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:48:59 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:49:04 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:49:10 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:49:16 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:49:21 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:49:27 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:49:32 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:49:38 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:49:44 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:49:49 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:49:55 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:50:00 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:50:06 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:50:11 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:50:17 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:50:23 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:50:28 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:50:34 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:50:39 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:50:45 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:50:50 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:50:56 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:51:01 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:51:07 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:51:13 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:51:18 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:51:24 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:51:29 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:51:35 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:51:41 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:51:46 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:51:52 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:51:57 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:52:03 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:52:09 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:52:14 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:52:20 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:52:25 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:52:31 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:52:37 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:52:42 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:52:48 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:52:54 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:52:59 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:53:05 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:53:10 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:53:16 INFO [HB] active                 | dayR=0.00R weekR=0.00R lossStreak=0 open=0 tradesToday=0
+2025-10-04 23:53:21 INFO [CTRL-C] Shutting down...
+2025-10-04 23:53:21 INFO Disconnecting
+2025-10-04 23:53:21 INFO Disconnecting from 127.0.0.1:7497, 78.2 kB sent in 876 messages, 97.4 MB received in 1315 messages, session time 977 s.
+2025-10-04 23:53:21 INFO Disconnecting

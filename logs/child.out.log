@@ -1,0 +1,22 @@
+Starting ES paper bot...
+[CONNECT] Attempt 1/10 -> clientId=111
+Connected (clientId=111)
+[MD] LIVE (1).
+[CONTRACT] Using  conId=0 exp=
+[CONTRACT] Multiplier detected: 50
+[BOOT] Hist seed: 0 bars
+{"ts": "2025-10-20 22:21:11", "evt": "daily_reset", "cutover": "2025-10-20#08:30"}
+{"ts": "2025-10-20 22:21:12", "evt": "daily_reset", "cutover": "2025-10-20#17:00"}
+Starting ES paper bot...
+[CONNECT] Attempt 1/10 -> clientId=111
+[CONNECT] Failed: TimeoutError()
+[CONNECT] Attempt 2/10 -> clientId=112
+Connected (clientId=112)
+[MD] LIVE (1).
+[CONTRACT] Using ESZ5 conId=495512563 exp=20251219
+[CONTRACT] Multiplier detected: 50
+[IB PNL] Failed to subscribe: 'PnL' object has no attribute 'updateEvent'
+[BOOT] Hist seed: 361 bars
+{"ts": "2025-10-20 22:24:40", "evt": "daily_reset", "cutover": "2025-10-20#08:30"}
+{"ts": "2025-10-20 22:24:40", "evt": "daily_reset", "cutover": "2025-10-20#17:00"}
+{"ts": "2025-10-20 22:24:46", "evt": "bracket_submitted", "side": "BUY", "qty": 2, "entry": 6779.5, "stop": 6776.5, "tp": 6782.5}

@@ -1,0 +1,8 @@
+============================================================
+[START] 2025-09-05 09:28:12
+[CMD] C:\Users\owner\AppData\Local\Programs\Python\Python313\python.exe -X faulthandler -u paper_trader.py --host 127.0.0.1 --port 7497 --clientId 19 --conId 637533641 --tp-ladder 1.0R:50,2.0R:50 --no-confirm --place-orders --debug-regime --persist-chooser --chooser-model-path C:\Users\owner\Desktop\es_futures_backtester\models\linucb_state.json
+============================================================
+[PING 1] clientId=19 connected: True
+[CONNECT] Attempt 1/8 to 127.0.0.1:7497 (clientId=19, timeout=60s)
+Error 200, reqId 4771: No security definition has been found for the request, contract: Contract(secType='FUT', conId=637533641, exchange='GLOBEX')
+[ERROR] Could not resolve contract details for given conId.

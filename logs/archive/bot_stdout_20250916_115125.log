@@ -1,0 +1,38 @@
+[INFO] 2025-09-16 11:51:25 Enabled arms: trend,breakout,reversion,vwap
+[INFO] 2025-09-16 11:51:25 Loaded chooser state from C:\Users\owner\Desktop\es_futures_backtester\models\linucb_es.json
+[INFO] 2025-09-16 11:51:25 [PING 1] clientId=19 connected: False
+[INFO] 2025-09-16 11:51:26 Connected 127.0.0.1:7497 clientId=19 | Market data type: LIVE
+[INFO] 2025-09-16 11:51:26 Using contract: ESZ5  (conId=495512563)
+[INFO] 2025-09-16 11:51:26 [WARMUP] Fetching 5d of 1m bars...
+[INFO] 2025-09-16 11:51:27 [WARMUP] Loaded 6652 historical 1m bars.
+[REGIME] ADX=14.2  BBbw=0.0006  ATR%=0.000163  (ok=True)
+[INFO] 2025-09-16 11:51:28 [ARMS] trend: EN n=0, avgR=+0.000, mu=+0.000, ucb=+1.308 | breakout: EN n=0, avgR=+0.000, mu=+0.000, ucb=+1.308 | reversion: EN n=0, avgR=+0.000, mu=+0.000, ucb=+1.308 | vwap: EN n=0, avgR=+0.000, mu=+0.000, ucb=+1.308
+[HB] 2025-09-16 11:51:28 CT OpenTrades=0 | ChooserArm=trend | Gate=yes | eps=0.050 | sessionR=0.00 | sessionN=0 | stall=no
+[GATE] floors: BBbw>=0.000407 ATR%>=0.000089  now: ADX=14.2 BBbw=0.000599 ATR%=0.000163 ok=True
+[HB] 2025-09-16 11:51:29 CT OpenTrades=0 | ChooserArm=trend | Gate=yes | eps=0.050 | sessionR=0.00 | sessionN=0 | stall=no
+[GATE] floors: BBbw>=0.000407 ATR%>=0.000089  now: ADX=14.2 BBbw=0.000599 ATR%=0.000163 ok=True
+[HB] 2025-09-16 11:51:31 CT OpenTrades=0 | ChooserArm=trend | Gate=yes | eps=0.050 | sessionR=0.00 | sessionN=0 | stall=no
+[GATE] floors: BBbw>=0.000407 ATR%>=0.000089  now: ADX=14.2 BBbw=0.000599 ATR%=0.000163 ok=True
+[HB] 2025-09-16 11:51:32 CT OpenTrades=0 | ChooserArm=trend | Gate=yes | eps=0.050 | sessionR=0.00 | sessionN=0 | stall=no
+[GATE] floors: BBbw>=0.000407 ATR%>=0.000089  now: ADX=14.8 BBbw=0.000611 ATR%=0.000146 ok=True
+[HB] 2025-09-16 11:51:33 CT OpenTrades=0 | ChooserArm=trend | Gate=yes | eps=0.050 | sessionR=0.00 | sessionN=0 | stall=no
+[GATE] floors: BBbw>=0.000407 ATR%>=0.000089  now: ADX=14.8 BBbw=0.000611 ATR%=0.000146 ok=True
+[HB] 2025-09-16 11:51:34 CT OpenTrades=0 | ChooserArm=trend | Gate=yes | eps=0.050 | sessionR=0.00 | sessionN=0 | stall=no
+[GATE] floors: BBbw>=0.000407 ATR%>=0.000089  now: ADX=14.8 BBbw=0.000611 ATR%=0.000146 ok=True
+[HB] 2025-09-16 11:51:35 CT OpenTrades=0 | ChooserArm=trend | Gate=yes | eps=0.050 | sessionR=0.00 | sessionN=0 | stall=no
+[GATE] floors: BBbw>=0.000407 ATR%>=0.000089  now: ADX=14.8 BBbw=0.000611 ATR%=0.000146 ok=True
+[HB] 2025-09-16 11:51:36 CT OpenTrades=0 | ChooserArm=trend | Gate=yes | eps=0.050 | sessionR=0.00 | sessionN=0 | stall=no
+[GATE] floors: BBbw>=0.000407 ATR%>=0.000089  now: ADX=14.8 BBbw=0.000611 ATR%=0.000146 ok=True
+[HB] 2025-09-16 11:51:37 CT OpenTrades=0 | ChooserArm=trend | Gate=yes | eps=0.050 | sessionR=0.00 | sessionN=0 | stall=no
+[GATE] floors: BBbw>=0.000407 ATR%>=0.000089  now: ADX=17.0 BBbw=0.000629 ATR%=0.000137 ok=True
+[HB] 2025-09-16 11:51:38 CT OpenTrades=0 | ChooserArm=trend | Gate=yes | eps=0.050 | sessionR=0.00 | sessionN=0 | stall=no
+[GATE] floors: BBbw>=0.000407 ATR%>=0.000089  now: ADX=17.0 BBbw=0.000629 ATR%=0.000137 ok=True
+[HB] 2025-09-16 11:51:39 CT OpenTrades=0 | ChooserArm=trend | Gate=yes | eps=0.050 | sessionR=0.00 | sessionN=0 | stall=no
+[GATE] floors: BBbw>=0.000407 ATR%>=0.000089  now: ADX=17.0 BBbw=0.000629 ATR%=0.000137 ok=True
+[HB] 2025-09-16 11:51:40 CT OpenTrades=0 | ChooserArm=trend | Gate=yes | eps=0.050 | sessionR=0.00 | sessionN=0 | stall=no
+[GATE] floors: BBbw>=0.000407 ATR%>=0.000089  now: ADX=17.0 BBbw=0.000629 ATR%=0.000137 ok=True
+[HB] 2025-09-16 11:51:42 CT OpenTrades=0 | ChooserArm=trend | Gate=yes | eps=0.050 | sessionR=0.00 | sessionN=0 | stall=no
+[GATE] floors: BBbw>=0.000407 ATR%>=0.000089  now: ADX=20.3 BBbw=0.000589 ATR%=0.000134 ok=True
+[INFO] 2025-09-16 11:51:42 Interrupted; shutting down.
+[INFO] 2025-09-16 11:51:42 Saved chooser state to C:\Users\owner\Desktop\es_futures_backtester\models\linucb_es.json
+[INFO] 2025-09-16 11:51:42 [SNAPSHOT] Wrote logs\chooser_snapshots\linucb_es_20250916_20250916_115142.json

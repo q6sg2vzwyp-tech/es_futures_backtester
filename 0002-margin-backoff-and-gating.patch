@@ -1,0 +1,48 @@
+﻿diff --git a/paper_trader.py b/paper_trader.py
+index 2222222..3333333 100644
+--- a/paper_trader.py
++++ b/paper_trader.py
+@@ -540,6 +540,8 @@ def main():
+     week_halted = False
+     last_week_id = iso_week_id(ct_now().date())
+     weekly_cap_R = -min(5.0, 2.0 * abs(args.day_loss_cap_R))
++    margin_backoff_until: Optional[dt.datetime] = None
++    margin_backoff_seconds = 90
+ 
+     # Sessions (AM/PM segmentation only)
+     session_cutovers = parse_ct_list(getattr(args, "session_reset_cts", "08:30,16:00,17:00"))
+@@ -563,6 +565,19 @@ def main():
+     def _on_status(trade):
+         nonlocal sibling_cancel_needed, orphan_sweep_needed
+         try:
++            # Margin rejection handling (Error 201 / insufficient funds)
++            msg = (getattr(trade, "log", []) or [])
++            if msg:
++                last_msg = str(msg[-1].message or "")
++                if "insufficient" in last_msg.lower() or "margin" in last_msg.lower():
++                    nonlocal margin_backoff_until
++                    margin_backoff_until = ct_now() + dt.timedelta(seconds=margin_backoff_seconds)
++                    log("margin_backoff", until=str(margin_backoff_until))
++                    # Put strategy on cooldown as well
++                    risk.cool_until = max(risk.cool_until or ct_now(),
++                                          ct_now() + dt.timedelta(seconds=margin_backoff_seconds))
++
+             if (trade.orderStatus.status or "").strip() == "Filled":
+                 sibling_cancel_needed = True
+                 orphan_sweep_needed = True
+@@ -740,6 +755,9 @@ def main():
+             if news_kill_active: caps_reasons.append("news_kill")
++            # Margin backoff gate
++            if margin_backoff_until and now < margin_backoff_until:
++                caps_reasons.append("margin_backoff")
+ 
+             # Determine state
+             if caps_reasons:
+@@ -776,6 +794,7 @@ def main():
+             hb_update(state=state,
+                       idle_reason=idle_reason,
+                       in_session_window=within_session(now, args.trade_start_ct, args.trade_end_ct),
++                      margin_backoff_until=(str(margin_backoff_until) if margin_backoff_until else None),
+                       caps=caps_reasons,
+                       dayR=round(risk.day_R, 3),
+                       trades_today=int(risk.trades),
