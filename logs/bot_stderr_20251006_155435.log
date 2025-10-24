@@ -1,4 +1,0 @@
-  File "C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py", line 151
-    return
-    ^^^^^^
-SyntaxError: 'return' outside function

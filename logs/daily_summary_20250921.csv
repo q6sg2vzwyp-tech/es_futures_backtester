@@ -1,2 +1,0 @@
-orderId,arm,side,qty,entry_price,snap_price,entry_time,hold_hours,realized_R,max_adverse_R,slip_R,reward,entry_regime,session_day
-4864,reversion,LONG,1,6696.25,6696.25,2025-09-22T02:29:54.628703,0.04086524722222222,1.0,0.0,0.0,1.0159134752777776,"{'atr_pct': 4.821823893603419e-05, 'bb_bw': 0.0001738343396706609, 'adx': 17.65501835705545, 'spread': 1.0, 'ok': 1.0, 'atr_points': 0.32289343703515294}",2025-09-21

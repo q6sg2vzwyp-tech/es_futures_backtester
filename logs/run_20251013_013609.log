@@ -1,6 +1,0 @@
-2025-10-13 01:36:09 [WD] pid=19732
-  File "C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py", line 246
-    ap.add_argument("--max-consec-losses", type:int, default=3, help="Halt for the day after this many losses in a row.")
-                                               ^
-SyntaxError: invalid syntax
-2025-10-13 01:36:09 [WD] Child exited: code=1

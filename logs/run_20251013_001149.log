@@ -1,3 +1,0 @@
-[ Mon 10/13/2025  0:11:49.82 ] Launching watchdog... 
-[ Mon 10/13/2025  0:11:49.82 ] cmd-file: "C:\Users\owner\Desktop\es_futures_backtester\bot_flags.txt" 
-C:\Users\owner\AppData\Local\Programs\Python\Python313\python.exe: can't open file 'C:\\Users\\owner\\Desktop\\es_futures_backtester\\watchdog.py': [Errno 2] No such file or directory

@@ -1,2 +1,0 @@
-2025-10-13 16:41:47 [WD] Launching child; log=logs\run_20251013_164147.log
-2025-10-13 16:41:47 [WD] Command: C:\Path\to\python.exe -X faulthandler -u .\paper_trader.py --place-orders

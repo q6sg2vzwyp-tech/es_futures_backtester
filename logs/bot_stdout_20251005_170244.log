@@ -1,3 +1,0 @@
-Starting ES paper bot...
-[CONNECT] 127.0.0.1:7497 clientId=111
-ERROR [CONNECT] Failed: ConnectionRefusedError(22, 'The remote computer refused the network connection', None, 1225, None)

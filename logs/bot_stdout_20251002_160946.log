@@ -1,8 +1,0 @@
-2025-10-02 16:09:47 INFO Starting ES paper bot...
-2025-10-02 16:09:47 INFO [CONNECT] 127.0.0.1:7497 clientId=111
-2025-10-02 16:09:47 INFO Connecting to 127.0.0.1:7497 with clientId 111...
-2025-10-02 16:09:47 INFO Connected
-2025-10-02 16:14:47 INFO Disconnecting
-2025-10-02 16:14:47 ERROR API connection failed: TimeoutError()
-2025-10-02 16:14:47 INFO Disconnected.
-2025-10-02 16:14:47 ERROR [CONNECT] Failed: 

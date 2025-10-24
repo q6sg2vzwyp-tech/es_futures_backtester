@@ -1,5 +1,0 @@
-2025-10-12 23:09:39 choose cand=['trend', 'breakout'] probs={"trend": 0.5989652366665752, "breakout": 0.4010347633334248} chosen=trend
-2025-10-12 23:52:01 choose cand=['trend', 'breakout'] probs={"trend": 0.5684028924324491, "breakout": 0.4315971075675508} chosen=trend
-2025-10-13 02:17:52 arm=breakout R=-0.083 pnl=-25.00 comm=0.00
-2025-10-13 02:40:24 arm=breakout R=-0.348 pnl=-52.25 comm=0.00
-2025-10-13 03:05:43 arm=breakout R=-0.848 pnl=-127.25 comm=0.00

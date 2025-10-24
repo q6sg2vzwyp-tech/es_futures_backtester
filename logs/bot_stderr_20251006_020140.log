@@ -1,8 +1,0 @@
-Traceback (most recent call last):
-  File "C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py", line 587, in <module>
-    main()
-    ~~~~^^
-  File "C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py", line 478, in main
-    while rt.hasNext():
-          ^^^^^^^^^^
-AttributeError: 'RealTimeBarList' object has no attribute 'hasNext'

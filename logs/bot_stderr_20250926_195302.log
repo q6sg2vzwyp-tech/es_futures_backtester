@@ -1,8 +1,0 @@
-Traceback (most recent call last):
-  File "C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py", line 562, in <module>
-    main()
-    ~~~~^^
-  File "C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py", line 536, in main
-    on_trade_exit(-1.0, state.entry_side or side)
-    ^^^^^^^^^^^^^
-NameError: name 'on_trade_exit' is not defined

@@ -1,4 +1,0 @@
-usage: paper_trader.py [-h] --cmd CMD [--logdir LOGDIR] [--hb-sec HB_SEC]
-                       [--restart-delay-sec RESTART_DELAY_SEC]
-                       [--always-restart]
-paper_trader.py: error: the following arguments are required: --cmd

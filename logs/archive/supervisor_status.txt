@@ -1,8 +1,0 @@
-=== Supervisor Status ===
-TS: 2025-09-09 16:38:04 CDT
-Child: RUNNING
-Active conId: 637533641
-Autoroll: FRONT_MONTH  ESU5  exp=2025-09-19  dte=10
-
---- Child Snapshot ---
-Regime: ADX=31.3  BBbw=0.0001  ATR%=0.000036  ok=False

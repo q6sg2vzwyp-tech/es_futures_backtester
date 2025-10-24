@@ -1,7 +1,0 @@
-Traceback (most recent call last):
-  File "C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py", line 929, in main
-    run_trader(args, session_dir)
-    ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
-  File "C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py", line 468, in run_trader
-    raise RuntimeError("Contract could not be qualified; check symbol/localsymbol/lastTrade/conId.")
-RuntimeError: Contract could not be qualified; check symbol/localsymbol/lastTrade/conId.

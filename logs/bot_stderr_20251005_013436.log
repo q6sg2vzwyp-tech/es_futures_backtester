@@ -1,8 +1,0 @@
-Traceback (most recent call last):
-  File "C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py", line 587, in <module>
-    main()
-    ~~~~^^
-  File "C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py", line 316, in main
-    ib.Client.RequestTimeout = args.timeout_sec
-    ^^^^^^^^^
-AttributeError: 'IB' object has no attribute 'Client'. Did you mean: 'client'?

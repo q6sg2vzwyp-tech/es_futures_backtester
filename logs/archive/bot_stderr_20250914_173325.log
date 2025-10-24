@@ -1,1 +1,0 @@
-Error 200, reqId 4771: No security definition has been found for the request, contract: Contract(secType='FUT', conId=123456789, exchange='CME')

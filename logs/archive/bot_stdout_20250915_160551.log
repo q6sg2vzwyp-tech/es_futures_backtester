@@ -1,3 +1,0 @@
-[INFO] 2025-09-15 16:05:52 Enabled arms: trend,breakout,reversion,vwap
-[INFO] 2025-09-15 16:05:52 Loaded chooser state from models\linucb_es.json
-[INFO] 2025-09-15 16:05:52 [PING 1] clientId=19 connected: False

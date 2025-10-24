@@ -1,4 +1,0 @@
-2025-09-29 15:18:04 ERROR Error 200, reqId 11878: No security definition has been found for the request, contract: Contract(secType='FUT', conId=495512563, exchange='GLOBEX')
-2025-09-29 15:18:04 WARNING Unknown contract: Contract(secType='FUT', conId=495512563, exchange='GLOBEX')
-2025-09-29 15:18:04 ERROR Error 200, reqId 11879: No security definition has been found for the request, contract: Contract(secType='FUT', conId=495512563, exchange='GLOBEX')
-2025-09-29 15:18:04 ERROR Error 200, reqId 11880: No security definition has been found for the request, contract: Contract(secType='FUT', conId=495512563, exchange='GLOBEX')

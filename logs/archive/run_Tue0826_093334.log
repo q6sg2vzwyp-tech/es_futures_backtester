@@ -1,7 +1,0 @@
-2025-08-26 09:33:34,291 ================== PAPER MODE ==================
-2025-08-26 09:33:34,291 Host:127.0.0.1  Port:7497  ClientId:13
-2025-08-26 09:33:34,291 Paper account required (TWS/Gateway set to Paper). Orders WILL be sent (paper).
-2025-08-26 09:33:34,292 Writing log to logs\run_Tue0826_093334.log
-2025-08-26 09:33:34,293 [CONNECT] Attempt 1/8 to 127.0.0.1:7497 (clientId=13, timeout=60s)
-2025-08-26 09:33:34,604 Connected 127.0.0.1:7497 clientId=13 | Market data type: LIVE (1)
-2025-08-26 09:33:34,721 [CRASH] Saved traceback to: results/ib_session_20250826_143334/crash_20250826_143334.log

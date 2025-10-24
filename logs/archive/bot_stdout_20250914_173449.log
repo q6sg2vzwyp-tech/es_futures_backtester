@@ -1,5 +1,0 @@
-[INFO] 2025-09-14 17:34:50 Enabled arms: trend,breakout,reversion,vwap
-[INFO] 2025-09-14 17:34:50 Loaded chooser state from .\models\linucb_es.json
-[INFO] 2025-09-14 17:34:50 [PING 1] clientId=19 connected: False
-[INFO] 2025-09-14 17:34:50 Connected 127.0.0.1:7497 clientId=19 | Market data type: LIVE
-[ERROR] 2025-09-14 17:34:50 Could not resolve contract: No security definition for conId=123456789

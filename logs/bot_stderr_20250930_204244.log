@@ -1,3 +1,0 @@
-C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py:21: SyntaxWarning: invalid escape sequence '\d'
-  --bandit-state .\data\learn\bandit_state.json
-^C

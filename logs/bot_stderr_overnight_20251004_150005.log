@@ -1,5 +1,0 @@
-C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py:17: SyntaxWarning: invalid escape sequence '\s'
-  PowerShell -NoProfile -ExecutionPolicy Bypass -File .\start_watchdog.ps1
-  File "C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py", line 723
-    ap.add_argument("--host", default="127.0.0.1")
-IndentationError: unexpected indent

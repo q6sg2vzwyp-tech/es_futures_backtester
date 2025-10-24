@@ -1,3 +1,0 @@
-C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py:17: SyntaxWarning: invalid escape sequence '\s'
-  PowerShell -NoProfile -ExecutionPolicy Bypass -File .\start_watchdog.ps1
-[CLI] Ignoring unknown args: ['--atomic-bracket', '--min-hold-sec', '60', '--breakeven-after-R', '2.2', '--trail-atr-mult', '3.2', '--trail-delay-sec', '240', '--trail-on-bar-close']

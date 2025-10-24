@@ -1,5 +1,7 @@
 ﻿.venv/
-logs/
-data/state/
 __pycache__/
 *.pyc
+logs/
+data/state/
+*.log
+.DS_Store

@@ -1,3 +1,0 @@
-Error 326, reqId -1: Unable to connect as the client id is already in use. Retry with a unique client id.
-Peer closed connection. clientId 111 already in use?
-API connection failed: TimeoutError()
