@@ -1,0 +1,14 @@
+﻿project:
+  name: es_futures_backtester
+  entrypoints:
+    run: "python paper_trader.py --local-symbol ESZ5 --poll-hist-when-no-rt --require-rt-before-trading"
+  include:
+    - "**/*.py"
+    - "data/**"
+    - "logs/**"
+  ignore:
+    - ".venv/**"
+    - "__pycache__/**"
+    - ".git/**"
+model:
+  name: gpt-5-codex
