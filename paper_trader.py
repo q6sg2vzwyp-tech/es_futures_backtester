@@ -1,117 +1,135 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-"""
-ES Paper Trader (IBKR + ib_insync)
-- Paper-only safety by default
-- Thompson Sampling learner (shadow/advisory/control)
-- Risk profiles: balanced/aggressive/conservative
-- OCO protection builder & audit (orphan sweeps, sibling cancel)
-- VWAP session + optional short guards (VWAP buffer + lower-high)
-- Session cutovers (multi) + persistent day guard
-- Version-safe IB PnL subscription + NetLiq via accountValueEvent
-- 24/5 trading window by default (no TOD blackouts unless provided)
-- News kill switch: file flag + optional TOD windows + IBKR news bulletins
-- 1-second JSON heartbeats with explicit idle reasons & RT status/age/queue
-- Robust RT→Polling fallback (5s bars via historical polling)
-
-NEW (this build):
-- Error logging improvements
-- Market-data warmup & proper cancel (no more 'No reqId found' warning)
-- Deterministic RT-starved ⇒ poll fallback (+ MIDPOINT auto-resubscribe)
-- Fast first-poll when no bars; dynamic re-poll interval under starvation
-- Weekly R/cap reset at ISO week boundary
-- Trade count increments when parent order becomes working (not on submit)
-- Margin rejection (201 insufficient) triggers 60s backoff
-- Commission tracking via commissionReportEvent
-- VWAP only ingests TRADES bars (RT + polled), never MIDPOINT
-"""
-
-from __future__ import annotations
-import sys, os, time, json, math, random, argparse, datetime as dt, re, traceback, threading
+import sys, os, time, json, math, random, argparse, datetime as dt, re, traceback
 from typing import Optional, List, Dict, Any, Tuple
-from ib_insync import IB, Future, Contract, LimitOrder, StopOrder, MarketOrder, Trade
 
-# ---------- Utilities ----------
-def utc_now_str(): return dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
-def ct_now() -> dt.datetime: return dt.datetime.now()
-def parse_hhmm(s: str) -> dt.time: h,m = s.split(":"); return dt.time(int(h), int(m))
-def clamp(x, lo, hi): return max(lo, min(hi, x))
-def ticks_to_price_delta(ticks: int, tick_size: float) -> float: return float(ticks) * float(tick_size)
-def round_to_tick(p: float, tick: float) -> float: return round(p / tick) * tick if tick > 0 else p
+# 3rd party
+from ib_insync import IB, Future, Contract, LimitOrder, StopOrder, Trade, MarketOrder
 
-def log(evt: str, **fields):
-    payload = {"ts": utc_now_str(), "evt": evt}; payload.update(fields)
-    print(json.dumps(payload, ensure_ascii=False), flush=True)
+# ============== Utilities & Logging ==============
 
-# ---------- Math / indicators ----------
-def ema(vals: List[float], span: int) -> float:
-    if not vals: return float("nan")
-    k = 2/(span+1); s = vals[0]
-    for v in vals[1:]: s = v*k + s*(1-k)
+def ct_now() -> dt.datetime:
+    # assumes local machine clock is CT
+    return dt.datetime.now()
+
+def utc_now_str() -> str:
+    return dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+
+def parse_hhmm(s: str) -> dt.time:
+    hh, mm = s.split(":")
+    return dt.time(int(hh), int(mm))
+
+def within_session(now: dt.datetime, start_ct: str, end_ct: str) -> bool:
+    t = now.time()
+    a = parse_hhmm(start_ct)
+    b = parse_hhmm(end_ct)
+    if a <= b:
+        # Normal same-day window
+        return a <= t <= b
+    # Overnight window (wraps past midnight)
+    return (t >= a) or (t <= b)
+
+def clamp(x, lo, hi):
+    return max(lo, min(hi, x))
+def ema(values: List[float], span: int) -> float:
+    if not values:
+        return float("nan")
+    k = 2.0 / (span + 1.0)
+    s = values[0]
+    for v in values[1:]:
+        s = v * k + s * (1.0 - k)
     return s
-
-def atr(H: List[float], L: List[float], C: List[float], n: int = 14) -> float:
-    if len(C) < n+1: return float("nan")
-    trs = []
-    for i in range(1, len(C)):
-        hl = H[i] - L[i]; hc = abs(H[i] - C[i-1]); lc = abs(L[i] - C[i-1])
+def atr(h: List[float], l: List[float], c: List[float], n: int = 14) -> float:
+    if len(c) < n + 1:
+        return float("nan")
+    trs: List[float] = []
+    for i in range(1, len(c)):
+        hl = h[i] - l[i]
+        hc = abs(h[i] - c[i - 1])
+        lc = abs(l[i] - c[i - 1])
         trs.append(max(hl, hc, lc))
-    if len(trs) < n: return float("nan")
-    k = 2/(n+1)
-    s = trs[-n]
-    for v in trs[-n+1:]:
-        s = v*k + s*(1-k)
-    return s
+    if len(trs) < n:
+        return float("nan")
+    return ema(trs[-n:], n)
+def stddev(vals: List[float]) -> float:
+    n = len(vals)
+    if n == 0:
+        return float("nan")
+    m = sum(vals) / n
+    v = sum((x - m) * (x - m) for x in vals) / n
+    return math.sqrt(v)
 
-# ---------- Session helpers ----------
+def bbbw(hl2: List[float], n: int = 20, k: float = 2.0) -> Optional[float]:
+    if len(hl2) < n: return None
+    wins = hl2[-n:]; m = sum(wins)/n
+#     v = sum((x-m)**2 for x in wins)/n; sd = math.sqrt(v)
+#     mid = m; upper = mid + k*sd; lower = mid - k*sd
+#     bw = (upper - lower) / (mid if mid != 0 else 1.0)
+#     return abs(bw)
+
+def duration_fix(s: str) -> str:
+    pass
+#     s = s.strip().replace('"', '')
+    if s.upper().endswith('D') and ' ' not in s:
+        num = s[:-1]
+        if num.isdigit(): return f"{num} D"
+#     return s
+
+def ticks_to_price_delta(ticks: int, tick_size: float) -> float:
+    pass
+#     return float(ticks) * float(tick_size)
+
+def round_to_tick(p: float, tick: float) -> float:
+    pass
+#     return round(p / tick) * tick if tick > 0 else p
+
+def bar_ts(b):
+    pass
+#     t = getattr(b, "time", None)
+    if t is None:
+        pass
+#         t = getattr(b, "date", None)
+#     return t
+
+def mkdirs(p: str):
+    if p: os.makedirs(p, exist_ok=True)
+
+# Simple JSON logger
+def log(event: str, **fields):
+    payload = {"ts": utc_now_str(), "evt": event}
+#     payload.update(fields)
+    print(json.dumps(payload, separators=(",", ":"), ensure_ascii=False), flush=True)
+
+# ============== Session helpers (AM/PM) ==============
+
 def parse_ct_list(spec: str) -> List[dt.time]:
     spec = (spec or "").strip()
-    if not spec: return [parse_hhmm("16:10")]
-    out = []
+    if not spec:
+        return [parse_hhmm("16:10")]
+    out: List[dt.time] = []
     for chunk in spec.split(","):
         chunk = chunk.strip()
-        if not chunk: continue
-        try: out.append(parse_hhmm(chunk))
-        except Exception: pass
+        if not chunk:
+            continue
+        try:
+            out.append(parse_hhmm(chunk))
+        except Exception:
+            # ignore bad tokens like "foo"
+            pass
     out = sorted(list({t for t in out}))
     return out or [parse_hhmm("16:10")]
 
-def within_session(now: dt.datetime, start_ct: str, end_ct: str) -> bool:
-    t = now.time(); a = parse_hhmm(start_ct); b = parse_hhmm(end_ct)
-    if a <= b: return a <= t <= b
-    return (t >= a) or (t <= b)
-
-def parse_blackouts(spec: str) -> List[Tuple[dt.time, dt.time]]:
-    out = []
-    spec = (spec or "").strip()
-    if not spec: return out
-    for chunk in spec.split(","):
-        chunk = chunk.strip()
-        if not chunk: continue
-        try:
-            a, b = chunk.split("-")
-            out.append((parse_hhmm(a), parse_hhmm(b)))
-        except Exception:
-            pass
-    return out
-
-def in_tod_blackout(now: dt.datetime, blackouts: List[Tuple[dt.time, dt.time]]) -> bool:
-    if not blackouts: return False
-    t = now.time()
-    for a, b in blackouts:
-        if a <= b:
-            if a <= t <= b: return True
-        else:  # crosses midnight
-            if (t >= a) or (t <= b): return True
-    return False
-
 def session_key_multi(now: dt.datetime, reset_times: List[dt.time]) -> str:
+    """Return 'YYYY-mm-dd-S#' where S# is the current segment index determined by reset_times.
+    If no cutover has occurred yet today, attribute to yesterday's last segment."""
     t = now.time()
     idx_today = -1
     for i, ct in enumerate(reset_times):
-        if t >= ct: idx_today = i
-        else: break
+        if t >= ct:
+            idx_today = i
+        else:
+            break
     if idx_today >= 0:
         base_date = now.date(); seg = idx_today
     else:
@@ -119,245 +137,303 @@ def session_key_multi(now: dt.datetime, reset_times: List[dt.time]) -> str:
     return f"{base_date.strftime('%Y-%m-%d')}-S{seg}"
 
 def reset_due_multi(now: dt.datetime, reset_times: List[dt.time], last_reset_marks: Dict[str, str]) -> Optional[str]:
-    today = now.date().strftime("%Y-%m-%d")
+    """Fire once per cutover per calendar day.
+    Returns 'YYYY-mm-dd#HH:MM' on a new cutover, else None."""
+    today = now.date().strftime('%Y-%m-%d')
     for ct in reset_times:
-        label = ct.strftime("%H:%M")
-        if last_reset_marks.get(label) == today:
-            continue
-        if now.time() >= ct:
+        label = ct.strftime('%H:%M')
+        if last_reset_marks.get(label) != today and now.time() >= ct:
             last_reset_marks[label] = today
-            return f"{today}#{label}"
+            return f'{today}#{label}'
     return None
 
-# ---------- Heartbeat (thread) ----------
-_hb_lock = threading.Lock()
-_hb_state: Dict[str, Any] = {
-    "state": "-",
-    "idle_reason": "starting_or_quiet",
-    "net_qty": 0,
-    "bars": 0,
-    "rt_enabled": False,
-    "rt_status": "disabled",
-    "rt_age_sec": None,
-    "rt_queue_len": 0,
-    "in_session_window": False,
-    "caps": [],
-    "news_kill": False,
-    "dayR": 0.0,
-    "trades_today": 0,
-    "cool_until": None,
-    "orders_disabled_paper_safety": False,
-}
-def hb_update(**kv):
-    with _hb_lock:
-        _hb_state.update(kv)
-def _hb_loop():
-    while True:
-        with _hb_lock:
-            payload = dict(_hb_state)
-        log("hb", **payload)
-        time.sleep(1.0)
-def start_heartbeat_thread():
-    t = threading.Thread(target=_hb_loop, daemon=True)
-    t.start()
+# ============== Safety: Paper-only ==============
 
-# ---------- Thompson learner ----------
-class ThompsonGaussian:
-    def __init__(self, arms: List[str], decay_gamma: float, prior_mean=0.0, prior_var=0.25):
-        self.arms = arms[:]
-        self.gamma = decay_gamma
-        self.m = {a: prior_mean for a in arms}
-        self.s2 = {a: prior_var for a in arms}
-        self.w = {a: 1e-6 for a in arms}
-        self.last_arm: Optional[str] = None
-    def choose(self, cand_arms: List[str], sample: bool) -> Tuple[str, Dict[str, float]]:
-        scores = {}
-        for a in cand_arms:
-            std = math.sqrt(max(1e-6, self.s2[a] / (self.w[a] + 1.0)))
-            scores[a] = random.gauss(self.m[a], std)
-        m = max(scores.values()) if scores else 0.0
-        exps = {a: math.exp(scores[a] - m) for a in cand_arms}
-        s = sum(exps.values()) or 1.0
-        probs = {a: exps[a]/s for a in cand_arms}
-        choice = max(probs.items(), key=lambda kv: kv[1])[0]
-        if sample:
-            r, cum = random.random(), 0.0
-            for a in cand_arms:
-                cum += probs[a]
-                if r <= cum:
-                    choice = a; break
-        return choice, probs
-    def update(self, arm: str, reward_R: float):
-        g = self.gamma
-        w_old = self.w[arm]
-        self.w[arm] = g*w_old + 1.0
-        m_old = self.m[arm]
-        m_new = m_old + (reward_R - m_old) / self.w[arm]
-        s2_old = self.s2[arm]
-        s2_new = g*s2_old + (reward_R - m_old)*(reward_R - m_new)
-        self.m[arm] = m_new
-        self.s2[arm] = max(1e-6, s2_new)
-        self.last_arm = arm
-
-# ---------- VWAP ----------
-class SessionVWAP:
-    def __init__(self): self.pv=0.0; self.v=0.0; self.vwap=float("nan")
-    def reset(self): self.pv=0.0; self.v=0.0; self.vwap=float("nan")
-    def update_bar(self, close_px: Optional[float], volume: Optional[float]):
-        try:
-            if close_px is None or volume is None: return
-            vol = max(0.0, float(volume))
-            if vol <= 0: return
-            px = float(close_px)
-            self.pv += px * vol; self.v += vol
-            if self.v > 0: self.vwap = self.pv / self.v
-        except Exception:
-            pass
-
-# ---------- IB helpers ----------
-ACTIVE_STATUSES = {"Submitted","PreSubmitted","ApiPending","PendingSubmit","PendingCancel","Inactive"}
-CANCELLABLE_STATUSES = {"Submitted","PreSubmitted","ApiPending","PendingSubmit"}
-
-def _parse_ib_date(s: str) -> Optional[dt.date]:
-    try: return dt.datetime.strptime(s, "%Y%m%d").date()
+def ensure_paper_only(ib: IB, args):
+    if getattr(args, "allow_live", False): return
+    try:
+        pass
+#         accts = ib.managedAccounts(); acct = accts[0] if accts else None
     except Exception:
-        try: return dt.datetime.strptime(s, "%Y%m%d%H:%M:%S").date()
-        except Exception: return None
+        pass
+#         acct = None
+#     bad_port = (getattr(args, 'port', None) != 7497)
+#     bad_acct = (acct is not None and not acct.upper().startswith("DU"))
+    if bad_port or bad_acct:
+        print(f"[SAFE] Paper-only: refusing to trade (port={getattr(args,'port',None)}, account={acct}).", file=sys.stderr)
+#         sys.exit(2)
+
+# ============== Contracts & multiplier ==============
+
+def parse_yyyymmdd(s: str) -> Optional[dt.date]:
+    try:
+        if not s: return None
+        if len(s) == 8: return dt.datetime.strptime(s, "%Y%m%d").date()
+        if len(s) == 6: return dt.datetime.strptime(s, "%Y%m").date().replace(day=1)
+    except Exception:
+        pass
+#         return None
+#     return None
 
 def qualify_local_symbol(ib: IB, local_symbol: str, exchange="CME"):
-    cds = ib.reqContractDetails(Future(localSymbol=local_symbol, exchange=exchange))
+    pass
+#     cds = ib.reqContractDetails(Future(localSymbol=local_symbol, exchange=exchange))
     if not cds: raise RuntimeError(f"Local symbol {local_symbol} not found on {exchange}")
-    con = cds[0].contract
-    ib.qualifyContracts(con)
-    return con
+#     con = cds[0].contract
+#     ib.qualifyContracts(con)
+#     return con, cds[0]
 
 def mk_contract(ib: IB, args) -> Contract:
     if getattr(args, "local_symbol", None):
-        con = qualify_local_symbol(ib, args.local_symbol, "CME")
-        print(f"[CONTRACT] Using {con.localSymbol} conId={con.conId} exp={con.lastTradeDateOrContractMonth}")
-        return con
-    cds = ib.reqContractDetails(Future(symbol=args.symbol, exchange="CME", currency="USD"))
-    if not cds: raise RuntimeError(f"Symbol {args.symbol} not found on CME; supply --local-symbol")
-    best = None; best_date = None
-    for cd in cds:
-        d = _parse_ib_date(cd.contract.lastTradeDateOrContractMonth)
-        if not d: continue
-        if best is None or d < best_date:
-            best = cd.contract; best_date = d
-    if best is None: raise RuntimeError("Could not resolve front contract; supply --local-symbol")
-    ib.qualifyContracts(best)
-    print(f"[CONTRACT] Using {best.localSymbol} conId={best.conId} exp={best.lastTradeDateOrContractMonth}")
-    return best
+        pass
+#         con, cd = qualify_local_symbol(ib, args.local_symbol, "CME")
+#         print(f"[CONTRACT] Using localSymbol={con.localSymbol} conId={con.conId} expiry={con.lastTradeDateOrContractMonth}")
+#         return con
+    try:
+        pass
+#         cds = ib.reqContractDetails(Future(symbol=args.symbol, exchange="CME"))
+#         today = dt.date.today(); live = []
+        for cd in cds:
+            pass
+#             last = parse_yyyymmdd(cd.contract.lastTradeDateOrContractMonth or "")
+            if last and last >= today:
+                pass
+#                 live.append((last, cd.contract))
+        if live:
+            live.sort(key=lambda x: x[0])
+#             con = live[0][1]; ib.qualifyContracts(con)
+#             print(f"[CONTRACT] Auto-picked {con.localSymbol} conId={con.conId} expiry={con.lastTradeDateOrContractMonth}")
+#             return con
+        if cds:
+            cds.sort(key=lambda cd: parse_yyyymmdd(cd.contract.lastTradeDateOrContractMonth or "") or dt.date.min, reverse=True)
+#             con = cds[0].contract; ib.qualifyContracts(con)
+#             print(f"[CONTRACT] Fallback-picked {con.localSymbol} conId={con.conId} expiry={con.lastTradeDateOrContractMonth}")
+#             return con
+    except Exception as e:
+        print(f"[CONTRACT] Auto-pick failed, falling back to generic: {e}")
+#     con = Future(symbol=args.symbol, exchange="CME", currency="USD")
+#     ib.qualifyContracts(con)
+#     return con
 
 def contract_multiplier(ib: IB, con: Contract) -> float:
     try:
-        cds = ib.reqContractDetails(con)
-        mul = cds[0].contract.multiplier
-        m = float(mul) if mul is not None else 1.0
-        return m if m > 0 else 1.0
+        pass
+#         cds = ib.reqContractDetails(con)
+#         mul = cds[0].contract.multiplier
+#         m = float(mul) if mul is not None else 1.0
+#         return m if m > 0 else 1.0
     except Exception:
-        return 1.0
+        pass
+#         return 1.0
 
-def ib_position_truth(ib: IB, con: Contract) -> Tuple[int, Optional[float]]:
+# ============== Safe orderId ==============
+
+def next_order_id(ib: IB) -> int:
     try:
-        qty = 0; avg = None
-        for p in ib.positions():
-            if getattr(p.contract, "conId", None) == con.conId:
-                qty += int(round(p.position)); avg = float(p.avgCost)
-        return qty, avg
+        pass
+#         return ib.client.getReqId()
     except Exception:
-        return 0, None
-
-def has_active_parent_entry(ib: IB, con: Contract) -> bool:
+        pass
+#     nid = getattr(ib.client, "_nextValidId", None)
+    if isinstance(nid, int) and nid > 0:
+        try: ib.client._nextValidId += 1
+        except Exception: pass
+#         return int(nid)
     try:
-        for t in ib.openTrades():
-            if getattr(t.contract, "conId", None) != con.conId: continue
-            st = (getattr(t.orderStatus, "status", "") or "").strip()
-            if st not in ACTIVE_STATUSES: continue
-            if (t.order.orderType or "").upper() == "LMT" and (t.order.parentId in (None, 0)):
-                act = (t.order.action or "").upper()
-                if act in ("BUY","SELL"): return True
-    except Exception: pass
-    return False
+        pass
+#         ib.reqIds(1); ib.sleep(0.1)
+#         nid = getattr(ib.client, "_nextValidId", None)
+        if isinstance(nid, int) and nid > 0:
+            try: ib.client._nextValidId += 1
+            except Exception: pass
+#             return int(nid)
+    except Exception:
+        pass
+#     return int(time.time() * 1000) % 2147483000
 
-def list_open_orders_for_contract(ib: IB, con: Contract) -> List[Trade]:
-    trades = []
+# ============== Orders ==============
+
+def make_bracket(parent_orderId: int, action: str, qty: float, entry: float, stop: float, target: float,
+                 tif: str, outsideRth: bool):
+#     parent = LimitOrder(action=action, totalQuantity=qty, lmtPrice=entry, tif=tif, outsideRth=outsideRth)
+#     parent.orderId = parent_orderId; parent.transmit = False
+#     exit_action = "SELL" if action.upper() == "BUY" else "BUY"
+#     oca = f"OCO-{int(time.time())}"
+#     stop_loss = StopOrder(action=exit_action, totalQuantity=qty, stopPrice=stop, tif=tif, outsideRth=outsideRth)
     try:
-        for t in ib.openTrades():
-            if getattr(t.contract, "conId", None) == con.conId:
-                st = (t.orderStatus.status or "").strip()
-                if st in ACTIVE_STATUSES: trades.append(t)
-    except Exception: pass
-    return trades
+        stop_loss.triggerMethod = 2  # robust for CME
+    except Exception:
+        pass
+#     stop_loss.parentId = parent.orderId; stop_loss.ocaGroup = oca; stop_loss.transmit = False
+#     take_profit = LimitOrder(action=exit_action, totalQuantity=qty, lmtPrice=target, tif=tif, outsideRth=outsideRth)
+#     take_profit.parentId = parent.orderId; take_profit.ocaGroup = oca; take_profit.transmit = True
+#     return [parent, stop_loss, take_profit]
 
-def safe_cancel(ib: IB, order_or_trade, note: str = ""):
-    try:
-        if hasattr(order_or_trade, 'orderStatus'):
-            st = (order_or_trade.orderStatus.status or "").strip()
-            oid = order_or_trade.order.orderId
-            tgt = order_or_trade.order
-        else:
-            st = (getattr(order_or_trade, 'status', None) or "").strip()
-            oid = getattr(order_or_trade, 'orderId', None)
-            tgt = order_or_trade
-        if st and st not in CANCELLABLE_STATUSES: return
-        ib.cancelOrder(tgt)
-        log("cancel_sent", orderId=oid, note=note)
-    except Exception as e:
-        msg = str(e)
-        if "Error 161" in msg:
-            log("cancel_ignored_161", orderId=oid, note=note)
-        else:
-            log("cancel_warn", orderId=oid, err=msg, note=note)
+# ============== CLI ==============
 
-def cancel_siblings_for_trade(ib: IB, trade: Trade, con: Contract):
-    try:
-        ocag = (trade.order.ocaGroup or "").strip()
-        if ocag:
-            for t in ib.openTrades():
-                if getattr(t.contract, "conId", None) != con.conId: continue
-                if (t.order.ocaGroup or "").strip() == ocag:
-                    if t.order.orderId != trade.order.orderId:
-                        safe_cancel(ib, t, note=f"[sibling OCA={ocag}]")
-            return
-        my_side = (trade.order.action or "").upper()
-        opp = "SELL" if my_side == "BUY" else "BUY"
-        for t in ib.openTrades():
-            if getattr(t.contract, "conId", None) != con.conId: continue
-            st = (t.orderStatus.status or "").strip()
-            if st not in ACTIVE_STATUSES: continue
-            ot = (t.order.orderType or "").upper()
-            if ot in {"LMT", "STP", "STP LMT"} and (t.order.action or "").upper() == opp:
-                safe_cancel(ib, t, note="[sibling fallback]")
-    except Exception as e:
-        log("sibling_cancel_err", err=str(e))
+def build_argparser():
+    pass
+#     ap = argparse.ArgumentParser(description="ES Paper Trader (Session-aware + Learning + Rails + Governance + News)")
+#     ap.add_argument("--host", default="127.0.0.1")
+#     ap.add_argument("--port", type=int, default=7497)
+#     ap.add_argument("--clientId", type=int, default=111)
+#     ap.add_argument("--symbol", default="ES")
+#     ap.add_argument("--local-symbol", dest="local_symbol", default="")
+#     ap.add_argument("--auto-front-month", action="store_true")
 
-def reconcile_orphans(ib: IB, account: str, con: Contract):
-    try:
-        qty, _ = ib_position_truth(ib, con)
-        if qty != 0: return
-        for t in ib.openTrades():
-            if getattr(t.contract, "conId", None) != con.conId: continue
-            st = (t.orderStatus.status or "").strip()
-            if st in {"Submitted", "PreSubmitted"}:
-                ot = (t.order.orderType or "").upper()
-                if ot in {"LMT", "STP", "STP LMT"} and (t.order.parentId not in (None, 0) or t.order.ocaGroup):
-                    safe_cancel(ib, t, note="[ORPHAN SWEEP]")
-    except Exception as e:
-        log("orphan_sweep_err", err=str(e))
+    # Sizing & Risk
+#     ap.add_argument("--acct-base", type=float, default=30000.0)
+#     ap.add_argument("--risk-pct", type=float, default=0.01)
+#     ap.add_argument("--scale-step", type=float, default=10000.0)
+#     ap.add_argument("--start-contracts", type=int, default=2)
+#     ap.add_argument("--max-contracts", type=int, default=6)
+#     ap.add_argument("--static-size", action="store_true")
+#     ap.add_argument("--qty", type=float, default=2.0)
+#     ap.add_argument("--risk-ticks", type=int, default=12)
+#     ap.add_argument("--tick-size", type=float, default=0.25)
+#     ap.add_argument("--tp-R", type=float, default=1.0)
 
-# ---------- Risk & sizing ----------
+    # Margin awareness (NEW)
+#     ap.add_argument("--margin-per-contract", type=float, default=13200.0,
+#                     help="Estimated margin per ES contract (maintenance).")
+#     ap.add_argument("--margin-reserve-pct", type=float, default=0.10,
+#                     help="Keep this fraction of equity unallocated (safety buffer).")
+
+    # Strategy gates
+#     ap.add_argument("--enable-arms", default="trend,breakout")
+#     ap.add_argument("--gate-adx", type=float, default=19.0)
+#     ap.add_argument("--gate-bbbw", type=float, default=0.0002)
+#     ap.add_argument("--gate-atrp", type=float, default=0.000055)
+
+    # Anti-burst & day/session rails
+#     ap.add_argument("--min-seconds-between-entries", type=int, default=20)
+#     ap.add_argument("--max-trades-per-day", type=int, default=12)
+#     ap.add_argument("--day-loss-cap-R", type=float, default=3.0)
+#     ap.add_argument("--max-consec-losses", type=int, default=3)
+#     ap.add_argument("--strategy-cooldown-sec", type=int, default=150)
+
+    # Risk governance extras
+#     ap.add_argument("--loss-graded-cooldown", action="store_true")
+#     ap.add_argument("--loss-cooldown-mult2", type=float, default=2.0)
+#     ap.add_argument("--enable-weekly-cap", action="store_true")
+#     ap.add_argument("--pos-age-cap-sec", type=int, default=1200)
+#     ap.add_argument("--pos-age-minR", type=float, default=0.5)
+#     ap.add_argument("--disable-pos-age-cap", action="store_true")
+#     ap.add_argument("--hwm-stepdown", action="store_true")
+#     ap.add_argument("--hwm-stepdown-dollars", type=float, default=5000.0)
+    ap.add_argument("--cancel-exits-on-flat", action="store_true")  # retained for compatibility
+
+    # Breaking News Guard
+#     ap.add_argument("--enable-breaking-news-guard", action="store_true")
+#     ap.add_argument("--news-keywords", default="BREAKING,URGENT,FOMC,rate hike,rate cut,nonfarm payrolls,CPI,PPI,ISM,PMI,halt,circuit breaker,terror,war,missile,earthquake,explosion,bank failure,shutdown,emergency")
+#     ap.add_argument("--news-pause-sec", type=int, default=900)
+#     ap.add_argument("--news-log-body", action="store_true")
+
+    # Trading window (24/5) + blackouts
+    ap.add_argument("--trade-start-ct", default="00:00")
+    ap.add_argument("--trade-end-ct", default="23:59")
+#     ap.add_argument("--tod-blackouts", default="")
+
+    # Order behavior
+#     ap.add_argument("--entry-slippage-ticks", type=int, default=2)
+    ap.add_argument("--atomic-bracket", action="store_true")  # ignored; warn
+#     ap.add_argument("--place-orders", action="store_true")
+#     ap.add_argument("--tif", default="GTC")
+#     ap.add_argument("--outsideRth", action="store_true")
+#     ap.add_argument("--require-new-bar-after-start", action="store_true")
+#     ap.add_argument("--startup-delay-sec", type=int, default=10)
+#     ap.add_argument("--debounce-one-bar", action="store_true")
+
+    # Session resets (AM/PM default)
+    ap.add_argument("--session-reset-cts", default="08:30,17:00",
+                    help="Comma CT times for soft resets each day (e.g. '08:30,17:00'). Overrides --daily-reset-ct.")
+    ap.add_argument("--daily-reset-ct", default="16:10")  # legacy single reset
+
+    # Reset behaviors at session cutover (NEW)
+#     ap.add_argument("--reset-clear-learn", action="store_true",
+#                     help="Reset learners/meta at each session cutover.")
+#     ap.add_argument("--reset-cancel-working", action="store_true",
+#                     help="Cancel active parent entry orders at session cutover.")
+#     ap.add_argument("--reset-cancel-exits", action="store_true",
+#                     help="Cancel active exit (OCO) child orders at session cutover.")
+
+    # Connectivity & data
+#     ap.add_argument("--duration", default="1 D")
+#     ap.add_argument("--connect-timeout-sec", type=int, default=300)
+#     ap.add_argument("--timeout-sec", type=int, default=300)
+#     ap.add_argument("--connect-attempts", type=int, default=24)
+#     ap.add_argument("--force-delayed", action="store_true")
+#     ap.add_argument("--poll-hist-when-no-rt", action="store_true")
+#     ap.add_argument("--poll-interval-sec", type=int, default=10)
+
+    # Realtime gating
+#     ap.add_argument("--require-rt-before-trading", action="store_true")
+#     ap.add_argument("--rt-staleness-sec", type=int, default=45)
+
+    # Learning / bandits
+#     ap.add_argument("--bandit", choices=["meta","linucb","ts","ucb_tuned","exp3","fixed"], default="meta")
+#     ap.add_argument("--bandit-state", default=".\\data\\learn\\bandit_state.json")
+#     ap.add_argument("--learn-log", action="store_true")
+#     ap.add_argument("--learn-log-dir", default=".\\logs\\learn")
+#     ap.add_argument("--sample-action", action="store_true")
+#     ap.add_argument("--decay-half-life-trades", type=float, default=200.0)
+#     ap.add_argument("--meta-eta", type=float, default=0.15)
+#     ap.add_argument("--switching-cost", type=float, default=0.05)
+#     ap.add_argument("--ph-delta", type=float, default=0.005)
+#     ap.add_argument("--ph-lambda", type=float, default=0.8)
+
+    # PnL & equity sync from IB (optional)
+#     ap.add_argument("--use-ib-pnl", action="store_true",
+#                     help="Sync day_realized from IB dailyPnL and equity from NetLiquidation.")
+#     ap.add_argument("--peak-dd-guard-pct", type=float, default=0.60,
+#                     help="0 disables from-peak guard; else halt when giveback >= pct of day_peak_realized.")
+
+    # NEW: Day guard and peak-DD minimum profit gate
+#     ap.add_argument("--day-guard-pct", type=float, default=0.025,
+#                     help="Hard day loss guard as fraction of start-of-session equity (e.g., 0.025 = 2.5%).")
+#     ap.add_argument("--peak-dd-min-profit", type=float, default=1500.0,
+#                     help="Enable the peak drawdown guard only once day_realized >= this profit.")
+
+    # ===== NEW: Short guard rails & VWAP control =====
+#     ap.add_argument("--short-guard-vwap-buffer-ticks", type=int, default=4,
+#                     help="Buffer above session VWAP (in ticks) where shorts are blocked.")
+#     ap.add_argument("--short-guard-min-pullback-ticks", type=int, default=6,
+#                     help="Min HL distance between last two swing highs (in ticks) to confirm lower-high.")
+#     ap.add_argument("--short-guard-lookback-bars", type=int, default=60,
+#                     help="Lookback window (bars) for swing high detection.")
+
+#     ap.add_argument("--short-guard-vwap", action="store_true", default=True,
+#                     help="Block shorts near/above session VWAP.")
+#     ap.add_argument("--no-short-guard-vwap", dest="short_guard_vwap", action="store_false")
+
+#     ap.add_argument("--short-guard-lower-high", action="store_true", default=True,
+#                     help="Require a lower-high pivot before shorting.")
+#     ap.add_argument("--no-short-guard-lower-high", dest="short_guard_lower_high", action="store_false")
+
+#     ap.add_argument("--vwap-reset-on-session", action="store_true", default=True,
+#                     help="Reset VWAP accumulators at each session cutover.")
+#     ap.add_argument("--no-vwap-reset-on-session", dest="vwap_reset_on_session", action="store_false")
+
+    # Misc
+#     ap.add_argument("--allow_live", action="store_true")
+#     ap.add_argument("-v", "--verbose", action="store_true")
+#     return ap
+
+# ============== Day risk / heartbeat ==============
+
 class DayRisk:
     def __init__(self, loss_cap_R: float, max_trades: int, max_consec_losses: int):
-        self.loss_cap_R = float(loss_cap_R); self.max_trades = int(max_trades)
-        self.max_consec_losses = int(max_consec_losses)
-        self.reset()
+        pass
+#         self.loss_cap_R = float(loss_cap_R); self.max_trades = int(max_trades)
+#         self.max_consec_losses = int(max_consec_losses)
+#         self.reset()
     def reset(self):
-        self.day_R = 0.0; self.trades = 0
+        pass
+#         self.day_R = 0.0; self.trades = 0
         self.cool_until: Optional[dt.datetime] = None
-        self.halted = False
+#         self.halted = False
         self.last_entry_time: Optional[float] = None
-        self.consec_losses = 0
+#         self.consec_losses = 0
     def can_trade(self, now: dt.datetime, min_gap_s:int) -> bool:
         if self.halted: return False
         if self.cool_until and now < self.cool_until: return False
@@ -365,1112 +441,8938 @@ class DayRisk:
         if self.day_R <= -abs(self.loss_cap_R): return False
         if self.consec_losses >= self.max_consec_losses: return False
         if self.last_entry_time and (time.time() - self.last_entry_time) < max(0, min_gap_s): return False
-        return True
+#         return True
+
+# ============== Week cap helpers ==============
 
 def iso_week_id(d: dt.date) -> str:
-    y, w, _ = d.isocalendar()
+    pass
+#     y, w, _ = d.isocalendar()
     return f"{y}-W{int(w):02d}"
 
-def decay_factor_from_half_life(hl_trades: float) -> float:
-    hl = max(1.0, float(hl_trades))
-    return math.exp(math.log(0.5)/hl)
+# ============== Time-of-day blackouts ==============
 
-# ---------- News helpers ----------
-def parse_news_blackouts(spec: str) -> List[Tuple[dt.time, dt.time]]:
-    return parse_blackouts(spec)
-
-def read_news_file_flag(path: str) -> Tuple[bool, Optional[dt.datetime]]:
-    try:
-        if not path: return (False, None)
-        path = path.strip().strip('"').strip("'")
-        if not os.path.exists(path): return (False, None)
-        with open(path, "r", encoding="utf-8") as f:
-            obj = json.load(f)
-        on = bool(obj.get("on", False))
-        until_s = obj.get("until")
-        until = None
-        if until_s:
-            try:
-                until = dt.datetime.strptime(until_s, "%Y-%m-%d %H:%M")
-            except Exception:
-                pass
-        return (on, until)
-    except Exception as e:
-        log("news_file_read_err", err=str(e))
-        return (False, None)
-
-# ---------- CLI ----------
-def build_argparser():
-    epilog = """
-Examples:
-  # Live market data, place orders, RT→poll fallback
-  paper_trader.py --local-symbol ESZ5 --place-orders --use-ib-pnl --learn-mode advisory
-
-  # Start with MIDPOINT RT (some farms stream this sooner)
-  paper_trader.py --local-symbol ESZ5 --force-midpoint-rt
-
-  # Require fresh RT before trading but still poll for charts
-  paper_trader.py --local-symbol ESZ5 --require-rt-before-trading --poll-hist-when-no-rt
-    """.strip()
-
-    ap = argparse.ArgumentParser(
-        description="ES Paper Trader (session-aware + Thompson learner + rails)",
-        formatter_class=argparse.RawTextHelpFormatter,
-        epilog=epilog
-    )
-    ap.add_argument("--host", default="127.0.0.1")
-    ap.add_argument("--port", type=int, default=7497)
-    ap.add_argument("--clientId", type=int, default=111)
-    ap.add_argument("--symbol", default="ES")
-    ap.add_argument("--local-symbol", dest="local_symbol", default="")
-    ap.add_argument("--place-orders", action="store_true")
-    ap.add_argument("--tif", default="GTC")
-    ap.add_argument("--outsideRth", action="store_true")
-
-    # Sizing & Risk
-    ap.add_argument("--acct-base", type=float, default=30000.0)
-    ap.add_argument("--risk-pct", type=float, default=0.01)
-    ap.add_argument("--scale-step", type=float, default=10000.0)
-    ap.add_argument("--start-contracts", type=int, default=2)
-    ap.add_argument("--max-contracts", type=int, default=6)
-    ap.add_argument("--static-size", action="store_true")
-    ap.add_argument("--qty", type=float, default=2.0)
-    ap.add_argument("--risk-ticks", type=int, default=12)
-    ap.add_argument("--tick-size", type=float, default=0.25)
-    ap.add_argument("--tp-R", type=float, default=1.0)
-
-    # Margin awareness
-    ap.add_argument("--margin-per-contract", type=float, default=13200.0)
-    ap.add_argument("--margin-reserve-pct", type=float, default=0.10)
-
-    # Strategy gates
-    ap.add_argument("--enable-arms", default="trend,breakout")
-    ap.add_argument("--gate-adx", type=float, default=19.0)
-    ap.add_argument("--gate-atrp", type=float, default=0.000055)
-    ap.add_argument("--gate-bbbw", type=float, default=0.0)  # 0 disables
-
-    # Anti-burst & day/session rails
-    ap.add_argument("--min-seconds-between-entries", type=int, default=20)
-    ap.add_argument("--max-trades-per-day", type=int, default=12)
-    ap.add_argument("--day-loss-cap-R", type=float, default=3.0)
-    ap.add_argument("--max-consec-losses", type=int, default=3)
-    ap.add_argument("--strategy-cooldown-sec", type=int, default=150)
-
-    # Risk governance extras
-    ap.add_argument("--pos-age-cap-sec", type=int, default=1200)
-    ap.add_argument("--pos-age-minR", type=float, default=0.5)
-    ap.add_argument("--hwm-stepdown", action="store_true")
-    ap.add_argument("--hwm-stepdown-dollars", type=float, default=5000.0)
-
-    # Trading window (24/5) + optional TOD blackouts
-    ap.add_argument("--trade-start-ct", default="00:00")
-    ap.add_argument("--trade-end-ct", default="23:59")
-    ap.add_argument("--tod-blackouts", default="")
-
-    # Order behavior
-    ap.add_argument("--entry-slippage-ticks", type=int, default=2)
-    ap.add_argument("--require-new-bar-after-start", action="store_true")
-    ap.add_argument("--startup-delay-sec", type=int, default=0)
-    ap.add_argument("--debounce-one-bar", action="store_true")
-
-    # Session resets (AM/PM logging only)
-    ap.add_argument("--session-reset-cts", default="08:30,16:00,17:00")
-    ap.add_argument("--daily-reset-ct", default="16:10")  # legacy
-
-    # Connectivity & data
-    ap.add_argument("--connect-timeout-sec", type=int, default=60)
-    ap.add_argument("--timeout-sec", type=int, default=60)
-    ap.add_argument("--connect-attempts", type=int, default=10)
-    ap.add_argument("--force-delayed", action="store_true")
-    ap.add_argument("--poll-hist-when-no-rt", action="store_true")
-    ap.add_argument("--poll-interval-sec", type=int, default=10)
-    ap.add_argument("--require-rt-before-trading", action="store_true")
-    ap.add_argument("--rt-staleness-sec", type=int, default=45)
-
-    # Optional QoL
-    ap.add_argument("--force-midpoint-rt", action="store_true",
-                    help="Start RT subscription on MIDPOINT instead of TRADES")
-    ap.add_argument("--rt-starve-sec", type=float, default=3.0,
-                    help="Seconds with 0 RT bars before declaring 'starved'")
-
-    # Learning
-    ap.add_argument("--bandit", choices=["thompson"], default="thompson")
-    ap.add_argument("--learn-mode", choices=["shadow","advisory","control"], default="advisory")
-    ap.add_argument("--decay-half-life-trades", type=float, default=200.0)
-    ap.add_argument("--learn-log", action="store_true")
-    ap.add_argument("--learn-log-dir", default=".\\logs\\learn")
-
-    # PnL & equity sync
-    ap.add_argument("--use-ib-pnl", action="store_true")
-    ap.add_argument("--peak-dd-guard-pct", type=float, default=0.60)
-    ap.add_argument("--day-guard-pct", type=float, default=0.025)
-    ap.add_argument("--peak-dd-min-profit", type=float, default=1500.0)
-
-    # Short guard rails & VWAP control
-    ap.add_argument("--short-guard-vwap-buffer-ticks", type=int, default=4)
-    ap.add_argument("--short-guard-min-pullback-ticks", type=int, default=6)
-    ap.add_argument("--short-guard-lookback-bars", type=int, default=60)
-    ap.add_argument("--short-guard-vwap", action="store_true", default=True)
-    ap.add_argument("--no-short-guard-vwap", dest="short_guard_vwap", action="store_false")
-    ap.add_argument("--short-guard-lower-high", action="store_true", default=True)
-    ap.add_argument("--no-short-guard-lower-high", dest="short_guard_lower_high", action="store_false")
-    ap.add_argument("--vwap-reset-on-session", action="store_true", default=True)
-    ap.add_argument("--no-vwap-reset-on-session", dest="vwap_reset_on_session", action="store_false")
-
-    # Safety
-    ap.add_argument("--allow_live", action="store_true")
-
-    # Risk profile selector
-    ap.add_argument("--risk-profile", choices=["balanced","aggressive","conservative"], default="balanced")
-
-    # News kill
-    ap.add_argument("--news-file-kill", default=r".\data\kill\news_kill.json")
-    ap.add_argument("--news-flatten-on-kill", action="store_true")
-    ap.add_argument("--news-cancel-only", action="store_true")
-    ap.add_argument("--news-blackouts", default="")
-    ap.add_argument("--news-bulletin-listen", action="store_true")
-    ap.add_argument("--news-keywords", default="FOMC,rate,nonfarm,employment,inflation,CPI,PPI,ISM,PMI,Jerome Powell,press conference")
-    ap.add_argument("--news-kill-minutes", type=int, default=15)
-
-    # Optional CSV
-    ap.add_argument("--segment-trade-csv", default=r".\logs\trades_segmented.csv")
-    return ap
-
-# ---------- Main ----------
-def main():
-    args = build_argparser().parse_args()
-
-    # Start HB immediately, watchdog will see reasons during boot
-    start_heartbeat_thread()
-    hb_update(state="-", idle_reason="booting", rt_enabled=False, rt_status="disabled",
-              rt_age_sec=None, rt_queue_len=0, bars=0, net_qty=0)
-
-    # Connect (with retries)
-    ib = IB()
-
-    # --- Bugfix scaffolding / shared state ---
-    pending_parent_ids = set()         # track parent orders until truly working
-    margin_reject_until = None         # backoff after margin rejections (201)
-
-    # ---- Error logging so entitlement/contract issues are visible ----
-    def _on_err(reqId, code, msg, misc):
-        nonlocal margin_reject_until
+def parse_blackouts(spec: str) -> List[Tuple[dt.time, dt.time]]:
+    pass
+#     out = []
+#     spec = (spec or "").strip()
+    if not spec: return out
+    for chunk in spec.split(","):
+        pass
+#         chunk = chunk.strip()
+        if not chunk: continue
         try:
-            log("ib_error", reqId=reqId, code=int(code), msg=str(msg))
-        except Exception:
-            print(f"[IB-ERR] {code} {msg}")
-        # margin rejection backoff (201) if insufficient funds
-        try:
-            if int(code) == 201 and "insufficient" in f"{msg}".lower():
-                margin_reject_until = ct_now() + dt.timedelta(seconds=60)
-                log("margin_backoff", until=str(margin_reject_until))
+            pass
+#             a, b = chunk.split("-")
+#             out.append((parse_hhmm(a), parse_hhmm(b)))
         except Exception:
             pass
-    ib.errorEvent += _on_err
+#     return out
 
-    def connect_with_retries():
-        base = int(args.clientId)
-        for i in range(max(1, int(args.connect_attempts))):
-            cid = base + i
-            try:
-                print(f"[CONNECT] Attempt {i+1}/{args.connect_attempts} -> clientId={cid}")
-                log("boot_progress", step="connecting")
-                ib.connect(args.host, args.port, clientId=cid, timeout=args.connect_timeout_sec)
-                ib.sleep(0.6)
-                if ib.isConnected():
-                    print(f"Connected (clientId={cid})")
-                    print(f"[POST-CONNECT] isConnected=True host={args.host} port={args.port} clientId={cid}")
-                    try:
-                        accts = ib.managedAccounts()
-                        print(f"[POST-CONNECT] managedAccounts: {accts}")
-                    except Exception: pass
-                    return cid
-            except Exception as e:
-                print(f"[CONNECT] Failed: {repr(e)}")
+def in_any_blackout(now: dt.datetime, windows: List[Tuple[dt.time, dt.time]]) -> bool:
+    if not windows: return False
+#     t = now.time()
+    for a, b in windows:
+        if a <= b:
+            if a <= t <= b: return True
+        else:
+            if (t >= a) or (t <= b): return True
+#     return False
+
+# ============== Indicators / features ==============
+
+def adx(h: List[float], l: List[float], c: List[float], n: int=14) -> float:
+    if len(c) < n+2: return float("nan")
+#     dm_pos = []; dm_neg = []; tr = []
+    for i in range(1, len(c)):
+        pass
+#         up = h[i] - h[i-1]; dn = l[i-1] - l[i]
+#         dm_pos.append(max(up, 0.0) if up > dn else 0.0)
+#         dm_neg.append(max(dn, 0.0) if dn > up else 0.0)
+#         tr.append(max(h[i]-l[i], abs(h[i]-c[i-1]), abs(l[i]-c[i-1])))
+    def rma(vals, n):
+        if len(vals) < n: return float("nan")
+        alpha = 1.0/n; s = sum(vals[:n]) / n
+        for v in vals[n:]: s = s*(1-alpha) + v*alpha
+#         return s
+#     atrv = rma(tr, n)
+    if (atrv == 0.0) or math.isnan(atrv): return float("nan")
+#     di_pos = 100 * (rma(dm_pos, n) / atrv)
+#     di_neg = 100 * (rma(dm_neg, n) / atrv)
+#     dx = 100 * abs(di_pos - di_neg) / max(di_pos + di_neg, 1e-9)
+#     return dx
+
+def feature_vector(H: List[float], L: List[float], C: List[float]) -> List[float]:
+    pass
+#     n = len(C)
+    if n < 60: return [0.0]*8
+    close = C[-1]; f20 = ema(C[-20:], 20); f50 = ema(C[-50:], 50)
+#     slope = (f20 - f50) / (close if close != 0 else 1.0)
+    _adx = adx(H, L, C, 14); _atr = atr(H, L, C, 14)
+#     atrp = (_atr/close) if (not math.isnan(_atr) and close>0) else 0.0
+#     bw = bbbw(C, 20, 2.0) or 0.0
+#     r5 = (close - C[-5]) / (C[-5] if C[-5] != 0 else 1.0)
+#     r20 = (close - C[-20]) / (C[-20] if C[-20] != 0 else 1.0)
+    vol = stddev(C[-20:]) / (close if close != 0 else 1.0)
+#     bias = 1.0
+#     adx_n = 0.01 * clamp(_adx, 0.0, 100.0) if not math.isnan(_adx) else 0.0
+#     return [bias, slope, atrp, bw, r5, r20, vol, adx_n]
+
+# ============== Tiny linear algebra ==============
+
+def mat_identity(n: int) -> List[List[float]]:
+    pass
+#     return [[1.0 if i==j else 0.0 for j in range(n)] for i in range(n)]
+def mat_copy(A: List[List[float]]) -> List[List[float]]:
+    return [row[:] for row in A]
+def mat_vec(A: List[List[float]], x: List[float]) -> List[float]:
+    pass
+#     return [sum(A[i][j]*x[j] for j in range(len(x))) for i in range(len(A))]
+def vec_dot(a: List[float], b: List[float]) -> float:
+    pass
+#     return sum(ai*bi for ai,bi in zip(a,b))
+
+def mat_inv(A: List[List[float]]) -> List[List[float]]:
+    pass
+#     n = len(A); M = mat_copy(A); I = mat_identity(n)
+    for col in range(n):
+        pass
+#         piv = col
+        for r in range(col, n):
+            if abs(M[r][col]) > abs(M[piv][col]): piv = r
+        if abs(M[piv][col]) < 1e-12:
+            for i in range(n): M[i][i] += 1e-6
+#             piv = col
+        if piv != col:
+            pass
+#             M[col], M[piv] = M[piv], M[col]; I[col], I[piv] = I[piv], I[col]
+#         div = M[col][col]
+        if abs(div) < 1e-12: div = 1e-12
+        for j in range(n): M[col][j] /= div; I[col][j] /= div
+        for r in range(n):
+            if r == col: continue
+#             f = M[r][col]
+            if f != 0.0:
+                for j in range(n):
+                    pass
+#                     M[r][j] -= f*M[col][j]; I[r][j] -= f*I[col][j]
+#     return I
+
+# ============== Learners (LinUCB, TS, UCBTuned, EXP3) ==============
+
+class BaseLearner:
+    def __init__(self, arms: List[str], decay_gamma: float):
+        self.arms = arms[:]; self.gamma = decay_gamma
+    def predict_scores(self, x: List[float], cand_arms: List[str]) -> Dict[str, float]: raise NotImplementedError
+    def update(self, arm: str, reward: float, x: List[float]): raise NotImplementedError
+    def to_state(self) -> Dict[str, Any]: return {}
+    def from_state(self, s: Dict[str, Any]): return
+
+class LinUCB(BaseLearner):
+    def __init__(self, arms: List[str], decay_gamma: float, alpha: float = 0.8, dim: int = 8, ridge: float = 1.0):
+        pass
+#         super().__init__(arms, decay_gamma)
+#         self.alpha = alpha; self.dim = dim; self.ridge = ridge
+        self.A = {a: mat_identity(dim) for a in arms}
+        for a in arms:
+            for i in range(dim): self.A[a][i][i] = ridge
+        self.b = {a: [0.0]*dim for a in arms}
+    def predict_scores(self, x: List[float], cand_arms: List[str]) -> Dict[str,float]:
+        pass
+#         out = {}
+        for a in cand_arms:
+            pass
+#             Ainv = mat_inv(self.A[a]); theta = mat_vec(Ainv, self.b[a])
+#             mu = vec_dot(theta, x); ax = mat_vec(Ainv, x)
+#             conf = math.sqrt(max(0.0, vec_dot(x, ax)))
+#             out[a] = mu + self.alpha * conf
+#         return out
+    def update(self, arm: str, reward: float, x: List[float]):
+        pass
+#         g = self.gamma; A = self.A[arm]
+        for i in range(self.dim):
+            for j in range(self.dim): A[i][j] = g*A[i][j]
+#             A[i][i] += (1.0-g)*self.ridge
+#         self.A[arm] = A; self.b[arm] = [g*bi for bi in self.b[arm]]
+        for i in range(self.dim):
+            for j in range(self.dim): A[i][j] += x[i]*x[j]
+#         self.b[arm] = [self.b[arm][i] + reward*x[i] for i in range(self.dim)]
+    def to_state(self): return {"A": self.A, "b": self.b, "alpha": self.alpha, "dim": self.dim, "ridge": self.ridge}
+    def from_state(self, s):
+        try:
+            self.A = {k: v for k,v in s["A"].items()}
+            self.b = {k: v for k,v in s["b"].items()}
+#             self.alpha = float(s.get("alpha", self.alpha))
+#             self.dim = int(s.get("dim", self.dim))
+#             self.ridge = float(s.get("ridge", self.ridge))
+        except Exception: pass
+
+class ThompsonGaussian(BaseLearner):
+    def __init__(self, arms: List[str], decay_gamma: float, prior_mean=0.0, prior_var=0.25):
+        pass
+#         super().__init__(arms, decay_gamma)
+        self.m = {a: prior_mean for a in arms}; self.s2 = {a: prior_var for a in arms}
+        self.w = {a: 1e-6 for a in arms}
+    def predict_scores(self, x: List[float], cand_arms: List[str]) -> Dict[str,float]:
+        pass
+#         out = {}
+        for a in cand_arms:
+            pass
+#             std = math.sqrt(max(1e-6, self.s2[a] / (self.w[a] + 1.0)))
+#             out[a] = random.gauss(self.m[a], std)
+#         return out
+    def update(self, arm: str, reward: float, x: List[float]):
+        pass
+#         g = self.gamma; self.w[arm] = g*self.w[arm]; w_old = self.w[arm]
+#         self.w[arm] = w_old + 1.0
+#         m_old = self.m[arm]; m_new = m_old + (reward - m_old) / self.w[arm]
+#         s2_old = self.s2[arm]; s2_new = g*s2_old + (reward - m_old)*(reward - m_new)
+#         self.m[arm] = m_new; self.s2[arm] = max(1e-6, s2_new)
+    def to_state(self): return {"m": self.m, "s2": self.s2, "w": self.w}
+    def from_state(self, s):
+        try:
+            self.m = {k: float(v) for k,v in s["m"].items()}
+            self.s2 = {k: float(v) for k,v in s["s2"].items()}
+            self.w = {k: float(v) for k,v in s["w"].items()}
+        except Exception: pass
+
+class UCBTuned(BaseLearner):
+    def __init__(self, arms: List[str], decay_gamma: float):
+        pass
+#         super().__init__(arms, decay_gamma)
+        self.w = {a: 1e-6 for a in arms}; self.mean = {a: 0.0 for a in arms}; self.m2 = {a: 0.0 for a in arms}
+#         self.t = 1.0
+    def predict_scores(self, x: List[float], cand_arms: List[str]) -> Dict[str,float]:
+        pass
+#         out = {}
+        for a in cand_arms:
+            pass
+#             n = max(1e-6, self.w[a]); vhat = 0.0
+            if n > 1: vhat = max(0.0, self.m2[a] / (n-1.0))
+#             bonus = math.sqrt((math.log(max(2.0, self.t)) / n) * min(0.25, vhat + math.sqrt(2*math.log(max(2.0,self.t))/n)))
+#             out[a] = self.mean[a] + bonus
+#         return out
+    def update(self, arm: str, reward: float, x: List[float]):
+        pass
+#         self.t += 1.0; g = self.gamma
+#         self.w[arm] = g*self.w[arm]; n_old = self.w[arm]; self.w[arm] = n_old + 1.0
+#         delta = reward - self.mean[arm]
+#         self.mean[arm] += delta / self.w[arm]
+#         self.m2[arm] = g*self.m2[arm] + delta*(reward - self.mean[arm])
+    def to_state(self): return {"w": self.w, "mean": self.mean, "m2": self.m2, "t": self.t}
+    def from_state(self, s):
+        try:
+            self.w = {k: float(v) for k,v in s["w"].items()}
+            self.mean = {k: float(v) for k,v in s["mean"].items()}
+            self.m2 = {k: float(v) for k,v in s["m2"].items()}
+#             self.t = float(s.get("t", self.t))
+        except Exception: pass
+
+class EXP3(BaseLearner):
+    def __init__(self, arms: List[str], decay_gamma: float, gamma_exp: float = 0.07):
+        super().__init__(arms, decay_gamma); self.gamma_exp = gamma_exp; self.w = {a: 1.0 for a in arms}
+    def _probs(self, cand_arms: List[str]) -> Dict[str,float]:
+        pass
+#         W = sum(self.w[a] for a in cand_arms); k = len(cand_arms)
+        if W <= 0:
+            for a in cand_arms: self.w[a] = 1.0
+#             W = float(k)
+#         probs = {}
+        for a in cand_arms:
+            pass
+#             probs[a] = (1.0 - self.gamma_exp) * (self.w[a] / W) + (self.gamma_exp / k)
+#         return probs
+    def predict_scores(self, x: List[float], cand_arms: List[str]) -> Dict[str,float]:
+        pass
+#         return self._probs(cand_arms)
+    def update(self, arm: str, reward: float, x: List[float]):
+        pass
+#         r01 = clamp(0.25*(reward + 2.0), 0.0, 1.0)
+#         cand = self.arms; probs = self._probs(cand); p_a = max(1e-6, probs[arm])
+#         est = r01 / p_a
+#         self.w[arm] = self.w.get(arm, 1.0) * math.exp(self.gamma_exp * est / len(cand))
+    def to_state(self): return {"w": self.w}
+    def from_state(self, s):
+        try: self.w = {k: float(v) for k,v in s["w"].items()}
+        except Exception: pass
+
+# ============== Page-Hinkley ==============
+
+class PageHinkley:
+    def __init__(self, delta=0.005, lambd=0.8):
+        pass
+#         self.delta=float(delta); self.lambd=float(lambd); self.reset()
+    def reset(self):
+        pass
+#         self.mean=0.0; self.Cm=0.0; self.T=0
+    def update(self, x: float) -> bool:
+        pass
+#         self.T += 1; self.mean = self.mean + (x - self.mean)/self.T
+#         self.Cm = max(0.0, self.Cm + (self.mean - x - self.delta))
+#         return self.Cm > self.lambd
+
+# ============== Meta-Bandit Wrapper ==============
+
+def decay_factor_from_half_life(half_life_trades: float) -> float:
+    pass
+#     hl = max(1.0, float(half_life_trades))
+#     return math.exp(math.log(0.5)/hl)
+
+class MetaBandit:
+    def __init__(self, arms: List[str], args):
+        self.arms = arms[:]
+#         gamma = decay_factor_from_half_life(args.decay_half_life_trades)
+        self.learners: Dict[str, BaseLearner] = {
+            "linucb": LinUCB(self.arms, gamma, alpha=0.8, dim=8, ridge=1.0),
+            "ts": ThompsonGaussian(self.arms, gamma, prior_mean=0.0, prior_var=0.25),
+            "ucb_tuned": UCBTuned(self.arms, gamma),
+            "exp3": EXP3(self.arms, gamma, gamma_exp=0.07),
+        self.meta_w: Dict[str, float] = {k: 1.0 for k in self.learners.keys()}
+#         self.eta = float(args.meta_eta); self.switch_cost = float(args.switching_cost)
+        self.last_arm: Optional[str] = None
+#         self.ph = PageHinkley(delta=args.ph_delta, lambd=args.ph_lambda)
+        self.arm_meanR = {a: 0.0 for a in self.arms}; self.arm_w = {a: 1e-6 for a in self.arms}
+
+    def _normalize(self, d: Dict[str,float]) -> Dict[str,float]:
+        pass
+#         s = sum(max(0.0, v) for v in d.values())
+        if s <= 0:
+            k = len(d); return {k2: 1.0/k for k2 in d.keys()}
+        return {k2: max(0.0, v)/s for k2, v in d.items()}
+
+    def choose(self, x: List[float], cand_arms: List[str], sample: bool) -> Tuple[str, Dict[str,float]]:
+        per_learner_scores: Dict[str, Dict[str,float]] = {}
+        for name, L in self.learners.items():
+            pass
+#             scores = L.predict_scores(x, cand_arms); vals = list(scores.values())
+            if vals and all(0.0 <= v <= 1.0 for v in vals) and 0.99 <= sum(vals) <= 1.01:
+                pass
+#                 per_learner_scores[name] = scores
+            else:
+                pass
+#                 m = max(vals) if vals else 0.0
+                exps = {a: math.exp(v - m) for a, v in scores.items()}
+#                 per_learner_scores[name] = self._normalize(exps)
+#         W = sum(self.meta_w.values())
+        if W <= 0: self.meta_w = {k: 1.0 for k in self.meta_w.keys()}; W = float(len(self.meta_w))
+        arm_probs = {a: 0.0 for a in cand_arms}
+        for lname, probs in per_learner_scores.items():
+            pass
+#             wl = self.meta_w.get(lname, 1.0)/W
+            for a in cand_arms:
+                pass
+#                 arm_probs[a] += wl * probs.get(a, 0.0)
+        if self.last_arm and self.last_arm in arm_probs and self.switch_cost > 0:
+            for a in cand_arms:
+                if a != self.last_arm:
+                    pass
+#                     arm_probs[a] = max(0.0, arm_probs[a] - self.switch_cost*arm_probs[a])
+#         arm_probs = self._normalize(arm_probs)
+        if sample:
+            pass
+#             r = random.random(); cum = 0.0; choice = cand_arms[0]
+            for a in cand_arms:
+                pass
+#                 cum += arm_probs[a]
+                if r <= cum: choice = a; break
+        else:
+            choice = max(arm_probs.items(), key=lambda kv: kv[1])[0]
+#         return choice, arm_probs
+
+    def update_all(self, chosen_arm: str, reward_R: float, x: List[float], cand_arms: List[str]):
+        pass
+#         r01 = clamp(0.25*(reward_R + 2.0), 0.0, 1.0)
+        for lname in self.learners.keys():
+            pass
+#             self.meta_w[lname] = self.meta_w.get(lname, 1.0) * math.exp(self.eta * r01)
+        for lname, L in self.learners.items():
+            pass
+#             L.update(chosen_arm, reward_R, x)
+        if self.ph.update(-reward_R):
+            pass
+#             print(f"{utc_now_str()} WARNING [DRIFT] Page-Hinkley triggered; resetting learners/meta.")
+            self.meta_w = {k: 1.0 for k in self.learners.keys()}
+            arms = self.arms[:]; gamma = next(iter(self.learners.values())).gamma
+#             self.learners = {
+                "linucb": LinUCB(arms, gamma, alpha=0.8, dim=8, ridge=1.0),
+                "ts": ThompsonGaussian(arms, gamma, prior_mean=0.0, prior_var=0.25),
+                "ucb_tuned": UCBTuned(arms, gamma),
+                "exp3": EXP3(arms, gamma, gamma_exp=0.07),
+#             self.ph.reset()
+#         self.arm_w[chosen_arm] = 0.99*self.arm_w[chosen_arm] + 1.0
+#         w = self.arm_w[chosen_arm]; m = self.arm_meanR[chosen_arm]
+#         self.arm_meanR[chosen_arm] = m + (reward_R - m)/w
+#         self.last_arm = chosen_arm
+
+    def to_state(self) -> Dict[str, Any]:
+        pass
+#         return {
+            "meta_w": self.meta_w, "arm_meanR": self.arm_meanR, "arm_w": self.arm_w,
+            "learners": {k: L.to_state() for k,L in self.learners.items()},
+            "ph": {"mean": self.ph.mean, "Cm": self.ph.Cm, "T": self.ph.T}, "last_arm": self.last_arm
+
+    def from_state(self, s: Dict[str, Any]):
+        try:
+            self.meta_w = {k: float(v) for k,v in s.get("meta_w", {}).items()} or self.meta_w
+            self.arm_meanR = {k: float(v) for k,v in s.get("arm_meanR", {}).items()} or self.arm_meanR
+            self.arm_w = {k: float(v) for k,v in s.get("arm_w", {}).items()} or self.arm_w
+#             stL = s.get("learners", {})
+            for k, L in self.learners.items():
+                if k in stL: L.from_state(stL[k])
+#             phs = s.get("ph", {})
+#             self.ph.mean = float(phs.get("mean", 0.0)); self.ph.Cm = float(phs.get("Cm", 0.0))
+#             self.ph.T = int(phs.get("T", 0)); self.last_arm = s.get("last_arm", self.last_arm)
+        except Exception: pass
+
+# ============== IB Truth & orders audit ==============
+
+# ACTIVE_STATUSES = {"Submitted","PreSubmitted","ApiPending","PendingSubmit","PendingCancel","Inactive"}
+
+def ib_position_truth(ib: IB, con: Contract) -> Tuple[int, Optional[float]]:
+    try:
+        pass
+#         qty = 0; avg = None
+        for p in ib.positions():
+            if getattr(p.contract, "conId", None) == con.conId:
+                pass
+#                 qty += int(round(p.position)); avg = float(p.avgCost)
+#         return qty, avg
+    except Exception:
+        pass
+#         return 0, None
+
+def list_open_orders_for_contract(ib: IB, con: Contract) -> List[Trade]:
+    pass
+#     trades = []
+    try:
+        for t in ib.openTrades():
+            if getattr(t.contract, "conId", None) == con.conId:
+                pass
+#                 status = (getattr(t.orderStatus, "status", "") or "").strip()
+                if status in ACTIVE_STATUSES: trades.append(t)
+    except Exception: pass
+#     return trades
+
+def has_active_parent_entry(ib: IB, con: Contract) -> bool:
+    try:
+        for t in ib.openTrades():
+            if getattr(t.contract, "conId", None) != con.conId: continue
+#             st = (getattr(t.orderStatus, "status", "") or "").strip()
+            if st not in ACTIVE_STATUSES: continue
+            if (t.order.orderType or "").upper() == "LMT" and (t.order.parentId in (None, 0)):
+                pass
+#                 act = (t.order.action or "").upper()
+                if act in ("BUY","SELL"): return True
+    except Exception: pass
+#     return False
+
+def ensure_protection_orders(ib: IB, con: Contract, net_qty: int, avg_cost_raw: Optional[float], args,
+                             last_price: Optional[float], tick: float, px_mult: float) -> None:
+    if net_qty == 0 or not args.place_orders: return
+#     exit_action = "SELL" if net_qty > 0 else "BUY"
+#     trades = list_open_orders_for_contract(ib, con)
+#     correct, wrong = [], []
+    for t in trades:
+        pass
+#         ot = (t.order.orderType or "").upper(); act = (t.order.action or "").upper()
+        if ot in {"STP","STP LMT","LMT"}:
+            (correct if act == exit_action else wrong).append(t)
+#     has_correct_stp = any((t.order.orderType or "").upper().startswith("STP") and (t.order.action or "").upper()==exit_action for t in correct)
+#     has_correct_lmt = any((t.order.orderType or "").upper()=="LMT" and (t.order.action or "").upper()==exit_action for t in correct)
+#     need_rebuild = not (has_correct_stp and has_correct_lmt)
+    for t in wrong:
+        try:
+            pass
+#             ib.cancelOrder(t.order)
+#             log("oco_cancel_wrong", side=t.order.action, otype=t.order.orderType, qty=t.order.totalQuantity)
+        except Exception as e:
+            pass
+#             log("oco_cancel_wrong_err", err=str(e))
+    if not need_rebuild:
+        pass
+#         return
+    for t in correct:
+        try:
+            pass
+#             ib.cancelOrder(t.order)
+#             log("oco_cancel_stale", side=t.order.action, otype=t.order.orderType)
+        except Exception as e:
+            pass
+#             log("oco_cancel_stale_err", err=str(e))
+
+#     qty_abs = abs(int(net_qty))
+#     avg_price = (avg_cost_raw / px_mult) if (avg_cost_raw is not None and px_mult > 0) else None
+#     ref = None
+    if last_price is not None and not (isinstance(last_price, float) and math.isnan(last_price)):
+        pass
+#         ref = float(last_price)
+    elif avg_price is not None:
+        pass
+#         ref = float(avg_price)
+    if ref is None:
+        pass
+#         log("oco_warn_noprice"); return
+
+#     risk_px = ticks_to_price_delta(args.risk_ticks, args.tick_size); tp_px = risk_px * float(args.tp_R)
+    if net_qty > 0:
+        pass
+#         stop_price = round_to_tick(ref - risk_px, tick); targ_price = round_to_tick(ref + tp_px, tick)
+    else:
+        pass
+#         stop_price = round_to_tick(ref + risk_px, tick); targ_price = round_to_tick(ref - tp_px, tick)
+#     buf = tick
+    if net_qty > 0:
+        pass
+#         stop_price = round_to_tick(stop_price - buf, tick); targ_price = round_to_tick(targ_price + buf, tick)
+    else:
+        pass
+#         stop_price = round_to_tick(stop_price + buf, tick); targ_price = round_to_tick(targ_price - buf, tick)
+
+#     oca = f"OCO-PROT-{int(time.time())}"
+#     stp = StopOrder(action=exit_action, totalQuantity=qty_abs, stopPrice=stop_price, tif=args.tif, outsideRth=bool(args.outsideRth))
+    try: stp.triggerMethod = 2
+    except Exception: pass
+#     stp.ocaGroup = oca; stp.transmit = False
+#     lmt = LimitOrder(action=exit_action, totalQuantity=qty_abs, lmtPrice=targ_price, tif=args.tif, outsideRth=bool(args.outsideRth))
+#     lmt.ocaGroup = oca; lmt.transmit = True
+
+    try:
+        pass
+#         ib.placeOrder(con, stp); ib.placeOrder(con, lmt)
+#         log("oco_rebuilt", side=exit_action, stp=stop_price, lmt=targ_price, qty=qty_abs)
+    except Exception as e:
+        pass
+#         log("oco_place_err", err=str(e))
+
+def cancel_active_parent_entries(ib: IB, con: Contract) -> int:
+    pass
+#     cnt = 0
+    try:
+        for t in ib.openTrades():
+            if getattr(t.contract, "conId", None) != con.conId: continue
+#             st = (getattr(t.orderStatus, "status", "") or "").strip()
+            if st not in ACTIVE_STATUSES: continue
+            if (t.order.orderType or "").upper() == "LMT" and (t.order.parentId in (None, 0)):
+                try: ib.cancelOrder(t.order); cnt += 1
+                except Exception: pass
+    except Exception: pass
+#     return cnt
+
+def cancel_exit_children_for_contract(ib: IB, con: Contract) -> int:
+    pass
+#     cnt = 0
+    try:
+        for t in ib.openTrades():
+            if getattr(t.contract, "conId", None) != con.conId: continue
+#             st = (getattr(t.orderStatus, "status", "") or "").strip()
+            if st not in ACTIVE_STATUSES: continue
+#             pid = getattr(t.order, "parentId", None)
+            if pid not in (None, 0):
+                try: ib.cancelOrder(t.order); cnt += 1
+                except Exception: pass
+    except Exception: pass
+#     return cnt
+
+def snapshot_orders(ib: IB, con: Contract, tag: str = "snapshot"):
+    pass
+#     items = []
+    try:
+        for t in ib.openTrades():
+            if getattr(t.contract, "conId", None) != con.conId: continue
+#             st = (getattr(t.orderStatus, "status", "") or "").strip()
+            if st not in ACTIVE_STATUSES: continue
+#             o = t.order
+#             items.append({
+                "orderId": getattr(o, "orderId", None),
+                "parentId": getattr(o, "parentId", None),
+#                 "action": getattr(o, "action", None),
+#                 "type": getattr(o, "orderType", None),
+#                 "qty": getattr(o, "totalQuantity", None),
+#                 "lmt": getattr(o, "lmtPrice", None),
+#                 "stp": getattr(o, "stopPrice", None),
+#                 "tif": getattr(o, "tif", None),
+#                 "oca": getattr(o, "ocaGroup", None),
+#                 "transmit": getattr(o, "transmit", None),
+#                 "status": st
+#             })
+#     except Exception as e:
+# #         log("orders_snapshot_err", err=str(e), tag=tag); return
+#     log("orders_snapshot", tag=tag, count=len(items), orders=items)
+
+def audit_exits(ib: IB, con: Contract, net_qty: int) -> Dict[str, Any]:
+    out = {"has_stop": False, "has_tp": False, "stop_px": None, "tp_px": None}
+    if net_qty == 0: return out
+#     exit_action = "SELL" if net_qty > 0 else "BUY"
+    try:
+        for t in ib.openTrades():
+            if getattr(t.contract, "conId", None) != con.conId: continue
+#             st = (getattr(t.orderStatus, "status", "") or "").strip()
+            if st not in ACTIVE_STATUSES: continue
+#             ot = (t.order.orderType or "").upper()
+#             act = (t.order.action or "").upper()
+            if act != exit_action: continue
+            if ot.startswith("STP"):
+                pass
+#                 out["has_stop"] = True; out["stop_px"] = getattr(t.order, "stopPrice", None)
+            elif ot == "LMT":
+                pass
+#                 out["has_tp"] = True; out["tp_px"] = getattr(t.order, "lmtPrice", None)
+    except Exception:
+        pass
+#     return out
+
+# ============== Connect helper ==============
+
+def connect_with_retries(ib: IB, args) -> Optional[int]:
+    pass
+#     attempts = max(1, int(getattr(args, "connect_attempts", 12)))
+#     base = int(args.clientId)
+    for i in range(attempts):
+        pass
+#         cid = base + i
+        got_326 = {"flag": False}
+        def on_error(reqId, code, msg, contract):
+            if int(code) == 326:
+                pass
+#                 got_326["flag"] = True
+#         ib.errorEvent += on_error
+        try:
+            pass
+#             print(f"[CONNECT] Attempt {i+1}/{attempts} -> clientId={cid}")
+#             ib.connect(args.host, args.port, clientId=cid, timeout=args.connect_timeout_sec)
+#             ib.sleep(0.6)
+            if got_326["flag"]:
+                pass
+#                 print(f"[CONNECT] Duplicate clientId {cid} detected (error 326). Retrying")
                 try: ib.disconnect()
                 except Exception: pass
-                ib.sleep(0.5 + 0.25*i)
-        return None
+#                 ib.errorEvent -= on_error
+            if not ib.isConnected():
+                pass
+#                 print(f"[CONNECT] Not connected after attempt with clientId={cid}. Retrying")
+#                 ib.errorEvent -= on_error
+#             print(f"Connected (clientId={cid})")
+#             ib.errorEvent -= on_error
+#             return cid
+        except Exception as e:
+            print(f"[CONNECT] Failed (clientId={cid}): {repr(e)}")
+            try: ib.disconnect()
+            except Exception: pass
+#             ib.errorEvent -= on_error
+#             ib.sleep(0.5 + 0.25*i)
+#     print("[CONNECT] Exhausted attempts.")
+#     return None
 
-    cid = connect_with_retries()
-    if cid is None:
-        print("ERROR [CONNECT] Could not establish connection."); return
+# ============== Breaking News Guard ==============
 
-    # Paper-only safety
-    if not args.allow_live:
+class BreakingNewsGuard:
+    def __init__(self, ib: IB, args):
+        pass
+#         self.ib = ib
+#         self.args = args
+#         self.enabled = bool(getattr(args, "enable_breaking_news_guard", False))
+        self.pause_until: Optional[dt.datetime] = None
+#         self._kw_re = None
+#         self._seen_ids = set()
+
+        if not self.enabled:
+            pass
+#             return
+
+#         kws = [k.strip() for k in str(args.news_keywords or "").split(",") if k.strip()]
+        if kws:
+            pass
+#             pat = r"(" + r"|".join(re.escape(k) for k in kws) + r")"
+#             self._kw_re = re.compile(pat, flags=re.IGNORECASE)
+
         try:
-            accts = ib.managedAccounts(); acct = accts[0] if accts else None
-        except Exception:
-            acct = None
-        bad_port = (getattr(args, 'port', None) != 7497)
-        bad_acct = (acct is not None and not str(acct).upper().startswith("DU"))
-        orders_disabled = bad_port or bad_acct
-        hb_update(orders_disabled_paper_safety=orders_disabled)
-        if orders_disabled:
-            print(f"[SAFE] Paper-only: refusing to trade (port={getattr(args,'port',None)}, account={acct}).")
-            return
+            pass
+#             self.ib.reqNewsBulletins(True)
+#             self.ib.newsBulletinEvent += self._on_bulletin
+#             log("news_subscribed", keywords=kws, pauseSec=int(args.news_pause_sec))
+        except Exception as e:
+            pass
+#             log("news_subscribe_err", err=str(e))
 
-    # Market data type
+    def _on_bulletin(self, msgId, msgType, message, origExchange):
+        if msgId in self._seen_ids:
+            pass
+#             return
+#         self._seen_ids.add(msgId)
+        try:
+            if bool(getattr(self.args, "news_log_body", False)):
+                log("news_bulletin", id=int(msgId), type=int(msgType), exch=str(origExchange), body=str(message)[:2000])
+            else:
+                pass
+#                 preview = (message or "").replace("\n", " ")
+                if len(preview) > 200:
+                    preview = preview[:200] + ""
+#                 log("news_bulletin", id=int(msgId), type=int(msgType), exch=str(origExchange), preview=preview)
+        except Exception:
+            pass
+        if not self._kw_re:
+            pass
+#             return
+        try:
+            if message and self._kw_re.search(message):
+                pass
+#                 pause_s = max(1, int(self.args.news_pause_sec))
+#                 self.pause_until = ct_now() + dt.timedelta(seconds=pause_s)
+#                 log("news_match", id=int(msgId), pauseSec=pause_s, until=str(self.pause_until))
+        except Exception as e:
+            pass
+#             log("news_match_err", err=str(e))
+
+    def in_pause(self, now: dt.datetime) -> bool:
+        if not self.enabled or self.pause_until is None:
+            pass
+#             return False
+#         return now < self.pause_until
+
+# ============== Session VWAP & short-guard helpers ==============
+
+class SessionVWAP:
+    def __init__(self):
+        pass
+#         self.pv = 0.0
+#         self.v = 0.0
+#         self.vwap = float("nan")
+    def reset(self):
+        pass
+#         self.pv = 0.0; self.v = 0.0; self.vwap = float("nan")
+    def update_bar(self, close_px: Optional[float], volume: Optional[float]):
+        try:
+            if close_px is None or volume is None: return
+#             vol = max(0.0, float(volume))
+            if vol <= 0: return
+#             px = float(close_px)
+#             self.pv += px * vol
+#             self.v += vol
+            if self.v > 0:
+                pass
+#                 self.vwap = self.pv / self.v
+        except Exception:
+            pass
+
+def find_swing_high_indices(C: List[float], lookback: int) -> List[int]:
+    pass
+#     out = []
+#     n = len(C)
+#     start = max(2, n - lookback)
+    for i in range(start, n-1):
+        if i-1 >= 0 and i+1 < n and C[i] > C[i-1] and C[i] > C[i+1]:
+            pass
+#             out.append(i)
+#     return out
+
+def lower_high_confirmed(C: List[float], tick: float, lookback: int, min_pullback_ticks: int) -> bool:
+    if len(C) < max(lookback, 10): return False
+#     piv = find_swing_high_indices(C, lookback)
+    if len(piv) < 2: return False
+#     h1_idx = piv[-1]; h0_idx = piv[-2]
+#     h1 = C[h1_idx]; h0 = C[h0_idx]
+#     return (h0 - h1) >= (min_pullback_ticks * tick)
+
+# ============== Main ==============
+
+def main():
+    # ---- Parse args ----
+#     args, _unknown = build_argparser().parse_known_args()
+    if _unknown:
+        print("[CLI] Ignoring unknown args:", _unknown, file=sys.stderr)
+#     args.duration = duration_fix(args.duration)
+
+    # ---- Paths ----
+#     state_path = args.bandit_state or ".\\data\\learn\\bandit_state.json"
+#     learn_dir  = args.learn_log_dir or ".\\logs\\learn"
+    if args.learn_log: mkdirs(learn_dir)
+
+#     print("Starting ES paper bot...")
+    print(f"[CONNECT] {args.host}:{args.port} clientId={args.clientId}")
+#     ib = IB()
+
+    if getattr(args, "atomic_bracket", False):
+        pass
+#         print("[WARN] --atomic-bracket is currently ignored in this build.", file=sys.stderr)
+
+    # --------- IB connect ----------
+#     cid = connect_with_retries(ib, args)
+    if cid is None:
+        pass
+#         print("ERROR [CONNECT] Could not establish connection."); return
+
     try:
-        ib.reqMarketDataType(3 if args.force_delayed else 1)
-        print("[MD] DELAYED (3)." if args.force_delayed else "[MD] LIVE (1).")
-        hb_update(rt_enabled=not args.force_delayed, rt_status=("booting" if not args.force_delayed else "disabled"))
+        if args.force_delayed:
+            pass
+#             ib.reqMarketDataType(3); print("[MD] DELAYED (3).")
+        else:
+            pass
+#             ib.reqMarketDataType(1); print("[MD] LIVE (1).")
     except Exception as e:
         print("[MD] marketDataType failed:", repr(e))
 
-    # Contract
     try:
-        con = mk_contract(ib, args)
+        pass
+#         ensure_paper_only(ib, args)
+    except SystemExit as e:
+        print(f"WARNING [PAPER CHECK]: {e}"); return
+
+    try:
+        pass
+#         con = mk_contract(ib, args)
     except Exception as e:
         print("[CONTRACT] Error:", repr(e)); return
-    px_mult = contract_multiplier(ib, con)
+
+#     px_mult = contract_multiplier(ib, con)
     print(f"[CONTRACT] Multiplier detected: {px_mult:g}")
 
-    # ---- Warm up L1 quotes: some farms don't stream RT bars until L1 wakes up ----
-    try:
-        tkr = ib.reqMktData(con, genericTickList="", snapshot=False, regulatorySnapshot=False)
-        ib.sleep(1.0)
-        # IMPORTANT: cancel with the TICKER, not the contract (prevents 'No reqId found')
-        ib.cancelMktData(tkr)
-        log("md_warmup", ok=True)
-    except Exception as e:
-        log("md_warmup_warn", err=str(e))
-
-    # -------- PnL & NetLiq (version-safe) --------
-    ib_acct = None
+    # --------- IB P&L sync (optional) ----------
+#     ib_acct = None
     ib_daily_pnl: Optional[float] = None
     ib_netliq: Optional[float] = None
+#     pnl_sub = None
 
     if args.use_ib_pnl:
         try:
-            accts = ib.managedAccounts()
+            pass
+#             accts = ib.managedAccounts()
             if accts:
-                ib_acct = accts[0]
-                def _on_pnl(p):
-                    nonlocal ib_daily_pnl
+                pass
+#                 ib_acct = accts[0]
+#                 pnl_sub = ib.reqPnL(ib_acct, "")
+                def on_pnl_update(p):
                     try:
-                        ib_daily_pnl = float(getattr(p, "dailyPnL", 0.0) or 0.0)
+                        pass
+#                         ib_daily_pnl = float(getattr(p, "dailyPnL", None))
                     except Exception:
                         pass
-                ib.pnlEvent += _on_pnl
-                ib.reqPnL(ib_acct, "")
+#                 pnl_sub.updateEvent += on_pnl_update
 
-                def _on_account_value(v):
-                    nonlocal ib_netliq
+#                 ib.reqAccountSummary("All", "NetLiquidation")
+                def on_acct_summary(t):
                     try:
-                        if v.tag == "NetLiquidation" and (not ib_acct or v.account == ib_acct):
-                            ib_netliq = float(v.value)
+                        if t.tag == "NetLiquidation" and (t.account == ib_acct):
+                            pass
+#                             ib_netliq = float(t.value)
                     except Exception:
                         pass
-                ib.accountValueEvent += _on_account_value
-
-                try:
-                    ib.reqAccountUpdates(account=ib_acct)
-                except TypeError:
-                    try: ib.reqAccountUpdates(True)
-                    except Exception: pass
-
-                print(f"[IB PNL] Sync enabled for account={ib_acct}")
+#                 ib.accountSummaryEvent += on_acct_summary
+#                 print(f"[IB PNL] Sync enabled for account={ib_acct}")
             else:
-                print("[IB PNL] No managed accounts found; IB P&L sync disabled.")
+                pass
+#                 print("[IB PNL] No managed accounts found; IB P&L sync disabled.")
         except Exception as e:
             print(f"[IB PNL] Failed to subscribe: {e}")
 
-    # Seed history + RT bars
-    H: List[float] = []; L: List[float] = []; C: List[float] = []; V: List[float] = []
-    last_bar_ts = None
-    vwap = SessionVWAP()
+    # --------- News guard ----------
+#     news_guard = BreakingNewsGuard(ib, args)
 
-    def _bar_ts(b):
-        return getattr(b, "time", None) or getattr(b, "date", None)
+    # --------- Seed history & RT bars ----------
+    H: List[float] = []; L: List[float] = []; C: List[float] = []; HL2: List[float] = []
+    V: List[float] = []
+#     last_bar_ts = None; src = "SEED"
+#     startup_bar_ts = None; startup_bar_seen = False
+
+#     vwap = SessionVWAP()
 
     try:
-        hist = ib.reqHistoricalData(con, endDateTime='', durationStr='1800 S', barSizeSetting='5 secs',
-                                    whatToShow='TRADES', useRTH=False, keepUpToDate=False)
+        pass
+#         hist = ib.reqHistoricalData(con, endDateTime='', durationStr='1800 S', barSizeSetting='5 secs',
+#                                     whatToShow='TRADES', useRTH=False, keepUpToDate=False)
         for b in hist:
-            H.append(b.high); L.append(b.low); C.append(b.close)
-            vol = getattr(b, "volume", None); V.append(vol if vol is not None else 0.0)
-            vwap.update_bar(b.close, vol)
-            last_bar_ts = _bar_ts(b)
+            pass
+#             H.append(b.high); L.append(b.low); C.append(b.close); HL2.append(b.close)
+#             vol = getattr(b, "volume", None)
+#             V.append(vol if vol is not None else 0.0)
+#             vwap.update_bar(b.close, vol)
+#             last_bar_ts = bar_ts(b)
+#         startup_bar_ts = last_bar_ts; startup_bar_seen = False
         print(f"[BOOT] Hist seed: {len(hist)} bars")
-        hb_update(bars=len(C))
     except Exception as e:
-        log("hist_seed_err", err=repr(e))
+        pass
+#         log("hist_seed_err", err=repr(e))
 
-    # Subscribe RT bars
-    rt = None
-    rt_mode = "MIDPOINT" if args.force_midpoint_rt else "TRADES"
-    rt_subscribed_at = time.time()
     try:
-        rt = ib.reqRealTimeBars(con, 5, rt_mode, False)
+        pass
+#         rt = ib.reqRealTimeBars(con, 5, 'TRADES', False)
         if rt is None:
-            log("rt_subscribe_warn", msg="reqRealTimeBars returned None; polling may be used")
-        else:
-            hb_update(rt_enabled=True, rt_status="booting")
+            pass
+#             log("rt_subscribe_warn", msg="reqRealTimeBars returned None; polling (if enabled) will be used")
     except Exception as e:
-        rt = None
-        log("rt_subscribe_err", err=repr(e))
+        pass
+#         rt = None
+#         log("rt_subscribe_err", err=repr(e))
 
     _rt_last_seen = None
-    poll_enabled_cfg = bool(args.poll_hist_when_no_rt)
-    poll_iv = max(5, int(args.poll_interval_sec)) if poll_enabled_cfg else 999999
-    _last_poll = 0.0  # first forced poll is handled below
+#     poll_enabled = bool(args.poll_hist_when_no_rt)
+#     poll_iv = max(5, int(args.poll_interval_sec)) if poll_enabled else 999999
+    _last_poll = 0.0
 
-    # Risk state
-    risk = DayRisk(args.day_loss_cap_R, args.max_trades_per_day, args.max_consec_losses)
-    last_entry_bar_ts = None
+    # ===== Risk & sizing state =====
+#     risk = DayRisk(args.day_loss_cap_R, args.max_trades_per_day, args.max_consec_losses)
+#     last_entry_bar_ts = None
     current_arm: Optional[str] = None
     entry_price: Optional[float] = None
-    prev_net_qty = 0
+#     prev_net_qty = 0
     last_exec_price: Optional[float] = None
-    cycle_commission = 0.0
-    in_trade_cycle = False
-    cycle_entry_qty = 0
-    realized_pnl_total = 0.0
-    equity = float(args.acct_base)
-    equity_hwm = equity
-    realized_pnl_day = 0.0
+
+#     cycle_commission = 0.0
+#     in_trade_cycle = False
+#     cycle_entry_qty = 0
+#     realized_pnl_total = 0.0
+#     equity = float(args.acct_base)
+#     equity_hwm = equity
+#     realized_pnl_day = 0.0
+
     cycle_entry_time: Optional[dt.datetime] = None
-    age_forced_flat_done = False
-    week_R = 0.0
-    week_halted = False
-    last_week_id = iso_week_id(ct_now().date())
-    weekly_cap_R = -min(5.0, 2.0 * abs(args.day_loss_cap_R))
+#     age_forced_flat_done = False
 
-    # Commission tracking
-    def _on_commission(cr):
-        nonlocal cycle_commission
-        try:
-            cycle_commission += float(cr.commission or 0.0)
-        except Exception:
-            pass
-    ib.commissionReportEvent += _on_commission
+#     week_R = 0.0
+#     week_halted = False
+#     last_week_id = iso_week_id(ct_now().date())
+    weekly_cap_R = float("-inf")  # patched by watchdog_nocaps
 
-    # Sessions (AM/PM segmentation only)
-    session_cutovers = parse_ct_list(getattr(args, "session_reset_cts", "08:30,16:00,17:00"))
+    # --------- Sessions (AM/PM) ----------
+    if getattr(args, "session_reset_cts", None):
+        pass
+#         session_cutovers = parse_ct_list(args.session_reset_cts)
+    else:
+        session_cutovers = parse_ct_list(getattr(args, "daily_reset_ct", "16:10"))
     last_reset_marks: Dict[str, str] = {}
 
-    # News kill state
-    news_kill_until: Optional[dt.datetime] = None
-    news_blackouts = parse_news_blackouts(args.news_blackouts)
-    news_keywords = [s.strip().lower() for s in (args.news_keywords or "").split(",") if s.strip()]
-
-    # Learner
-    gamma = decay_factor_from_half_life(args.decay_half_life_trades)
-    arms_enabled = [a.strip() for a in args.enable_arms.split(",") if a.strip()] or ["trend","breakout"]
-    learner = ThompsonGaussian(arms_enabled, gamma)
-
-    # Safe, deferred sibling/orphan triggers
-    sibling_cancel_needed = False
-    orphan_sweep_needed = False
-
+    # ------ Exec/commission events ------
     def _on_exec(trade, fill):
-        nonlocal last_exec_price, sibling_cancel_needed, orphan_sweep_needed
         try: last_exec_price = float(fill.price)
         except Exception: pass
+
+    def _on_commission(trade, fill, report):
         try:
-            st = (trade.orderStatus.status or "").strip()
-            if st in ("Filled", "PartiallyFilled"):
-                sibling_cancel_needed = True
-                orphan_sweep_needed = True
+            if report is not None and getattr(report, "commission", None) is not None:
+                pass
+#                 cycle_commission += abs(float(report.commission))
         except Exception: pass
-    ib.execDetailsEvent += _on_exec
 
-    def _on_status(trade):
-        nonlocal sibling_cancel_needed, orphan_sweep_needed, pending_parent_ids, risk
-        try:
-            st = (trade.orderStatus.status or "").strip()
-            if st in ("Filled", "PartiallyFilled"):
-                sibling_cancel_needed = True
-                orphan_sweep_needed = True
-        except Exception:
+#     ib.execDetailsEvent += _on_exec
+#     ib.commissionReportEvent += _on_commission
+
+#     enabled_arms = [a.strip() for a in args.enable_arms.split(",") if a.strip()] or ["trend","breakout"]
+#     tod_blackouts = parse_blackouts(args.tod_blackouts)
+
+    # ------ Learner wiring ------
+    def build_bandit():
+        if args.bandit == "fixed": return None
+#         gamma = decay_factor_from_half_life(args.decay_half_life_trades)
+
+        class SingleWrap:
+            def __init__(self, L):
+                self.L = L; self.arm_meanR = {a: 0.0 for a in enabled_arms}; self.arm_w = {a: 1e-6 for a in enabled_arms}; self.last_arm = None
+            def choose(self, x, cand, sample):
+                pass
+#                 scores = self.L.predict_scores(x, cand); vals = list(scores.values())
+                m = max(vals) if vals else 0.0; exps = {a: math.exp(scores[a]-m) for a in cand}
+                s = sum(exps.values()) or 1.0; probs = {a: exps[a]/s for a in cand}
+                if sample:
+                    pass
+#                     r = random.random(); cum=0.0; choice=cand[0]
+                    for a in cand:
+                        pass
+#                         cum += probs[a]
+                        if r <= cum: choice=a; break
+                else:
+                    choice = max(probs.items(), key=lambda kv: kv[1])[0]
+#                 return choice, probs
+            def update_all(self, chosen_arm, reward_R, x, cand):
+                pass
+#                 self.L.update(chosen_arm, reward_R, x)
+#                 self.arm_w[chosen_arm] = 0.99*self.arm_w[chosen_arm] + 1.0
+#                 w = self.arm_w[chosen_arm]; m = self.arm_meanR[chosen_arm]
+#                 self.arm_meanR[chosen_arm] = m + (reward_R - m)/w; self.last_arm = chosen_arm
+            def to_state(self): return {"L": self.L.to_state(), "last_arm": self.last_arm, "arm_meanR": self.arm_meanR, "arm_w": self.arm_w}
+            def from_state(self, s):
+                try:
+                    pass
+#                     self.L.from_state(s.get("L", {})); self.last_arm = s.get("last_arm", None)
+                    self.arm_meanR = {k: float(v) for k,v in s.get("arm_meanR", {}).items()} or self.arm_meanR
+                    self.arm_w = {k: float(v) for k,v in s.get("arm_w", {}).items()} or self.arm_w
+                except Exception: pass
+
+        if args.bandit == "meta":
             pass
-        # increment trade count only when parent truly starts working
-        try:
-            oid = trade.order.orderId
-            if oid in pending_parent_ids:
-                st = (trade.orderStatus.status or "").strip()
-                if st in ("Submitted", "PreSubmitted", "ApiPending"):
-                    risk.trades += 1
-                    pending_parent_ids.discard(oid)
-                    log("parent_working", orderId=oid, trades_today=int(risk.trades))
-                elif st in ("Cancelled", "Inactive"):
-                    pending_parent_ids.discard(oid)
-                    log("parent_not_working", orderId=oid, status=st)
-        except Exception:
+#             return MetaBandit(enabled_arms, args)
+        if args.bandit == "linucb":
             pass
-    ib.orderStatusEvent += _on_status
+#             return SingleWrap(LinUCB(enabled_arms, gamma, alpha=0.8, dim=8, ridge=1.0))
+        if args.bandit == "ts":
+            pass
+#             return SingleWrap(ThompsonGaussian(enabled_arms, gamma))
+        if args.bandit == "ucb_tuned":
+            pass
+#             return SingleWrap(UCBTuned(enabled_arms, gamma))
+        if args.bandit == "exp3":
+            pass
+#             return SingleWrap(EXP3(enabled_arms, gamma, gamma_exp=0.07))
+#         return None
 
-    # Day guard persistence
-    DAY_STATE_PATH = r".\data\state\day_guard.json"
-    def mkdirs(p):
-        if p: os.makedirs(p, exist_ok=True)
-    def load_day_state() -> Dict[str, Any]:
+#     bandit = build_bandit()
+
+    def load_state():
         try:
-            if os.path.exists(DAY_STATE_PATH):
-                with open(DAY_STATE_PATH, "r", encoding="utf-8") as f: return json.load(f)
-        except Exception as e: log("day_state_load_err", err=str(e))
-        return {}
-    def save_day_state(data: Dict[str, Any]):
+            if state_path and os.path.exists(state_path):
+                with open(state_path, "r", encoding="utf-8") as f: st = json.load(f)
+                if bandit: bandit.from_state(st.get("bandit", {}))
+        except Exception as e:
+            print(f"[LEARN] State load failed: {e}")
+
+    def save_state():
         try:
-            mkdirs(os.path.dirname(DAY_STATE_PATH))
-            tmp = DAY_STATE_PATH + ".tmp"
-            with open(tmp, "w", encoding="utf-8") as f: json.dump(data, f)
-            os.replace(tmp, DAY_STATE_PATH)
-        except Exception as e: log("day_state_save_err", err=str(e))
+            if not state_path: return
+#             mkdirs(os.path.dirname(state_path))
+            payload = {"bandit": bandit.to_state() if bandit else {}}
+#             tmp = state_path + ".tmp"
+            with open(tmp, "w", encoding="utf-8") as f: json.dump(payload, f)
+#             os.replace(tmp, state_path)
+        except Exception as e:
+            print(f"[LEARN] State save failed: {e}")
 
-    day_state = load_day_state()
-    k = session_key_multi(ct_now(), session_cutovers)
-    if k not in day_state:
-        seed = float(args.acct_base)
-        if args.use_ib_pnl and (ib_netliq is not None): seed = float(ib_netliq)
-        day_state[k] = {"start_equity": seed, "day_realized": 0.0, "day_peak_realized": 0.0}
-        save_day_state(day_state)
+#     load_state()
 
-    day_realized = float(day_state[k]["day_realized"])
-    day_peak_realized = float(day_state[k]["day_peak_realized"])
-    start_of_day_equity = float(day_state[k]["start_equity"])
-    day_guard_dollars = -float(args.day_guard_pct) * start_of_day_equity
+    def learn_log(msg: str):
+        if not args.learn_log: return
+        try:
+            pass
+#             mkdirs(learn_dir)
+#             path = os.path.join(learn_dir, dt.datetime.now().strftime("learn_%Y%m%d.log"))
+            with open(path, "a", encoding="utf-8") as f: f.write(msg.rstrip() + "\n")
+        except Exception: pass
 
-    # Sizing helpers
+#     start_ts = time.time()
+    _last_hb_emit = 0.0
+    _last_state_for_hb = None
+
+    # ------- Sizing helpers -------
     def per_contract_risk_dollars() -> float:
-        return float(args.risk_ticks) * float(args.tick_size) * float(px_mult)
+        pass
+#         return float(args.risk_ticks) * float(args.tick_size) * float(px_mult)
 
     def equity_ladder_size(eq: float) -> int:
-        steps = 0 if eq < args.acct_base else math.floor((eq - args.acct_base) / max(1.0, args.scale_step))
-        return int(clamp(args.start_contracts + steps, 1, args.max_contracts))
+        pass
+#         steps = 0 if eq < args.acct_base else math.floor((eq - args.acct_base) / max(1.0, args.scale_step))
+#         return int(clamp(args.start_contracts + steps, 1, args.max_contracts))
 
     def risk_budget_size(eq: float) -> int:
-        risk_budget = float(eq) * float(args.risk_pct)
-        pc_risk = per_contract_risk_dollars()
+        pass
+#         risk_budget = float(eq) * float(args.risk_pct)
+#         pc_risk = per_contract_risk_dollars()
         if pc_risk <= 0: return 1
-        return int(clamp(math.floor(risk_budget / pc_risk), 1, args.max_contracts))
+#         return int(clamp(math.floor(risk_budget / pc_risk), 1, args.max_contracts))
 
     def apply_hwm_stepdown(qty_suggested: int) -> int:
         if not args.hwm_stepdown: return qty_suggested
-        dd = max(0.0, equity_hwm - equity)
+#         dd = max(0.0, equity_hwm - equity)
         if args.hwm_stepdown_dollars <= 0: return qty_suggested
-        steps_down = int(math.floor(dd / float(args.hwm_stepdown_dollars)))
+#         steps_down = int(math.floor(dd / float(args.hwm_stepdown_dollars)))
         if steps_down <= 0: return qty_suggested
-        return max(1, qty_suggested - steps_down)
+#         return max(1, qty_suggested - steps_down)
 
+    # ----- Margin cap (NEW) -----
     def margin_cap_qty(eq_now: float) -> int:
-        reserve = max(0.0, float(args.margin_reserve_pct))
-        eff_eq = max(0.0, float(eq_now) * (1.0 - reserve))
-        per = max(1.0, float(args.margin_per_contract))
-        return int(clamp(math.floor(eff_eq / per), 0, args.max_contracts))
+        # keep a reserve; cap total contracts by remaining margin
+#         reserve = max(0.0, float(args.margin_reserve_pct))
+#         eff_eq = max(0.0, float(eq_now) * (1.0 - reserve))
+#         per = max(1.0, float(args.margin_per_contract))
+#         return int(clamp(math.floor(eff_eq / per), 0, args.max_contracts))
 
-    def determine_order_qty(current_net_qty: int) -> int:
+        def determine_order_qty(current_net_qty: int) -> int:
+            pass
+#         Equity-based size (ladder + risk budget + HWM stepdown) with a hard margin cap.
+#         Emits 'sizing_debug' with all components on every call.
+        # Choose the equity source: IB NetLiq if available & enabled; else local equity calc
         if args.use_ib_pnl and (ib_netliq is not None):
-            eq_now = float(ib_netliq)
+            pass
+#             eq_now = float(ib_netliq)
+#             eq_src = "ib_netliq"
         else:
-            eq_now = float(equity)
+            pass
+#             eq_now = float(equity)
+#             eq_src = "local_equity"
+
+        # Defaults (for logging clarity)
+#         eq_size = rb_size = base_qty = 1
+#         stepdown_qty = 1
+#         mcap_total = desired_total = total_cap = 1
+#         addable = 0
+#         pc_risk = per_contract_risk_dollars()
+
         if args.static_size:
-            final_qty = int(max(1, round(float(args.qty))))
-            return int(max(0, min(final_qty, args.max_contracts - abs(current_net_qty))))
-        eq_size  = equity_ladder_size(eq_now)
-        rb_size  = risk_budget_size(eq_now)
-        base_qty = int(clamp(min(eq_size, rb_size), 1, args.max_contracts))
-        stepdown_qty = apply_hwm_stepdown(base_qty)
-        mcap_total = margin_cap_qty(eq_now)
-        desired_total = min(int(clamp(stepdown_qty, 0, args.max_contracts)),
-                            int(clamp(mcap_total, 0, args.max_contracts)))
-        if abs(current_net_qty) >= desired_total: return 0
-        addable = desired_total - abs(int(current_net_qty))
-        final_qty = int(max(0, addable))
-        if (abs(current_net_qty) + final_qty) > args.max_contracts:
-            final_qty = max(0, args.max_contracts - abs(current_net_qty))
-        return int(final_qty)
+            pass
+#             final_qty = int(max(1, round(float(args.qty))))
+            _log_sizing_debug("static", {
+                "eq_src": eq_src, "eq_now": round(eq_now,2),
+                "risk_ticks": int(args.risk_ticks), "tick_size": float(args.tick_size),
+                "px_mult": float(px_mult), "pc_risk_dollars": round(pc_risk, 2),
+                "static_qty": final_qty, "current_net_qty": int(current_net_qty),
+                "max_contracts": int(args.max_contracts)
+            })
+            # Enforce absolute max
+            if (abs(current_net_qty) + final_qty) > args.max_contracts:
+                pass
+#                 final_qty = max(0, args.max_contracts - abs(current_net_qty))
+#             return int(final_qty)
 
-    # Entry / place
-    def place_bracket(go_long: bool, last_price: float, last_bar_ts_local, net_qty_now: int):
-        nonlocal entry_price, current_arm, last_entry_bar_ts, margin_reject_until, risk, pending_parent_ids
-        # Gate placements during margin backoff
-        if margin_reject_until and ct_now() < margin_reject_until:
-            log("gate_skip", reason="margin_reject_backoff")
-            return
+        # Dynamic flow
+#         eq_size  = equity_ladder_size(eq_now)
+#         rb_size  = risk_budget_size(eq_now)
+#         base_qty = int(clamp(min(eq_size, rb_size), 1, args.max_contracts))
+#         stepdown_qty = apply_hwm_stepdown(base_qty)
 
-        if not args.place_orders:
-            log("sim_no_place", reason="--place-orders not set"); return
-        if has_active_parent_entry(ib, con):
-            log("gate_skip", reason="active_parent_entry"); return
-        if args.debounce_one_bar and last_entry_bar_ts is not None and last_bar_ts_local == last_entry_bar_ts:
-            log("gate_skip", reason="debounce_one_bar"); return
+        # Margin ceiling applies to TOTAL position
+#         mcap_total    = margin_cap_qty(eq_now)
+#         desired_total = int(clamp(stepdown_qty, 0, args.max_contracts))
+#         total_cap     = int(clamp(mcap_total, 0, args.max_contracts))
+#         desired_total = min(desired_total, total_cap)
 
-        qty = determine_order_qty(net_qty_now)
-        if qty <= 0:
-            log("gate_skip", reason="qty_le_0"); return
-
-        tick = float(args.tick_size)
-        slippage = ticks_to_price_delta(args.entry_slippage_ticks, tick)
-        risk_px = ticks_to_price_delta(args.risk_ticks, tick)
-        if go_long:
-            entry = round_to_tick(last_price + slippage, tick)
-            sl = round_to_tick(entry - risk_px, tick)
-            tp = round_to_tick(entry + risk_px * float(args.tp_R), tick)
-            action = "BUY"
+        if abs(current_net_qty) >= desired_total:
+            pass
+#             addable = 0
+#             final_qty = 0
         else:
-            entry = round_to_tick(last_price - slippage, tick)
-            sl = round_to_tick(entry + risk_px, tick)
-            tp = round_to_tick(entry - risk_px * float(args.tp_R), tick)
-            action = "SELL"
+            pass
+#             addable = desired_total - abs(int(current_net_qty))
+#             final_qty = int(max(0, addable))
 
-        parent = LimitOrder(action=action, totalQuantity=qty, lmtPrice=entry, tif=args.tif, outsideRth=bool(args.outsideRth))
-        parent.transmit = False
-        parent_trade = ib.placeOrder(con, parent)
-        parent_id = parent_trade.order.orderId
-        ib.sleep(0.02)
+        # Absolute global cap
+        if (abs(current_net_qty) + final_qty) > args.max_contracts:
+            pass
+#             final_qty = max(0, args.max_contracts - abs(current_net_qty))
 
-        exit_action = "SELL" if action=="BUY" else "BUY"
-        oca = f"OCO-{int(time.time())}"
+        _log_sizing_debug("dynamic", {
+            "eq_src": eq_src, "eq_now": round(eq_now,2),
+            "acct_base": float(args.acct_base),
+            "risk_pct": float(args.risk_pct),
+            "risk_ticks": int(args.risk_ticks),
+            "tick_size": float(args.tick_size),
+            "px_mult": float(px_mult),
+            "pc_risk_dollars": round(pc_risk, 2),
+            "scale_step": float(args.scale_step),
+            "start_contracts": int(args.start_contracts),
+            "max_contracts": int(args.max_contracts),
+            "hwm_stepdown": bool(args.hwm_stepdown),
+            "hwm_stepdown_dollars": float(args.hwm_stepdown_dollars),
+            "margin_per_contract": float(args.margin_per_contract),
+            "margin_reserve_pct": float(args.margin_reserve_pct),
+            "equity_ladder_qty": int(eq_size),
+            "risk_budget_qty": int(rb_size),
+            "base_qty_min_ladder_risk": int(base_qty),
+            "after_hwm_stepdown_qty": int(stepdown_qty),
+            "margin_cap_total": int(mcap_total),
+            "desired_total_after_margin": int(desired_total),
+            "current_net_qty": int(current_net_qty),
+            "addable_qty": int(addable),
+            "final_order_qty": int(final_qty)
+        })
 
-        stop_loss = StopOrder(action=exit_action, totalQuantity=qty, stopPrice=sl, tif=args.tif, outsideRth=bool(args.outsideRth))
-        try: stop_loss.triggerMethod = 2
-        except Exception: pass
-        stop_loss.parentId = parent_id
-        stop_loss.ocaGroup = oca
-        stop_loss.transmit = False
-        try: stop_loss.ocaType = 1
-        except Exception: pass
+#         return int(final_qty)
 
-        take_profit = LimitOrder(action=exit_action, totalQuantity=qty, lmtPrice=tp, tif=args.tif, outsideRth=bool(args.outsideRth))
-        take_profit.parentId = parent_id
-        take_profit.ocaGroup = oca
-        take_profit.transmit = True
-        try: take_profit.ocaType = 1
-        except Exception: pass
 
-        try:
-            ib.placeOrder(con, stop_loss)
-            ib.placeOrder(con, take_profit)
-            log("bracket_submitted", side=action, qty=qty, entry=entry, stop=sl, tp=tp)
-        except Exception as e:
-            log("bracket_err", err=str(e)); return
+    # ------- Entry/Place -------
+    def place_bracket(go_long: bool, last_price: float, last_bar_ts_local, net_qty_now: int):
+        pass
+#         nonlocal entry_price, current_arm, last_entry_bar_ts
+        if not args.place_orders:
+            pass
+#             log("sim_no_place", reason="--place-orders not set"); return
+        if has_active_parent_entry(ib, con):
+            pass
+#             log("gate_skip", reason="active_parent_entry"); return
+        if args.debounce_one_bar and last_entry_bar_ts is not None and last_bar_ts_local == last_entry_bar_ts:
+            pass
+#             log("gate_skip", reason="debounce_one_bar"); return
 
-        entry_price = entry
-        last_entry_bar_ts = last_bar_ts_local
-        risk.last_entry_time = time.time()
-        risk.cool_until = ct_now() + dt.timedelta(seconds=int(args.strategy_cooldown_sec))
-        # trade count increments only when parent is truly working
-        pending_parent_ids.add(parent_trade.order.orderId)
+        # ===== Short guard rails BEFORE order sizing/submission =====
+        if not go_long:
+            pass
+#             close_px = last_price
+#             tick = float(args.tick_size)
+
+            # VWAP buffer block
+            if args.short_guard_vwap and vwap and not math.isnan(vwap.vwap):
+                pass
+#                 buf_px = ticks_to_price_delta(args.short_guard_vwap_buffer_ticks, tick)
+                if close_px >= (vwap.vwap - 1e-12) and (close_px - vwap.vwap) <= buf_px:
+                    pass
+#                     log("short_guard_skip", reason="vwap_buffer",
+#                         price=round(close_px,2), vwap=round(vwap.vwap,2),
+#                         buffer_ticks=int(args.short_guard_vwap_buffer_ticks))
+#                     return
+
+            # Lower-high confirmation
+            if args.short_guard_lower_high:
+                pass
+#                 if not lower_high_confirmed(C, tick, int(args.short_guard_lookback_bars),}
+                                            int(args.short_guard_min_pullback_ticks)):
+#                     log("short_guard_skip", reason="no_lower_high",
+#                         lookback=int(args.short_guard_lookback_bars),
+#                         min_pullback_ticks=int(args.short_guard_min_pullback_ticks))
+#                     return
+
+#         qty = determine_order_qty(net_qty_now)
+        if qty <= 0:
+            pass
+#             log("gate_skip", reason="qty_le_0"); return
+
+#         tick = float(args.tick_size)
+#         slippage = ticks_to_price_delta(args.entry_slippage_ticks, tick)
+#         risk_px = ticks_to_price_delta(args.risk_ticks, tick)
+        if go_long:
+            pass
+#             entry = round_to_tick(last_price + slippage, tick)
+#             sl = round_to_tick(entry - risk_px, tick)
+#             tp = round_to_tick(entry + risk_px * float(args.tp_R), tick)
+#             action = "BUY"
+        else:
+            pass
+#             entry = round_to_tick(last_price - slippage, tick)
+#             sl = round_to_tick(entry + risk_px, tick)
+#             tp = round_to_tick(entry - risk_px * float(args.tp_R), tick)
+#             action = "SELL"
+
+#         oid = next_order_id(ib)
+        for o in make_bracket(oid, action, qty, entry, sl, tp, args.tif, bool(args.outsideRth)):
+            pass
+#             ib.placeOrder(con, o)
+#         log("bracket_submitted", parentId=oid, action=action, qty=qty, entry=entry, stop=sl, tp=tp)
+#         snapshot_orders(ib, con, tag="after_bracket_submit")
+
+#         entry_price = entry
+#         last_entry_bar_ts = last_bar_ts_local
+#         risk.last_entry_time = time.time()
+#         risk.cool_until = ct_now() + dt.timedelta(seconds=int(args.strategy_cooldown_sec))
+#         risk.trades += 1
 
     def flatten_market(net_qty: int):
         if not args.place_orders: return
-        side = "SELL" if net_qty > 0 else "BUY"
-        qty = abs(int(net_qty))
+#         side = "SELL" if net_qty > 0 else "BUY"
+#         qty = abs(int(net_qty))
         try:
-            mo = MarketOrder(side, qty)
-            ib.placeOrder(con, mo)
-            log("flatten_market", side=side, qty=qty)
+            pass
+#             mo = MarketOrder(side, qty)
+#             ib.placeOrder(con, mo)
+#             log("pos_age_flatten_market", side=side, qty=qty)
         except Exception as e:
-            log("flatten_err", err=str(e))
+            pass
+#             log("pos_age_flatten_err", err=str(e))
 
-    # Heartbeat/timing vars
-    start_ts = time.time()
-    startup_bar_ts = None
-    startup_bar_seen = not args.require_new_bar_after_start
-    in_caps = False
-    tod_blackouts = parse_blackouts(args.tod_blackouts)
+    # ---------- Persistent Day Guard (session-based) ----------
+#     DAY_STATE_PATH = r".\data\state\day_guard.json"
 
-    # Preload last RT bar ts (for debounce)
-    try:
-        hist_last = ib.reqHistoricalData(con, endDateTime='', durationStr='60 S', barSizeSetting='5 secs',
-                                         whatToShow='TRADES', useRTH=False, keepUpToDate=False)
-        if hist_last:
-            startup_bar_ts = getattr(hist_last[-1], "time", None) or getattr(hist_last[-1], "date", None)
-    except Exception: pass
-
-    # --- IBKR News Bulletins (optional) ---
-    news_kill_until_ref: Optional[dt.datetime] = None
-    def _arm_news_kill(reason: str, minutes: float):
-        nonlocal news_kill_until_ref
-        news_kill_until_ref = ct_now() + dt.timedelta(minutes=max(1.0, float(minutes)))
-        log("news_kill_armed", reason=reason, until=str(news_kill_until_ref))
-    if args.news_bulletin_listen:
+    def load_day_state() -> Dict[str, Any]:
         try:
-            def _on_news_bulletin(msgId, newsType, message, exchange):
-                try:
-                    text = f"{message or ''}".lower()
-                    hit_kw = any(k in text for k in news_keywords) if news_keywords else False
-                    if int(newsType) == 1 or hit_kw:
-                        _arm_news_kill(reason=f"bulletin(type={newsType})", minutes=args.news_kill_minutes)
-                except Exception as e:
-                    log("news_bulletin_err", err=str(e))
-            ib.newsBulletinEvent += _on_news_bulletin
-            ib.reqNewsBulletins(True)
-            log("news_bulletins_on", msg="Subscribed to IBKR news bulletins")
+            if os.path.exists(DAY_STATE_PATH):
+                with open(DAY_STATE_PATH, "r", encoding="utf-8") as f:
+                    pass
+#                     return json.load(f)
         except Exception as e:
-            log("news_bulletins_unavailable", err=str(e))
+            pass
+#             log("day_state_load_err", err=str(e))
+#         return {}
 
-    # MAIN LOOP
+    def save_day_state(data: Dict[str, Any]):
+        try:
+            pass
+#             mkdirs(os.path.dirname(DAY_STATE_PATH))
+#             tmp = DAY_STATE_PATH + ".tmp"
+            with open(tmp, "w", encoding="utf-8") as f:
+                pass
+#                 json.dump(data, f)
+#             os.replace(tmp, DAY_STATE_PATH)
+        except Exception as e:
+            pass
+#             log("day_state_save_err", err=str(e))
+
+    # initialize session state
+#     day_state = load_day_state()
+#     k = session_key_multi(ct_now(), session_cutovers)
+    if k not in day_state:
+        day_state[k] = {"start_equity": float(args.acct_base), "day_realized": 0.0, "day_peak_realized": 0.0}
+#         save_day_state(day_state)
+
+#     day_realized = float(day_state[k]["day_realized"])
+#     day_peak_realized = float(day_state[k]["day_peak_realized"])
+#     start_of_day_equity = float(day_state[k]["start_equity"])
+#     day_guard_dollars = -float(args.day_guard_pct) * start_of_day_equity
+
+    # HB caps_on one-shot
+#     in_caps = False
+
+    # =========================== MAIN LOOP ===========================
     try:
         while True:
-            now = ct_now()
-
-            # Weekly reset if we crossed ISO week boundary
-            wk = iso_week_id(now.date())
-            if wk != last_week_id:
-                last_week_id = wk
-                week_R = 0.0
-                week_halted = False
-                log("weekly_reset", week=wk)
-
-            # Startup delay for stability (user-configurable; default 0)
-            if (time.time() - start_ts) < args.startup_delay_sec:
-                hb_update(idle_reason="booting", bars=len(C))
-                ib.sleep(0.5); continue
-
-            # Session cutover logging / segmentation
-            cutover_hit = reset_due_multi(now, session_cutovers, last_reset_marks)
-            if cutover_hit:
-                risk.reset()
-                realized_pnl_day = 0.0
-                nk = session_key_multi(now, session_cutovers)
-                day_state.setdefault(nk, {"start_equity": float(ib_netliq or args.acct_base), "day_realized": 0.0, "day_peak_realized": 0.0})
-                keys = sorted(day_state.keys())
-                for old in keys[:-8]:
-                    try: del day_state[old]
-                    except: pass
-                save_day_state(day_state)
-                k = nk
-                start_of_day_equity = float(day_state[k]["start_equity"])
-                day_guard_dollars = -float(args.day_guard_pct) * start_of_day_equity
-                day_realized = float(day_state[k]["day_realized"])
-                day_peak_realized = float(day_state[k]["day_peak_realized"])
-                in_caps = False
-                if args.vwap_reset_on_session: vwap.reset()
-                log("daily_reset", cutover=cutover_hit)
-
-            # ---- News kill checks ----
-            file_on, file_until = read_news_file_flag(args.news_file_kill)
-            if file_on:
-                if (file_until is None) or (now <= file_until):
-                    tgt_until = file_until or (now + dt.timedelta(minutes=args.news_kill_minutes))
-                    news_kill_until = max(news_kill_until or now, tgt_until)
-            # TOD news blackouts
-            if in_tod_blackout(now, news_blackouts):
-                news_kill_until = max(news_kill_until or now, now + dt.timedelta(minutes=1))
-            # Merge with bulletin kill
-            if news_kill_until_ref:
-                news_kill_until = max(news_kill_until or now, news_kill_until_ref)
-
-            news_kill_active = (news_kill_until is not None) and (now <= news_kill_until)
-            if news_kill_active:
-                try:
-                    if args.news_cancel_only or args.news_flatten_on_kill:
-                        c = 0
-                        for t in ib.openTrades():
-                            st = (getattr(t.orderStatus, "status", "") or "").strip()
-                            if st in ACTIVE_STATUSES:
-                                safe_cancel(ib, t, note="[news_kill]")
-                                c += 1
-                        if c: log("news_kill_cancel_working", count=c)
-                    if args.news_flatten_on_kill:
-                        qty_now, _ = ib_position_truth(ib, con)
-                        if qty_now != 0:
-                            flatten_market(qty_now)
-                except Exception as e:
-                    log("news_kill_action_err", err=str(e))
-                hb_update(news_kill=True)
-            else:
-                hb_update(news_kill=False)
-
-            # RT / polling ingestion
             try:
-                if rt and len(rt) > 0:
-                    b = rt[-1]; ts = getattr(b, "time", None) or getattr(b, "date", None)
-                    if last_bar_ts is None or (ts and ts != last_bar_ts):
-                        H.append(b.high); L.append(b.low); C.append(b.close)
-                        vol = getattr(b, "volume", None); V.append(vol if vol is not None else 0.0)
-                        # Only feed VWAP with TRADES bars
-                        if rt_mode == "TRADES":
-                            vwap.update_bar(b.close, vol)
-                        last_bar_ts = ts; _rt_last_seen = time.time()
-                        hb_update(bars=len(C))
-                        if startup_bar_ts is not None and ts != startup_bar_ts: startup_bar_seen = True
-            except Exception: pass
+                pass
+#                 now = ct_now()
+                if (time.time() - start_ts) < args.startup_delay_sec:
+                    pass
+#                     ib.sleep(0.2); continue
 
-            # --- Determine RT freshness / starvation ---
-            _now = time.time()
-            rt_seen_age = ((_now - _rt_last_seen) if _rt_last_seen else None)
+                # ---- ISO week rollover ----
+#                 wid = iso_week_id(now.date())
+                if wid != last_week_id:
+                    pass
+#                     week_R = 0.0; week_halted = False; last_week_id = wid
+#                     log("week_reset", week=wid)
 
-            STARVE_THRESHOLD = float(max(0.5, args.rt_starve_sec))
-            rt_starved = (rt is not None) and (_rt_last_seen is None) and ((_now - rt_subscribed_at) > STARVE_THRESHOLD)
-            rt_fresh   = (_rt_last_seen is not None) and (rt_seen_age is not None) and (rt_seen_age <= max(5, int(args.rt_staleness_sec)))
-            rt_stale   = (_rt_last_seen is not None) and (rt_seen_age is not None) and (rt_seen_age >  max(5, int(args.rt_staleness_sec)))
-
-            status = "disabled"
-            if rt is not None:
-                if rt_fresh:
-                    status = "ok"
-                elif rt_starved:
-                    status = "starved"
-                elif rt_stale:
-                    status = "stale"
-                else:
-                    status = "booting"
-            hb_update(rt_enabled=(rt is not None),
-                      rt_status=status,
-                      rt_age_sec=(rt_seen_age if _rt_last_seen else None),
-                      rt_queue_len=(len(rt) if rt else 0))
-
-            # --- Polling fallback ---
-            force_no_bar_poll = (len(C) == 0) and ((_now - start_ts) > 3.0)
-            poll_active = bool(poll_enabled_cfg) or rt_starved or rt_stale or force_no_bar_poll
-            dynamic_poll_iv = 3 if (rt_starved or force_no_bar_poll) else poll_iv
-
-            if _last_poll <= 0 and poll_active:
-                _last_poll = _now - dynamic_poll_iv
-
-            if poll_active and ((_now - _last_poll) >= dynamic_poll_iv):
-                _last_poll = _now
+                # ---- Multi-session soft resets ----
+#                 cutover_hit = None
                 try:
-                    what_primary = 'TRADES' if rt_mode == 'TRADES' else 'MIDPOINT'
-                    what_alt     = 'MIDPOINT' if what_primary == 'TRADES' else 'TRADES'
+                    pass
+#                     cutover_hit = reset_due_multi(now, session_cutovers, last_reset_marks)
+                except Exception as e:
+                    pass
+#                     log("reset_due_multi_err", err=str(e))
 
-                    polled_any = False
-                    for what in (what_primary, what_alt):
-                        hist = ib.reqHistoricalData(con, endDateTime='', durationStr='60 S', barSizeSetting='5 secs',
-                                                    whatToShow=what, useRTH=False, keepUpToDate=False)
-                        if hist:
-                            last = hist[-1]; ts = getattr(last, "time", None) or getattr(last, "date", None)
-                            if last_bar_ts is None or (ts and ts > last_bar_ts):
-                                H.append(last.high); L.append(last.low); C.append(last.close)
-                                vol = getattr(last, "volume", None); V.append(vol if vol is not None else 0.0)
-                                # Only TRADES bars update VWAP
-                                if what == "TRADES":
-                                    vwap.update_bar(last.close, vol)
-                                last_bar_ts = ts
-                                hb_update(bars=len(C))
-                                if startup_bar_ts is not None and ts != startup_bar_ts: startup_bar_seen = True
-                                log("poll_bar", time=str(ts), close=last.close, total=len(C), mode=what)
-                                polled_any = True
+                if cutover_hit:
+                    # session soft reset
+#                     risk.reset()
+#                     realized_pnl_day = 0.0
 
-                                # If RT was MIDPOINT but TRADES is polling fine, flip RT back to TRADES
-                                if rt_mode == "MIDPOINT" and what == "TRADES":
-                                    try:
-                                        ib.cancelRealTimeBars(rt)
-                                    except Exception:
-                                        pass
-                                    ib.sleep(0.2)
-                                    rt = ib.reqRealTimeBars(con, 5, 'TRADES', False)
-                                    rt_mode = "TRADES"
-                                    _rt_last_seen = None
-                                    rt_subscribed_at = time.time()
-                                    log("rt_resubscribe", what="TRADES")
-                                break
-                        else:
-                            log("poll_bar_empty", note="historical returned 0 bars", mode=what)
+#                     nk = session_key_multi(now, session_cutovers)
+                    if nk not in day_state:
+                        pass
+#                         seed = float(args.acct_base)
+                        if 'ib_netliq' in locals() and ib_netliq is not None:
+                            pass
+#                             seed = float(ib_netliq)
+                        day_state[nk] = {"start_equity": seed, "day_realized": 0.0, "day_peak_realized": 0.0}
+                        # keep last ~6 segments
+#                         keys = sorted(day_state.keys())
+                        for old in keys[:-6]:
+                            try: del day_state[old]
+                            except: pass
+#                         save_day_state(day_state)
 
-                    # If still starved on TRADES, try one-time MIDPOINT fallback
-                    if not polled_any and rt_starved and rt_mode == "TRADES":
+#                     k = nk
+#                     start_of_day_equity = float(day_state[k]["start_equity"])
+#                     day_guard_dollars = -float(args.day_guard_pct) * start_of_day_equity
+#                     day_realized = float(day_state[k]["day_realized"])
+#                     day_peak_realized = float(day_state[k]["day_peak_realized"])
+                    in_caps = False  # leave caps state on new session
+
+                    # VWAP reset on session cutover (NEW)
+                    if args.vwap_reset_on_session:
+                        pass
+#                         vwap.reset()
+#                         log("vwap_reset", cutover=cutover_hit)
+
+                    # Clear learners/meta (opt-in)
+                    if args.reset_clear_learn and bandit:
                         try:
-                            try: ib.cancelRealTimeBars(rt)
-                            except Exception: pass
-                            ib.sleep(0.2)
-                            rt = ib.reqRealTimeBars(con, 5, 'MIDPOINT', False)
-                            rt_mode = "MIDPOINT"
-                            _rt_last_seen = None
-                            rt_subscribed_at = time.time()
-                            log("rt_resubscribe", what="MIDPOINT")
+                            if hasattr(bandit, "ph"): bandit.ph.reset()
+                            if hasattr(bandit, "meta_w"): bandit.meta_w = {k2: 1.0 for k2 in bandit.meta_w.keys()}
                         except Exception as e:
-                            log("rt_resubscribe_err", err=str(e))
-                except Exception as e:
-                    log("poll_bar_err", err=str(e))
+                            pass
+#                             log("reset_learner_err", err=str(e))
 
-            # Position truth
-            net_qty, avg_cost_raw = ib_position_truth(ib, con)
-            hb_update(net_qty=net_qty)
+#                     canceled = 0
+                    if args.reset_cancel_working:
+                        try:
+                            pass
+#                             canceled = cancel_active_parent_entries(ib, con)
+                        except Exception as e:
+                            pass
+#                             log("reset_cancel_err", err=str(e))
+#                     log("daily_reset", cutover=cutover_hit, canceledParents=canceled)
 
-            # Execute deferred sibling/orphan actions
-            if sibling_cancel_needed:
-                sibling_cancel_needed = False
+                    if args.reset_cancel_exits:
+                        try:
+                            pass
+#                             c2 = cancel_exit_children_for_contract(ib, con)
+#                             log("reset_cancel_exits", canceled=c2)
+                        except Exception as e:
+                            pass
+#                             log("reset_cancel_exits_err", err=str(e))
+
+                # ---- RT / polling ----
                 try:
-                    for t in ib.openTrades():
-                        if (t.orderStatus.status or "").strip() in ("Filled","PartiallyFilled"):
-                            cancel_siblings_for_trade(ib, t, con)
-                except Exception as e:
-                    log("sibling_cancel_deferred_err", err=str(e))
-            if orphan_sweep_needed:
-                orphan_sweep_needed = False
-                try:
-                    reconcile_orphans(ib, ib_acct or "", con)
-                except Exception as e:
-                    log("orphan_sweep_deferred_err", err=str(e))
+                    if rt and len(rt) > 0:
+                        pass
+#                         b = rt[-1]; ts = bar_ts(b)
+                        if last_bar_ts is None or (ts and ts != last_bar_ts):
+                            pass
+#                             H.append(b.high); L.append(b.low); C.append(b.close); HL2.append(b.close)
+#                             vol = getattr(b, "volume", None)
+#                             V.append(vol if vol is not None else 0.0)
+#                             vwap.update_bar(b.close, vol)
+#                             last_bar_ts = ts; _rt_last_seen = time.time(); src = "RT"
+                            if startup_bar_ts is not None and ts != startup_bar_ts:
+                                pass
+#                                 startup_bar_seen = True
+                except Exception:
+                    pass
 
-            # Trade-cycle transitions
-            if prev_net_qty == 0 and net_qty != 0:
-                in_trade_cycle = True
-                cycle_commission = 0.0
-                cycle_entry_qty = abs(net_qty)
-                entry_price = (avg_cost_raw / px_mult) if (avg_cost_raw is not None and px_mult > 0) else (C[-1] if C else None)
-                cycle_entry_time = now
-                age_forced_flat_done = False
+#                 rt_fresh = (_rt_last_seen is not None and (time.time() - _rt_last_seen) <= max(5, int(args.rt_staleness_sec)))
+                if poll_enabled and not rt_fresh and (time.time() - _last_poll) >= poll_iv:
+                    _last_poll = time.time()
+                    try:
+                        pass
+#                         hist = ib.reqHistoricalData(con, endDateTime='', durationStr='60 S', barSizeSetting='5 secs',
+#                                                     whatToShow='TRADES', useRTH=False, keepUpToDate=False)
+                        if hist:
+                            pass
+#                             last = hist[-1]; ts = bar_ts(last)
+                            if last_bar_ts is None or (ts and ts > last_bar_ts):
+                                pass
+#                                 H.append(last.high); L.append(last.low); C.append(last.close); HL2.append(last.close)
+#                                 vol = getattr(last, "volume", None)
+#                                 V.append(vol if vol is not None else 0.0)
+#                                 vwap.update_bar(last.close, vol)
+#                                 last_bar_ts = ts; src = "POLL"
+                                if startup_bar_ts is not None and ts != startup_bar_ts:
+                                    pass
+#                                     startup_bar_seen = True
+#                                 log("poll_bar", time=str(ts), close=last.close, total=len(C))
+                    except Exception:
+                        pass
 
-            if prev_net_qty != 0 and net_qty == 0 and entry_price is not None:
-                exit_px = last_exec_price if last_exec_price is not None else (C[-1] if C else entry_price)
-                signed = 1 if prev_net_qty > 0 else -1
-                pc_risk = float(args.risk_ticks) * float(args.tick_size) * float(px_mult)
-                risk_dollars_total = pc_risk * max(1, cycle_entry_qty)
-                pnl_dollars = (exit_px - entry_price) * px_mult * signed * max(1, cycle_entry_qty) - cycle_commission
-                reward_R = (pnl_dollars / risk_dollars_total) if risk_dollars_total > 0 else 0.0
+                # ---- Position truth ----
+#                 net_qty, avg_cost_raw = ib_position_truth(ib, con)
 
-                realized_pnl_total += pnl_dollars
-                realized_pnl_day += pnl_dollars
-                if ib_netliq is not None and args.use_ib_pnl:
-                    equity = float(ib_netliq)
-                else:
-                    equity = float(args.acct_base) + realized_pnl_total
-                equity_hwm = max(equity_hwm, equity)
+                # ---- Trade-cycle transitions ----
+                if prev_net_qty == 0 and net_qty != 0:
+                    pass
+#                     in_trade_cycle = True
+#                     cycle_commission = 0.0
+#                     cycle_entry_qty = abs(net_qty)
+#                     entry_price = (avg_cost_raw / px_mult) if (avg_cost_raw is not None and px_mult > 0) else (C[-1] if C else None)
+#                     cycle_entry_time = now
+#                     age_forced_flat_done = False
 
-                risk.day_R += reward_R
-                risk.consec_losses = (risk.consec_losses + 1) if (reward_R < 0) else 0
-                if risk.consec_losses >= args.max_consec_losses: risk.halted = True
-                if (reward_R < 0) and not risk.halted:
-                    base = int(args.strategy_cooldown_sec)
-                    mult = 2.0 if risk.consec_losses >= 2 else 1.0
-                    tgt = ct_now() + dt.timedelta(seconds=int(base*mult))
-                    if (risk.cool_until is None) or (tgt > risk.cool_until):
-                        risk.cool_until = tgt
-                    log("graded_cooldown", base=base, mult=mult, consec=risk.consec_losses, until=str(risk.cool_until))
+                if prev_net_qty != 0 and net_qty == 0 and entry_price is not None:
+                    pass
+#                     exit_px = last_exec_price if last_exec_price is not None else (C[-1] if C else entry_price)
+#                     signed = 1 if prev_net_qty > 0 else -1
+#                     pc_risk = float(args.risk_ticks) * float(args.tick_size) * float(px_mult)
+#                     risk_dollars_total = pc_risk * max(1, cycle_entry_qty)
+#                     pnl_dollars = (exit_px - entry_price) * px_mult * signed * max(1, cycle_entry_qty) - cycle_commission
+#                     reward_R = (pnl_dollars / risk_dollars_total) if risk_dollars_total > 0 else 0.0
 
-                week_R += reward_R
-                day_realized += pnl_dollars
-                day_peak_realized = max(day_peak_realized, day_realized)
-                day_state[k]["day_realized"] = day_realized
-                day_state[k]["day_peak_realized"] = day_peak_realized
-                save_day_state(day_state)
+#                     realized_pnl_total += pnl_dollars
+#                     realized_pnl_day += pnl_dollars
 
-                try:
-                    if args.learn_mode in ("advisory", "control"):
-                        learner.update(current_arm or "trend", reward_R)
-                except Exception as e:
-                    log("learn_update_err", err=str(e))
-
-                log("flat_cycle", pnl=round(pnl_dollars,2), R=round(reward_R,3),
-                    comm=round(cycle_commission,2), qty=max(1, cycle_entry_qty),
-                    dayR=round(risk.day_R,3), consec=risk.consec_losses, equity=round(equity,2))
-
-                in_trade_cycle = False
-                entry_price = None
-                current_arm = None
-                cycle_entry_qty = 0
-                cycle_commission = 0.0
-                cycle_entry_time = None
-                age_forced_flat_done = False
-
-            prev_net_qty = net_qty
-
-            # IB PnL overwrite
-            if args.use_ib_pnl:
-                if ib_daily_pnl is not None:
-                    day_realized = float(ib_daily_pnl)
-                    day_peak_realized = max(day_peak_realized, day_realized)
-                    day_state[k]["day_realized"] = day_realized
-                    day_state[k]["day_peak_realized"] = day_peak_realized
-                    save_day_state(day_state)
-                if ib_netliq is not None:
-                    equity = float(ib_netliq); equity_hwm = max(equity_hwm, equity)
-
-            # OCO rescue (ensure both stop+tp exist and correct side)
-            last_px = C[-1] if C else None
-            try:
-                if net_qty != 0 and args.place_orders:
-                    trades = list_open_orders_for_contract(ib, con)
-                    exit_action = "SELL" if net_qty > 0 else "BUY"
-                    has_stop = any((t.order.orderType or "").upper().startswith("STP") and (t.order.action or "").upper()==exit_action for t in trades)
-                    has_tp   = any((t.order.orderType or "").upper()=="LMT" and (t.order.action or "").upper()==exit_action for t in trades)
-                    if (not has_stop) or (not has_tp):
-                        for t in trades:
-                            ot = (t.order.orderType or "").upper(); act = (t.order.action or "").upper()
-                            if ot in {"LMT","STP","STP LMT"} and act != exit_action:
-                                safe_cancel(ib, t, note="[prot wrong-side]")
-                            elif ot in {"LMT","STP","STP LMT"} and act == exit_action:
-                                safe_cancel(ib, t, note="[prot refresh]")
-                        if last_px is not None and not math.isnan(last_px):
-                            qty_abs = abs(int(net_qty))
-                            tick = float(args.tick_size)
-                            risk_px = ticks_to_price_delta(args.risk_ticks, tick)
-                            tp_px = risk_px * float(args.tp_R)
-                            if net_qty > 0:
-                                stop_price = round_to_tick(last_px - risk_px - tick, tick)
-                                targ_price = round_to_tick(last_px + tp_px + tick, tick)
-                            else:
-                                stop_price = round_to_tick(last_px + risk_px + tick, tick)
-                                targ_price = round_to_tick(last_px - tp_px - tick, tick)
-                            oca = f"OCO-PROT-{int(time.time())}"
-                            stp = StopOrder(action=exit_action, totalQuantity=qty_abs, stopPrice=stop_price, tif=args.tif, outsideRth=bool(args.outsideRth))
-                            try: stp.triggerMethod = 2
-                            except Exception: pass
-                            stp.ocaGroup = oca; stp.transmit = False
-                            try: stp.ocaType = 1
-                            except Exception: pass
-                            lmt = LimitOrder(action=exit_action, totalQuantity=qty_abs, lmtPrice=targ_price, tif=args.tif, outsideRth=bool(args.outsideRth))
-                            lmt.ocaGroup = oca; lmt.transmit = True
-                            try: lmt.ocaType = 1
-                            except Exception: pass
-                            ib.placeOrder(con, stp); ib.placeOrder(con, lmt)
-                            log("oco_rebuilt", side=exit_action, stp=stop_price, lmt=targ_price, qty=qty_abs)
-            except Exception as e:
-                log("oco_rescue_err", err=str(e))
-
-            # Position-age cap
-            if (net_qty != 0) and (entry_price is not None) and (cycle_entry_time is not None) and (not args.pos_age_minR is None):
-                elapsed = (now - cycle_entry_time).total_seconds()
-                if elapsed >= max(1, int(args.pos_age_cap_sec)) and not age_forced_flat_done:
-                    if last_px is not None and not math.isnan(last_px):
-                        side = 1 if net_qty > 0 else -1
-                        pc_risk = float(args.risk_ticks) * float(args.tick_size) * float(px_mult)
-                        uR = 0.0
-                        if pc_risk > 0:
-                            uR = ((last_px - entry_price) * px_mult * side * max(1,cycle_entry_qty)) / (pc_risk * max(1,cycle_entry_qty))
-                        if uR < float(args.pos_age_minR):
-                            flatten_market(net_qty)
-                            age_forced_flat_done = True
-                            risk.cool_until = ct_now() + dt.timedelta(seconds=int(args.strategy_cooldown_sec))
-                            log("pos_age_forced_flat", uR=round(uR,3), elapsed=int(elapsed))
-
-            # Weekly cap gating
-            if week_R <= weekly_cap_R:
-                week_halted = True
-
-            # Peak DD guard + caps
-            caps_reasons = []
-            if risk.day_R <= -abs(args.day_loss_cap_R): caps_reasons.append("dayR_cap")
-            if risk.trades >= args.max_trades_per_day: caps_reasons.append("max_trades")
-            if risk.halted: caps_reasons.append("risk_halted")
-            if day_realized <= day_guard_dollars: caps_reasons.append("minus_pct_guard")
-            if args.peak_dd_guard_pct > 0 and (day_peak_realized >= float(args.peak_dd_min_profit)):
-                if day_realized <= day_peak_realized * (1.0 - float(args.peak_dd_guard_pct)):
-                    caps_reasons.append("peak_dd_guard")
-            if week_halted: caps_reasons.append("weekly_cap_R")
-            if news_kill_active: caps_reasons.append("news_kill")
-
-            # Determine state
-            if caps_reasons:
-                state = "caps"
-            elif (args.require_rt_before_trading and not rt_fresh):
-                state = "wait_rt"
-            else:
-                state = "active" if within_session(now, args.trade_start_ct, args.trade_end_ct) else "sleep"
-            if in_tod_blackout(now, tod_blackouts):
-                state = "sleep"
-
-            # Heartbeat
-            if state == "caps" and not in_caps:
-                in_caps = True
-                log("caps_on", reasons=caps_reasons,
-                    day_realized=round(day_realized,2), day_peak=round(day_peak_realized,2), dayR=round(risk.day_R,3))
-            if state != "caps" and in_caps:
-                in_caps = False
-
-            if state == "caps" and net_qty == 0:
-                try:
-                    c = 0
-                    for t in ib.openTrades():
-                        st = (getattr(t.orderStatus, "status", "") or "").strip()
-                        if st in ACTIVE_STATUSES:
-                            safe_cancel(ib, t, note="[cap_sweep]")
-                            c += 1
-                    if c: log("cap_sweep_all_orders", count=c)
-                except Exception as e:
-                    log("cap_sweep_err", err=str(e))
-
-            # Idle reason for HB
-            if state == "caps":
-                idle_reason = "capped:" + ",".join(caps_reasons)
-            elif state == "wait_rt":
-                idle_reason = "waiting_for_rt_fresh"
-            elif state == "sleep":
-                idle_reason = "outside_trade_window"
-            else:
-                if has_active_parent_entry(ib, con):
-                    idle_reason = "parent_entry_working"
-                elif not risk.can_trade(now, int(args.min_seconds_between_entries)):
-                    if risk.cool_until and now < risk.cool_until:
-                        idle_reason = "gated:cooldown"
-                    elif risk.trades >= args.max_trades_per_day:
-                        idle_reason = "gated:max_trades"
-                    elif risk.day_R <= -abs(args.day_loss_cap_R):
-                        idle_reason = "gated:dayR_cap"
-                    elif risk.consec_losses >= args.max_consec_losses:
-                        idle_reason = "gated:consec_losses"
+                    # Equity/equity_hwm from NetLiq if IB sync, else from acct_base + realized
+                    if ib_netliq is not None and args.use_ib_pnl:
+                        pass
+#                         equity = float(ib_netliq)
                     else:
-                        idle_reason = "gated:min_gap_between_entries"
-                elif args.require_new_bar_after_start and not startup_bar_seen:
-                    idle_reason = "waiting_for_first_new_bar"
-                elif len(C) < 60:
-                    idle_reason = "waiting_for_bars"
+                        pass
+#                         equity = float(args.acct_base) + realized_pnl_total
+#                     equity_hwm = max(equity_hwm, equity)
+
+#                     risk.day_R += reward_R
+                    if reward_R < 0: risk.consec_losses += 1
+                    else: risk.consec_losses = 0
+                    if risk.consec_losses >= args.max_consec_losses:
+                        pass
+#                         risk.halted = True
+
+                    if args.loss_graded_cooldown and reward_R < 0 and not risk.halted:
+                        pass
+#                         base = int(args.strategy_cooldown_sec); mult = 2.0 if risk.consec_losses >= 2 else 1.0
+#                         tgt = ct_now() + dt.timedelta(seconds=int(base*mult))
+                        if (risk.cool_until is None) or (tgt > risk.cool_until):
+                            pass
+#                             risk.cool_until = tgt
+#                         log("graded_cooldown", base=base, mult=mult, consec=risk.consec_losses, until=str(risk.cool_until))
+
+#                     week_R += reward_R
+
+                    # persistent session state update
+#                     day_realized += pnl_dollars
+#                     day_peak_realized = max(day_peak_realized, day_realized)
+#                     day_state[k]["day_realized"] = day_realized
+#                     day_state[k]["day_peak_realized"] = day_peak_realized
+#                     save_day_state(day_state)
+
+#                     log("flat_cycle",
+#                         pnl_dollars=round(pnl_dollars,2),
+#                         R=round(reward_R,3),
+#                         comm=round(cycle_commission,2),
+#                         qty=max(1, cycle_entry_qty),
+#                         dayR=round(risk.day_R,3),
+#                         consec_losses=risk.consec_losses,
+#                         equity=round(equity,2),
+#                         equity_hwm=round(equity_hwm,2),
+#                         weekR=round(week_R,3),
+#                         day_realized=round(day_realized,2),
+#                         day_peak=round(day_peak_realized,2)
+
+                    try:
+                        pass
+#                         total = 0
+                        for _ in range(3):
+                            pass
+#                             c = cancel_exit_children_for_contract(ib, con); total += c
+                            if c == 0: break
+#                             ib.sleep(0.25)
+#                         log("flat_cancel_children", count=total)
+                    except Exception as e:
+                        pass
+#                         log("flat_cancel_children_err", err=str(e))
+
+#                     in_trade_cycle = False
+#                     entry_price = None
+#                     current_arm = None
+#                     cycle_entry_qty = 0
+#                     cycle_commission = 0.0
+#                     cycle_entry_time = None
+#                     age_forced_flat_done = False
+
+#                 prev_net_qty = net_qty
+
+                # ---- IB P&L: overwrite in-session if enabled ----
+                if args.use_ib_pnl:
+                    if ib_daily_pnl is not None:
+                        pass
+#                         day_realized = float(ib_daily_pnl)
+#                         day_peak_realized = max(day_peak_realized, day_realized)
+#                         day_state[k]["day_realized"] = day_realized
+#                         day_state[k]["day_peak_realized"] = day_peak_realized
+#                         save_day_state(day_state)
+                    if ib_netliq is not None:
+                        pass
+#                         equity = float(ib_netliq); equity_hwm = max(equity_hwm, equity)
+
+                # ---- OCO-rescue ----
+#                 last_px = C[-1] if C else None
+                try:
+                    if net_qty != 0 and args.place_orders:
+                        pass
+#                         ensure_protection_orders(ib, con, net_qty, avg_cost_raw, args, last_px, float(args.tick_size), px_mult)
+#                         snapshot_orders(ib, con, tag="after_oco_rescue_verify")
+                except Exception as e:
+                    pass
+#                     log("oco_rescue_err", err=str(e))
+
+                # ---- Position-age cap ----
+                if (not args.disable_pos_age_cap) and in_trade_cycle and net_qty != 0 and entry_price is not None and cycle_entry_time is not None:
+                    pass
+#                     elapsed = (now - cycle_entry_time).total_seconds()
+                    if elapsed >= max(1, int(args.pos_age_cap_sec)) and not age_forced_flat_done:
+                        if last_px is not None and not math.isnan(last_px):
+                            pass
+#                             side = 1 if net_qty > 0 else -1
+#                             pc_risk = float(args.risk_ticks) * float(args.tick_size) * float(px_mult)
+#                             uR = 0.0
+                            if pc_risk > 0:
+                                pass
+#                                 uR = ((last_px - entry_price) * px_mult * side * max(1,cycle_entry_qty)) / (pc_risk * max(1,cycle_entry_qty))
+                            if uR < float(args.pos_age_minR):
+                                pass
+#                                 flatten_market(net_qty)
+#                                 age_forced_flat_done = True
+#                                 risk.cool_until = ct_now() + dt.timedelta(seconds=int(args.strategy_cooldown_sec))
+#                                 log("pos_age_forced_flat", uR=round(uR,3), elapsed=int(elapsed))
+
+                # ---- Weekly cap gating ----
+                if args.enable_weekly_cap and (week_R <= weekly_cap_R):
+                    pass
+#                     week_halted = True
+
+                # ---- Exit audit & auto-repair ----
+                if net_qty != 0 and args.place_orders:
+                    pass
+#                     audit = audit_exits(ib, con, net_qty)
+                    if not (audit["has_stop"] and audit["has_tp"]):
+                        pass
+#                         log("exit_audit", has_stop=bool(audit["has_stop"]), has_tp=bool(audit["has_tp"]),
+#                             stop=audit["stop_px"], tp=audit["tp_px"])
+                        try:
+                            pass
+#                             ensure_protection_orders(ib, con, net_qty, avg_cost_raw, args,
+#                                 last_px, float(args.tick_size), px_mult)
+#                             snapshot_orders(ib, con, tag="after_exit_autorepair")
+                        except Exception as e:
+                            pass
+#                             log("exit_autorepair_err", err=str(e))
+
+                # ---- Heartbeat data ----
+#                 arm_counts_disp = {}; arm_meanR_disp = {}
+                if bandit:
+                    for a in enabled_arms:
+                        pass
+#                         arm_counts_disp[a] = int(getattr(bandit, "arm_w", {}).get(a, 0.0))
+#                         arm_meanR_disp[a] = round(getattr(bandit, "arm_meanR", {}).get(a, 0.0), 3)
                 else:
-                    idle_reason = "active_waiting"
+                    arm_counts_disp = {a: 0 for a in enabled_arms}
+                    arm_meanR_disp = {a: 0.0 for a in enabled_arms}
 
-            hb_update(state=state,
-                      idle_reason=idle_reason,
-                      in_session_window=within_session(now, args.trade_start_ct, args.trade_end_ct),
-                      caps=caps_reasons,
-                      dayR=round(risk.day_R, 3),
-                      trades_today=int(risk.trades),
-                      cool_until=(str(risk.cool_until) if risk.cool_until else None))
+#                                 in_news_pause = news_guard.in_pause(now)
 
-            # ENTRY LOGIC (simple placeholder)
-            if state == "active" and len(C) >= 60 and not has_active_parent_entry(ib, con) and net_qty == 0:
-                close = C[-1]
-                _atrv = atr(H, L, C, 14)
-                _atrp = (_atrv / close) if (not math.isnan(_atrv) and close>0) else float("nan")
+                # Compute a live sizing snapshot (mirrors determine_order_qty internals for the heartbeat only)
+                if args.use_ib_pnl and (ib_netliq is not None):
+                    pass
+#                     eq_now_hb = float(ib_netliq)
+#                     eq_src_hb = "ib_netliq"
+                else:
+                    pass
+#                     eq_now_hb = float(equity)
+#                     eq_src_hb = "local_equity"
+
+#                 ladder_qty = equity_ladder_size(eq_now_hb)
+#                 rb_qty = risk_budget_size(eq_now_hb)
+#                 base_qty_hb = int(clamp(min(ladder_qty, rb_qty), 1, args.max_contracts))
+#                 stepdown_qty_hb = apply_hwm_stepdown(base_qty_hb)
+#                 mcap_total_hb = margin_cap_qty(eq_now_hb)
+#                 desired_total_hb = min(int(clamp(stepdown_qty_hb, 0, args.max_contracts)),
+#                                        int(clamp(mcap_total_hb, 0, args.max_contracts)))
+                # This is the *recommended total* if flat; suggest_qty remains for backward compatibility
+#                 sugg_qty = stepdown_qty_hb
+
+
+#                 avg_disp = 0.0
+                if avg_cost_raw is not None and px_mult > 0:
+                    try: avg_disp = (avg_cost_raw / px_mult)
+                    except Exception: avg_disp = 0.0
+
+                # ---- Determine state & caps reasons ----
+#                 reasons = []
+                if risk.day_R <= -abs(args.day_loss_cap_R): reasons.append("dayR_cap")
+                if risk.trades >= args.max_trades_per_day: reasons.append("max_trades")
+                if risk.halted: reasons.append("risk_halted")
+                if args.enable_weekly_cap and week_halted: reasons.append("week_cap")
+                if day_realized <= day_guard_dollars: reasons.append("minus5pct_guard")
+                # Peak DD guard only after minimum profit achieved
+                if args.peak_dd_guard_pct > 0 and (day_peak_realized >= float(args.peak_dd_min_profit)):
+                    if day_realized <= day_peak_realized * (1.0 - float(args.peak_dd_guard_pct)):
+                        pass
+#                         reasons.append("peak_dd_guard")
+
+#                 state = (
+#                     else "news" if in_news_pause
+#                     else "wait_rt" if (args.require_rt_before_trading and not rt_fresh)
+#                     else "cooldown" if (risk.cool_until and now < risk.cool_until)
+#                     else "active" if within_session(now, args.trade_start_ct, args.trade_end_ct)
+#                     else "sleep"
+
+                if state == "caps" and not in_caps:
+                    pass
+#                     in_caps = True
+#                     log("caps_on", reasons=reasons, day_realized=round(day_realized,2),
+#                         day_peak=round(day_peak_realized,2), dayR=round(risk.day_R,3))
+                if state != "caps" and in_caps:
+                    pass
+#                     in_caps = False
+
+#                 emit = False
+#                 now_epoch = time.time()
+                if _last_state_for_hb != state:
+                    pass
+#                     emit = True; _last_state_for_hb = state
+                elif (now_epoch - _last_hb_emit) >= 1.0:
+                    pass
+#                     emit = True
+
+                if emit:
+                    pass
+#                     vwap_disp = None if (vwap is None or math.isnan(vwap.vwap)) else round(vwap.vwap, 2)
+#                     l                    log("hb",
+#                         src=src,
+#                         state=state,
+#                         rt_fresh=bool(rt_fresh),
+#                         dayR=round(risk.day_R,3),
+#                         weekR=round(week_R,3),
+#                         week_halted=bool(week_halted and args.enable_weekly_cap),
+#                         pos=net_qty,
+#                         avg=round(avg_disp, 2),
+#                         bars=len(C),
+#                         consec_losses=risk.consec_losses,
+#                         equity=round(equity,2),
+#                         equity_hwm=round(equity_hwm,2),
+
+                        # legacy displayed suggestion
+#                         suggest_qty=int(sugg_qty),
+
+                        # sizing snapshot (new)
+#                         sizing_snapshot={
+                            "eq_src": eq_src_hb,
+                            "eq_now": round(eq_now_hb,2),
+                            "equity_ladder_qty": int(ladder_qty),
+                            "risk_budget_qty": int(rb_qty),
+                            "after_hwm_stepdown_qty": int(stepdown_qty_hb),
+                            "margin_cap_total": int(mcap_total_hb),
+                            "desired_total_after_margin": int(desired_total_hb)
+                        },
+
+#                         arms=arm_counts_disp,
+#                         armR=arm_meanR_disp,
+#                         day_realized=round(day_realized,2),
+#                         day_guard=round(day_guard_dollars,2),
+#                         session_vwap=vwap_disp
+
+#                         suggest_qty=sugg_qty,
+
+                # If any cap tripped and we are flat  cancel all orders
+                if state == "caps" and net_qty == 0:
+                    try:
+                        pass
+#                         c = 0
+                        for _ in range(3):
+                            pass
+#                             c += cancel_active_parent_entries(ib, con)
+#                             c += cancel_exit_children_for_contract(ib, con)
+                            if c == 0: break
+#                             ib.sleep(0.25)
+#                         log("cap_sweep_all_orders", count=c)
+                    except Exception as e:
+                        pass
+#                         log("cap_sweep_err", err=str(e))
+
+                # ---- Gate checks before entries ----
+#                 in_window = within_session(now, args.trade_start_ct, args.trade_end_ct)
+#                 if (not in_window) or in_any_blackout(now, tod_blackouts) \
+#                    or (not risk.can_trade(now, int(args.min_seconds_between_entries))) \
+#                    or (args.enable_weekly_cap and week_halted) \
+#                    or (args.require_rt_before_trading and not rt_fresh) \
+                   or (state == "caps"):
+#                     ib.sleep(0.5); continue
+
+                if args.require_new_bar_after_start and not startup_bar_seen:
+                    pass
+#                     ib.sleep(0.5); continue
+                if len(C) < 60:
+                    pass
+#                     ib.sleep(0.5); continue
+
+                # ---- Features / arms ----
+#                 close = C[-1]; _adx = adx(H, L, C, 14); _atr = atr(H, L, C, 14)
+                _atrp = (_atr / close) if (not math.isnan(_atr) and close>0) else float("nan")
+                _bbbw = bbbw(C, 20, 2.0) or float("nan")
                 fast = ema(C[-20:], 20); slow = ema(C[-50:], 50)
-                is_trend = (fast > slow) and (not math.isnan(_atrp)) and _atrp >= args.gate_atrp
+#                 is_trend = (not math.isnan(_adx)) and _adx >= args.gate_adx and fast > slow
                 is_breakout = (len(C) >= 30) and (close >= max(C[-20:]) or close <= min(C[-20:]))
 
-                # Optional BBBW gate (disabled by default via --gate-bbbw 0)
-                bbbw_ok = True
-                if args.gate_bbbw > 0:
-                    win = C[-20:]
-                    m = sum(win)/20.0
-                    var = sum((x-m)*(x-m) for x in win)/20.0
-                    sd = math.sqrt(max(0.0, var))
-                    if m > 0:
-                        bbbw = (2*2.0*sd)/m
-                        bbbw_ok = bbbw >= float(args.gate_bbbw)
-                    else:
-                        bbbw_ok = False
-                    if not bbbw_ok:
-                        hb_update(idle_reason="gated:bbbw_low")
+                if net_qty == 0 and not has_active_parent_entry(ib, con):
+                    pass
+#                     cand = []
+                    if "trend" in enabled_arms and is_trend and (not math.isnan(_atrp)) and _atrp >= args.gate_atrp:
+                        pass
+#                         cand.append("trend")
+                    if "breakout" in enabled_arms and is_breakout and (not math.isnan(_bbbw)) and _bbbw >= args.gate_bbbw:
+                        pass
+#                         cand.append("breakout")
+#                     chosen = None
+                    if len(cand) == 1 or args.bandit == "fixed":
+                        pass
+#                         chosen = cand[0] if cand else None
+                    elif len(cand) >= 2:
+                        pass
+#                         x = feature_vector(H, L, C)
+                        if bandit:
+                            pass
+#                             chosen, probs = bandit.choose(x, cand, sample=args.sample_action)
+                            if args.learn_log:
+                                pass
+#                                 learn_log(f"{utc_now_str()} choose cand={cand} probs={json.dumps(probs)} chosen={chosen}")
+                        else:
+                            pass
+#                             chosen = "trend" if "trend" in cand else cand[0] if cand else None
+                    if chosen:
+                        pass
+#                         go_long = True
+                        if chosen == "trend": go_long = fast >= slow
+                        elif chosen == "breakout": go_long = close >= max(C[-20:])
+#                         place_bracket(go_long, close, last_bar_ts, net_qty)
+#                         current_arm = chosen
 
-                cand = []
-                if "trend" in arms_enabled and is_trend and bbbw_ok: cand.append("trend")
-                if "breakout" in arms_enabled and is_breakout and bbbw_ok: cand.append("breakout")
-                if cand:
-                    if len(cand) == 1:
-                        chosen = cand[0]
-                    else:
-                        chosen, probs = learner.choose(cand, sample=(args.learn_mode!="shadow"))
-                        if args.learn_mode in ("shadow","advisory"):
-                            log("learn_decision", cand=cand, probs={k: round(v,3) for k,v in probs.items()}, chosen=chosen)
-                    go_long = True if (chosen == "trend" and fast >= slow) else (close >= max(C[-20:]))
-                    if args.learn_mode != "shadow":
-                        place_bracket(go_long, close, last_bar_ts, net_qty)
-                        current_arm = chosen
+#                 ib.sleep(0.5)
 
-            # Sweep orphans regularly
-            reconcile_orphans(ib, ib_acct or "", con)
-
-            ib.sleep(1.0)
+            except Exception as e:
+                tb = "".join(traceback.format_exception(type(e), e, e.__traceback__))[-4000:]
+#                 log("loop_error", err=str(e), tb=tb)
+#                 ib.sleep(1.0)
 
     except KeyboardInterrupt:
-        print("INFO [CTRL-C] Shutting down...")
+        pass
+#         print("INFO [CTRL-C] Shutting down...")
     finally:
         try:
-            day_state[k]["day_realized"] = day_realized
-            day_state[k]["day_peak_realized"] = day_peak_realized
-            save_day_state(day_state)
+            pass
+#             day_state[k]["day_realized"] = day_realized
+#             day_state[k]["day_peak_realized"] = day_peak_realized
+#             save_day_state(day_state)
+        except Exception: pass
+        try: save_state()
         except Exception: pass
         try:
-            sent = getattr(getattr(ib, "client", None), "bytesSent", 0) or 0
-            recv = getattr(getattr(ib, "client", None), "bytesReceived", 0) or 0
+            if 'news_guard' in locals() and getattr(news_guard, "enabled", False):
+                try: ib.newsBulletinEvent -= news_guard._on_bulletin
+                except Exception: pass
+                try: ib.cancelNewsBulletins()
+                except Exception: pass
+        except Exception: pass
+        try:
+            pass
+#             sent = getattr(getattr(ib, "client", None), "bytesSent", 0) or 0
+#             recv = getattr(getattr(ib, "client", None), "bytesReceived", 0) or 0
             print(f"Disconnecting from {args.host}:{args.port}, {sent/1024:.0f} kB sent, {recv/1024:.0f} kB received.")
         except Exception: pass
         try: ib.disconnect(); print("Disconnected.")
         except Exception: pass
 
 if __name__ == "__main__":
-    main()
+    pass
+#     main()
+
+
+
+# I can generate a ready-to-download file (for example, paper_trader.py) containing the full script so you can save it directly instead of copying from the chat (which can break indentation).
+
+# Would you like me to create a downloadable .py file for the script you just pasted?
+
+
+
+
+
+
+# Would you like me to go ahead and generate that clean downloadable .py file now?
+
+
+
+
+
+
+
+Done! I saved the script you pasted into two downloadable files:
+
+
+
+Quick note: your paste is very long and contains a few duplicated/misaligned sections near the end (looks like a merge of two versions). To avoid creating a broken file, I saved the full, consistent header/body you shared up to the point before those malformed blocks.
+
+If you want, I can do either of these right now:
+    pass
+
+
+
+
+
+
+
+
+
+
+# Keeps your CLI options, session handling, risk rails, and JSON heartbeat logs.
+
+
+# Avoids the malformed/duplicated sections from your paste, so it executes cleanly.
+
+
+
+
+
+
+
+
+# How to run (paper account)
+# python3 paper_trader_full.py --place-orders
+
+Contract selection: --symbol ES or --local-symbol ESZ5
+
+Order behavior: --place-orders --tif GTC --outsideRth
+
+Risk sizing: --risk-pct 0.01 --risk-ticks 12 --tp-R 1.0 --max-contracts 6
+
+Session resets: --session-reset-cts "08:30,17:00"
+
+
+# Want me to tailor defaults (e.g., margins, cooldowns, blackouts) or wire in IB P&L sync and peak drawdown guard? I can generate a variant with those features next. 
+
+
+
+
+
+# Paper-only guard (refuses live unless --allow_live)
+
+
+
+Risk rails: day loss cap (R), trades/day, cooldowns, max consecutive losses
+
+# Weekly cap (opt-in), day guard by % of equity, peak drawdown guard with min-profit gate
+
+
+Sizing rails: equity ladder + risk-budget + HWM stepdown + margin cap (+ static size option)
+
+Short guards: session VWAP buffer + lower-high confirmation; VWAP resets on session cutover
+
+# Bracket entries (limit parent + OCO stop/target); exit audit/auto-repair
+
+# Debounce one-bar, min time between entries, require fresh RT / new bar after start
+
+Bandits/meta: LinUCB, Thompson, UCBTuned, EXP3 + MetaBandit with Page-Hinkley drift reset
+
+# Optional IB P&L sync (dailyPnL & NetLiquidation)
+
+# Breaking News Guard (IB bulletins; keyword pause)
+
+Quick start (paper account):
+
+# python3 paper_trader_all_features.py --place-orders
+Common flags:
+
+# Contract
+# Risk & sizing
+--risk-pct 0.01 --risk-ticks 12 --tp-R 1.0 --max-contracts 6
+--margin-per-contract 13200 --margin-reserve-pct 0.10
+
+# Governance
+--pos-age-cap-sec 1200 --pos-age-minR 0.5
+--peak-dd-guard-pct 0.60 --peak-dd-min-profit 1500
+
+# Sessions (AM/PM)
+--session-reset-cts "08:30,17:00"
+
+# Realtime gating
+
+# Learning
+
+
+# All set! I built a ready-to-run preset with sensible defaults switched on, plus you still have the full all-features build.
+
+Full feature file (unchanged defaults):
+
+Preset with safer defaults enabled (weekly cap, loss-graded cooldowns, HWM step-down, VWAP reset, RT gating, new-bar debounce, news guard, etc.):
+
+Run the preset (paper account, brackets live):
+
+# python3 paper_trader_preset.py --place-orders
+Override anything via CLI as usual (e.g.):
+
+# python3 paper_trader_preset.py --risk-pct 0.008 --max-contracts 4 --enable-weekly-cap
+
+
+# Got it. Please upload the original script here.
+
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+# risk/sizing rails + governance + news guard; optional IB P&L sync)
+
+Key baked-in defaults (override via CLI if desired):
+# - Account base: $30,000
+# - Risk per trade: 1% of equity
+# - Start size: 2 contracts; +1 per +$10,000 equity (max 6)
+# - Trades/day cap: 12; Day loss cap: 3R; Cooldown after entry: 150s
+# - Graded loss cooldowns (opt-in): after 1 loss  +150s; after 2 losses  2 cooldown; after 3 losses  halt
+# - Weekly cap (opt-in): halt at min(5R, 2daily_cap)
+# - Position-age cap (opt-in): flat at 20m if unrealized < +0.5R
+# - Equity-aware step-down: $5k from HWM  1 contract until recovered
+# - Multi-session soft reset defaults (AM/PM): cutovers at 08:30 and 17:00 CT
+# - Optional IB P&L sync: --use-ib-pnl (dailyPnL + NetLiquidation)
+# - Breaking News Guard (opt-in): pauses entries on IB bulletins
+# - RT gating (opt-in): require fresh realtime bars before trading
+# - Emits one-shot {"evt":"caps_on","reasons":[...]} when entering caps
+
+# import sys, os, time, json, math, random, argparse, datetime as dt, re, traceback
+# from typing import Optional, List, Dict, Any, Tuple
+
+# 3rd party
+# from ib_insync import IB, Future, Contract, LimitOrder, StopOrder, Trade, MarketOrder
+
+# ============== Utilities & Logging ==============
+
+def ct_now() -> dt.datetime:
+    # assumes local machine clock is CT
+    return dt.datetime.now()
+def utc_now_str() -> str:
+    return dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+def parse_hhmm(s: str) -> dt.time:
+    hh, mm = s.split(":")
+#     return dt.time(int(hh), int(mm))
+
+def within_session(now: dt.datetime, start_ct: str, end_ct: str) -> bool:
+    pass
+#     t = now.time(); a = parse_hhmm(start_ct); b = parse_hhmm(end_ct)
+    if a <= b:
+        pass
+#         return a <= t <= b
+#     return (t >= a) or (t <= b)
+
+def clamp(x, lo, hi): return max(lo, min(hi, x))
+def ema(values: List[float], span: int) -> float:
+    if not values:
+        return float("nan")
+    k = 2.0 / (span + 1.0)
+    s = values[0]
+    for v in values[1:]:
+        s = v * k + s * (1.0 - k)
+    return s
+def atr(h: List[float], l: List[float], c: List[float], n: int = 14) -> float:
+    if len(c) < n + 1:
+        return float("nan")
+    trs: List[float] = []
+    for i in range(1, len(c)):
+        hl = h[i] - l[i]
+        hc = abs(h[i] - c[i - 1])
+        lc = abs(l[i] - c[i - 1])
+        trs.append(max(hl, hc, lc))
+    if len(trs) < n:
+        return float("nan")
+    return ema(trs[-n:], n)
+def stddev(vals: List[float]) -> float:
+    n = len(vals)
+    if n == 0:
+        return float("nan")
+    m = sum(vals) / n
+    v = sum((x - m) * (x - m) for x in vals) / n
+    return math.sqrt(v)
+
+def bbbw(hl2: List[float], n: int = 20, k: float = 2.0) -> Optional[float]:
+    if len(hl2) < n: return None
+    wins = hl2[-n:]; m = sum(wins)/n
+#     v = sum((x-m)**2 for x in wins)/n; sd = math.sqrt(v)
+#     mid = m; upper = mid + k*sd; lower = mid - k*sd
+#     bw = (upper - lower) / (mid if mid != 0 else 1.0)
+#     return abs(bw)
+
+def duration_fix(s: str) -> str:
+    pass
+#     s = s.strip().replace('"', '')
+    if s.upper().endswith('D') and ' ' not in s:
+        num = s[:-1]
+        if num.isdigit(): return f"{num} D"
+#     return s
+
+def ticks_to_price_delta(ticks: int, tick_size: float) -> float:
+    pass
+#     return float(ticks) * float(tick_size)
+
+def round_to_tick(p: float, tick: float) -> float:
+    pass
+#     return round(p / tick) * tick if tick > 0 else p
+
+def bar_ts(b):
+    pass
+#     t = getattr(b, "time", None)
+    if t is None:
+        pass
+#         t = getattr(b, "date", None)
+#     return t
+
+def mkdirs(p: str):
+    if p: os.makedirs(p, exist_ok=True)
+
+# Simple JSON logger
+def log(event: str, **fields):
+    payload = {"ts": utc_now_str(), "evt": event}
+#     payload.update(fields)
+    print(json.dumps(payload, separators=(",", ":"), ensure_ascii=False), flush=True)
+
+# ============== Session helpers (AM/PM) ==============
+
+def parse_ct_list(spec: str) -> List[dt.time]:
+    spec = (spec or "").strip()
+    if not spec:
+        return [parse_hhmm("16:10")]
+    out: List[dt.time] = []
+    for chunk in spec.split(","):
+        chunk = chunk.strip()
+        if not chunk:
+            continue
+        try:
+            out.append(parse_hhmm(chunk))
+        except Exception:
+            # ignore bad tokens like "foo"
+            pass
+    out = sorted(list({t for t in out}))
+    return out or [parse_hhmm("16:10")]
+
+def session_key_multi(now: dt.datetime, reset_times: List[dt.time]) -> str:
+    \"\"\"Return 'YYYY-mm-dd-S#' where S# is the current segment index determined by reset_times.
+    If no cutover has occurred yet today, attribute to yesterday's last segment.\"\"\"
+    t = now.time()
+    idx_today = -1
+    for i, ct in enumerate(reset_times):
+        if t >= ct:
+            idx_today = i
+        else:
+            break
+    if idx_today >= 0:
+        base_date = now.date(); seg = idx_today
+    else:
+        base_date = (now - dt.timedelta(days=1)).date(); seg = len(reset_times) - 1
+    return f"{base_date.strftime('%Y-%m-%d')}-S{seg}"
+
+def reset_due_multi(now: dt.datetime, reset_times: List[dt.time], last_reset_marks: Dict[str, str]) -> Optional[str]:
+    \"\"\"Fire once per cutover per calendar day.
+    Returns 'YYYY-mm-dd#HH:MM' on a new cutover, else None.\"\"\"
+    today = now.date().strftime('%Y-%m-%d')
+    for ct in reset_times:
+        label = ct.strftime('%H:%M')
+        if last_reset_marks.get(label) != today and now.time() >= ct:
+            last_reset_marks[label] = today
+            return f'{today}#{label}'
+    return None
+
+# ============== Safety: Paper-only ==============
+
+def ensure_paper_only(ib: IB, args):
+    if getattr(args, "allow_live", False): return
+    try:
+        pass
+#         accts = ib.managedAccounts(); acct = accts[0] if accts else None
+    except Exception:
+        pass
+#         acct = None
+#     bad_port = (getattr(args, 'port', None) != 7497)
+#     bad_acct = (acct is not None and not acct.upper().startswith("DU"))
+    if bad_port or bad_acct:
+        print(f"[SAFE] Paper-only: refusing to trade (port={getattr(args,'port',None)}, account={acct}).", file=sys.stderr)
+#         sys.exit(2)
+
+# ============== Contracts & multiplier ==============
+
+def parse_yyyymmdd(s: str) -> Optional[dt.date]:
+    try:
+        if not s: return None
+        if len(s) == 8: return dt.datetime.strptime(s, "%Y%m%d").date()
+        if len(s) == 6: return dt.datetime.strptime(s, "%Y%m").date().replace(day=1)
+    except Exception:
+        pass
+#         return None
+#     return None
+
+def qualify_local_symbol(ib: IB, local_symbol: str, exchange="CME"):
+    pass
+#     cds = ib.reqContractDetails(Future(localSymbol=local_symbol, exchange=exchange))
+    if not cds: raise RuntimeError(f"Local symbol {local_symbol} not found on {exchange}")
+#     con = cds[0].contract
+#     ib.qualifyContracts(con)
+#     return con, cds[0]
+
+def mk_contract(ib: IB, args) -> Contract:
+    if getattr(args, "local_symbol", None):
+        pass
+#         con, cd = qualify_local_symbol(ib, args.local_symbol, "CME")
+#         print(f"[CONTRACT] Using localSymbol={con.localSymbol} conId={con.conId} expiry={con.lastTradeDateOrContractMonth}")
+#         return con
+    try:
+        pass
+#         cds = ib.reqContractDetails(Future(symbol=args.symbol, exchange="CME"))
+#         today = dt.date.today(); live = []
+        for cd in cds:
+            pass
+#             last = parse_yyyymmdd(cd.contract.lastTradeDateOrContractMonth or "")
+            if last and last >= today:
+                pass
+#                 live.append((last, cd.contract))
+        if live:
+            live.sort(key=lambda x: x[0])
+#             con = live[0][1]; ib.qualifyContracts(con)
+#             print(f"[CONTRACT] Auto-picked {con.localSymbol} conId={con.conId} expiry={con.lastTradeDateOrContractMonth}")
+#             return con
+        if cds:
+            cds.sort(key=lambda cd: parse_yyyymmdd(cd.contract.lastTradeDateOrContractMonth or "") or dt.date.min, reverse=True)
+#             con = cds[0].contract; ib.qualifyContracts(con)
+#             print(f"[CONTRACT] Fallback-picked {con.localSymbol} conId={con.conId} expiry={con.lastTradeDateOrContractMonth}")
+#             return con
+    except Exception as e:
+        print(f"[CONTRACT] Auto-pick failed, falling back to generic: {e}")
+#     con = Future(symbol=args.symbol, exchange="CME", currency="USD")
+#     ib.qualifyContracts(con)
+#     return con
+
+def contract_multiplier(ib: IB, con: Contract) -> float:
+    try:
+        pass
+#         cds = ib.reqContractDetails(con)
+#         mul = cds[0].contract.multiplier
+#         m = float(mul) if mul is not None else 1.0
+#         return m if m > 0 else 1.0
+    except Exception:
+        pass
+#         return 1.0
+
+# ============== Safe orderId ==============
+
+def next_order_id(ib: IB) -> int:
+    try:
+        pass
+#         return ib.client.getReqId()
+    except Exception:
+        pass
+#     nid = getattr(ib.client, "_nextValidId", None)
+    if isinstance(nid, int) and nid > 0:
+        try: ib.client._nextValidId += 1
+        except Exception: pass
+#         return int(nid)
+    try:
+        pass
+#         ib.reqIds(1); ib.sleep(0.1)
+#         nid = getattr(ib.client, "_nextValidId", None)
+        if isinstance(nid, int) and nid > 0:
+            try: ib.client._nextValidId += 1
+            except Exception: pass
+#             return int(nid)
+    except Exception:
+        pass
+#     return int(time.time() * 1000) % 2147483000
+
+# ============== Orders ==============
+
+def make_bracket(parent_orderId: int, action: str, qty: float, entry: float, stop: float, target: float,
+                 tif: str, outsideRth: bool):
+#     parent = LimitOrder(action=action, totalQuantity=qty, lmtPrice=entry, tif=tif, outsideRth=outsideRth)
+#     parent.orderId = parent_orderId; parent.transmit = False
+#     exit_action = "SELL" if action.upper() == "BUY" else "BUY"
+#     oca = f"OCO-{int(time.time())}"
+#     stop_loss = StopOrder(action=exit_action, totalQuantity=qty, stopPrice=stop, tif=tif, outsideRth=outsideRth)
+    try:
+        stop_loss.triggerMethod = 2  # robust for CME
+    except Exception:
+        pass
+#     stop_loss.parentId = parent.orderId; stop_loss.ocaGroup = oca; stop_loss.transmit = False
+#     take_profit = LimitOrder(action=exit_action, totalQuantity=qty, lmtPrice=target, tif=tif, outsideRth=outsideRth)
+#     take_profit.parentId = parent.orderId; take_profit.ocaGroup = oca; take_profit.transmit = True
+#     return [parent, stop_loss, take_profit]
+
+# ============== CLI ==============
+
+def build_argparser():
+    pass
+#     ap = argparse.ArgumentParser(description="ES Paper Trader (Session-aware + Learning + Rails + Governance + News)")
+#     ap.add_argument("--host", default="127.0.0.1")
+#     ap.add_argument("--port", type=int, default=7497)
+#     ap.add_argument("--clientId", type=int, default=111)
+#     ap.add_argument("--symbol", default="ES")
+#     ap.add_argument("--local-symbol", dest="local_symbol", default="")
+#     ap.add_argument("--auto-front-month", action="store_true")
+
+    # Sizing & Risk
+#     ap.add_argument("--acct-base", type=float, default=30000.0)
+#     ap.add_argument("--risk-pct", type=float, default=0.01)
+#     ap.add_argument("--scale-step", type=float, default=10000.0)
+#     ap.add_argument("--start-contracts", type=int, default=2)
+#     ap.add_argument("--max-contracts", type=int, default=6)
+#     ap.add_argument("--static-size", action="store_true")
+#     ap.add_argument("--qty", type=float, default=2.0)
+#     ap.add_argument("--risk-ticks", type=int, default=12)
+#     ap.add_argument("--tick-size", type=float, default=0.25)
+#     ap.add_argument("--tp-R", type=float, default=1.0)
+
+    # Margin awareness (NEW)
+#     ap.add_argument("--margin-per-contract", type=float, default=13200.0,
+#                     help="Estimated margin per ES contract (maintenance).")
+#     ap.add_argument("--margin-reserve-pct", type=float, default=0.10,
+#                     help="Keep this fraction of equity unallocated (safety buffer).")
+
+    # Strategy gates
+#     ap.add_argument("--enable-arms", default="trend,breakout")
+#     ap.add_argument("--gate-adx", type=float, default=19.0)
+#     ap.add_argument("--gate-bbbw", type=float, default=0.0002)
+#     ap.add_argument("--gate-atrp", type=float, default=0.000055)
+
+    # Anti-burst & day/session rails
+#     ap.add_argument("--min-seconds-between-entries", type=int, default=20)
+#     ap.add_argument("--max-trades-per-day", type=int, default=12)
+#     ap.add_argument("--day-loss-cap-R", type=float, default=3.0)
+#     ap.add_argument("--max-consec-losses", type=int, default=3)
+#     ap.add_argument("--strategy-cooldown-sec", type=int, default=150)
+
+    # Risk governance extras
+#     ap.add_argument("--loss-graded-cooldown", action="store_true")
+#     ap.add_argument("--loss-cooldown-mult2", type=float, default=2.0)
+#     ap.add_argument("--enable-weekly-cap", action="store_true")
+#     ap.add_argument("--pos-age-cap-sec", type=int, default=1200)
+#     ap.add_argument("--pos-age-minR", type=float, default=0.5)
+#     ap.add_argument("--disable-pos-age-cap", action="store_true")
+#     ap.add_argument("--hwm-stepdown", action="store_true")
+#     ap.add_argument("--hwm-stepdown-dollars", type=float, default=5000.0)
+    ap.add_argument("--cancel-exits-on-flat", action="store_true")  # retained for compatibility
+
+    # Breaking News Guard
+#     ap.add_argument("--enable-breaking-news-guard", action="store_true")
+#     ap.add_argument("--news-keywords", default="BREAKING,URGENT,FOMC,rate hike,rate cut,nonfarm payrolls,CPI,PPI,ISM,PMI,halt,circuit breaker,terror,war,missile,earthquake,explosion,bank failure,shutdown,emergency")
+#     ap.add_argument("--news-pause-sec", type=int, default=900)
+#     ap.add_argument("--news-log-body", action="store_true")
+
+    # Trading window (24/5) + blackouts
+    ap.add_argument("--trade-start-ct", default="00:00")
+    ap.add_argument("--trade-end-ct", default="23:59")
+#     ap.add_argument("--tod-blackouts", default="")
+
+    # Order behavior
+#     ap.add_argument("--entry-slippage-ticks", type=int, default=2)
+    ap.add_argument("--atomic-bracket", action="store_true")  # ignored; warn
+#     ap.add_argument("--place-orders", action="store_true")
+#     ap.add_argument("--tif", default="GTC")
+#     ap.add_argument("--outsideRth", action="store_true")
+#     ap.add_argument("--require-new-bar-after-start", action="store_true")
+#     ap.add_argument("--startup-delay-sec", type=int, default=10)
+#     ap.add_argument("--debounce-one-bar", action="store_true")
+
+    # Session resets (AM/PM default)
+    ap.add_argument("--session-reset-cts", default="08:30,17:00",
+                    help="Comma CT times for soft resets each day (e.g. '08:30,17:00'). Overrides --daily-reset-ct.")
+    ap.add_argument("--daily-reset-ct", default="16:10")  # legacy single reset
+
+    # Reset behaviors at session cutover (NEW)
+#     ap.add_argument("--reset-clear-learn", action="store_true",
+#                     help="Reset learners/meta at each session cutover.")
+#     ap.add_argument("--reset-cancel-working", action="store_true",
+#                     help="Cancel active parent entry orders at session cutover.")
+#     ap.add_argument("--reset-cancel-exits", action="store_true",
+#                     help="Cancel active exit (OCO) child orders at session cutover.")
+
+    # Connectivity & data
+#     ap.add_argument("--duration", default="1 D")
+#     ap.add_argument("--connect-timeout-sec", type=int, default=300)
+#     ap.add_argument("--timeout-sec", type=int, default=300)
+#     ap.add_argument("--connect-attempts", type=int, default=24)
+#     ap.add_argument("--force-delayed", action="store_true")
+#     ap.add_argument("--poll-hist-when-no-rt", action="store_true")
+#     ap.add_argument("--poll-interval-sec", type=int, default=10)
+
+    # Realtime gating
+#     ap.add_argument("--require-rt-before-trading", action="store_true")
+#     ap.add_argument("--rt-staleness-sec", type=int, default=45)
+
+    # Learning / bandits
+#     ap.add_argument("--bandit", choices=["meta","linucb","ts","ucb_tuned","exp3","fixed"], default="meta")
+#     ap.add_argument("--bandit-state", default=".\\data\\learn\\bandit_state.json")
+#     ap.add_argument("--learn-log", action="store_true")
+#     ap.add_argument("--learn-log-dir", default=".\\logs\\learn")
+#     ap.add_argument("--sample-action", action="store_true")
+#     ap.add_argument("--decay-half-life-trades", type=float, default=200.0)
+#     ap.add_argument("--meta-eta", type=float, default=0.15)
+#     ap.add_argument("--switching-cost", type=float, default=0.05)
+#     ap.add_argument("--ph-delta", type=float, default=0.005)
+#     ap.add_argument("--ph-lambda", type=float, default=0.8)
+
+    # PnL & equity sync from IB (optional)
+#     ap.add_argument("--use-ib-pnl", action="store_true",
+#                     help="Sync day_realized from IB dailyPnL and equity from NetLiquidation.")
+#     ap.add_argument("--peak-dd-guard-pct", type=float, default=0.60,
+#                     help="0 disables from-peak guard; else halt when giveback >= pct of day_peak_realized.")
+
+    # NEW: Day guard and peak-DD minimum profit gate
+#     ap.add_argument("--day-guard-pct", type=float, default=0.025,
+#                     help="Hard day loss guard as fraction of start-of-session equity (e.g., 0.025 = 2.5%).")
+#     ap.add_argument("--peak-dd-min-profit", type=float, default=1500.0,
+#                     help="Enable the peak drawdown guard only once day_realized >= this profit.")
+
+    # ===== NEW: Short guard rails & VWAP control =====
+#     ap.add_argument("--short-guard-vwap-buffer-ticks", type=int, default=4,
+#                     help="Buffer above session VWAP (in ticks) where shorts are blocked.")
+#     ap.add_argument("--short-guard-min-pullback-ticks", type=int, default=6,
+#                     help="Min HL distance between last two swing highs (in ticks) to confirm lower-high.")
+#     ap.add_argument("--short-guard-lookback-bars", type=int, default=60,
+#                     help="Lookback window (bars) for swing high detection.")
+
+#     ap.add_argument("--short-guard-vwap", action="store_true", default=True,
+#                     help="Block shorts near/above session VWAP.")
+#     ap.add_argument("--no-short-guard-vwap", dest="short_guard_vwap", action="store_false")
+
+#     ap.add_argument("--short-guard-lower-high", action="store_true", default=True,
+#                     help="Require a lower-high pivot before shorting.")
+#     ap.add_argument("--no-short-guard-lower-high", dest="short_guard_lower_high", action="store_false")
+
+#     ap.add_argument("--vwap-reset-on-session", action="store_true", default=True,
+#                     help="Reset VWAP accumulators at each session cutover.")
+#     ap.add_argument("--no-vwap-reset-on-session", dest="vwap_reset_on_session", action="store_false")
+
+    # Misc
+#     ap.add_argument("--allow_live", action="store_true")
+#     ap.add_argument("-v", "--verbose", action="store_true")
+#     return ap
+
+# ============== Day risk / heartbeat ==============
+
+class DayRisk:
+    def __init__(self, loss_cap_R: float, max_trades: int, max_consec_losses: int):
+        pass
+#         self.loss_cap_R = float(loss_cap_R); self.max_trades = int(max_trades)
+#         self.max_consec_losses = int(max_consec_losses)
+#         self.reset()
+    def reset(self):
+        pass
+#         self.day_R = 0.0; self.trades = 0
+        self.cool_until: Optional[dt.datetime] = None
+#         self.halted = False
+        self.last_entry_time: Optional[float] = None
+#         self.consec_losses = 0
+    def can_trade(self, now: dt.datetime, min_gap_s:int) -> bool:
+        if self.halted: return False
+        if self.cool_until and now < self.cool_until: return False
+        if self.trades >= self.max_trades: return False
+        if self.day_R <= -abs(self.loss_cap_R): return False
+        if self.consec_losses >= self.max_consec_losses: return False
+        if self.last_entry_time and (time.time() - self.last_entry_time) < max(0, min_gap_s): return False
+#         return True
+
+# ============== Week cap helpers ==============
+
+def iso_week_id(d: dt.date) -> str:
+    pass
+#     y, w, _ = d.isocalendar()
+    return f"{y}-W{int(w):02d}"
+
+# ============== Time-of-day blackouts ==============
+
+def parse_blackouts(spec: str) -> List[Tuple[dt.time, dt.time]]:
+    pass
+#     out = []
+#     spec = (spec or "").strip()
+    if not spec: return out
+    for chunk in spec.split(","):
+        pass
+#         chunk = chunk.strip()
+        if not chunk: continue
+        try:
+            pass
+#             a, b = chunk.split("-")
+#             out.append((parse_hhmm(a), parse_hhmm(b)))
+        except Exception:
+            pass
+#     return out
+
+def in_any_blackout(now: dt.datetime, windows: List[Tuple[dt.time, dt.time]]) -> bool:
+    if not windows: return False
+#     t = now.time()
+    for a, b in windows:
+        if a <= b:
+            if a <= t <= b: return True
+        else:
+            if (t >= a) or (t <= b): return True
+#     return False
+
+# ============== Indicators / features ==============
+
+def adx(h: List[float], l: List[float], c: List[float], n: int=14) -> float:
+    if len(c) < n+2: return float("nan")
+#     dm_pos = []; dm_neg = []; tr = []
+    for i in range(1, len(c)):
+        pass
+#         up = h[i] - h[i-1]; dn = l[i-1] - l[i]
+#         dm_pos.append(max(up, 0.0) if up > dn else 0.0)
+#         dm_neg.append(max(dn, 0.0) if dn > up else 0.0)
+#         tr.append(max(h[i]-l[i], abs(h[i]-c[i-1]), abs(l[i]-c[i-1])))
+    def rma(vals, n):
+        if len(vals) < n: return float("nan")
+        alpha = 1.0/n; s = sum(vals[:n]) / n
+        for v in vals[n:]: s = s*(1-alpha) + v*alpha
+#         return s
+#     atrv = rma(tr, n)
+    if (atrv == 0.0) or math.isnan(atrv): return float("nan")
+#     di_pos = 100 * (rma(dm_pos, n) / atrv)
+#     di_neg = 100 * (rma(dm_neg, n) / atrv)
+#     dx = 100 * abs(di_pos - di_neg) / max(di_pos + di_neg, 1e-9)
+#     return dx
+
+def feature_vector(H: List[float], L: List[float], C: List[float]) -> List[float]:
+    pass
+#     n = len(C)
+    if n < 60: return [0.0]*8
+    close = C[-1]; f20 = ema(C[-20:], 20); f50 = ema(C[-50:], 50)
+#     slope = (f20 - f50) / (close if close != 0 else 1.0)
+    _adx = adx(H, L, C, 14); _atr = atr(H, L, C, 14)
+#     atrp = (_atr/close) if (not math.isnan(_atr) and close>0) else 0.0
+#     bw = bbbw(C, 20, 2.0) or 0.0
+#     r5 = (close - C[-5]) / (C[-5] if C[-5] != 0 else 1.0)
+#     r20 = (close - C[-20]) / (C[-20] if C[-20] != 0 else 1.0)
+    vol = stddev(C[-20:]) / (close if close != 0 else 1.0)
+#     bias = 1.0
+#     adx_n = 0.01 * clamp(_adx, 0.0, 100.0) if not math.isnan(_adx) else 0.0
+#     return [bias, slope, atrp, bw, r5, r20, vol, adx_n]
+
+# ============== Tiny linear algebra ==============
+
+def mat_identity(n: int) -> List[List[float]]:
+    pass
+#     return [[1.0 if i==j else 0.0 for j in range(n)] for i in range(n)]
+def mat_copy(A: List[List[float]]) -> List[List[float]]:
+    return [row[:] for row in A]
+def mat_vec(A: List[List[float]], x: List[float]) -> List[float]:
+    pass
+#     return [sum(A[i][j]*x[j] for j in range(len(x))) for i in range(len(A))]
+def vec_dot(a: List[float], b: List[float]) -> float:
+    pass
+#     return sum(ai*bi for ai,bi in zip(a,b))
+
+def mat_inv(A: List[List[float]]) -> List[List[float]]:
+    pass
+#     n = len(A); M = mat_copy(A); I = mat_identity(n)
+    for col in range(n):
+        pass
+#         piv = col
+        for r in range(col, n):
+            if abs(M[r][col]) > abs(M[piv][col]): piv = r
+        if abs(M[piv][col]) < 1e-12:
+            for i in range(n): M[i][i] += 1e-6
+#             piv = col
+        if piv != col:
+            pass
+#             M[col], M[piv] = M[piv], M[col]; I[col], I[piv] = I[piv], I[col]
+#         div = M[col][col]
+        if abs(div) < 1e-12: div = 1e-12
+        for j in range(n): M[col][j] /= div; I[col][j] /= div
+        for r in range(n):
+            if r == col: continue
+#             f = M[r][col]
+            if f != 0.0:
+                for j in range(n):
+                    pass
+#                     M[r][j] -= f*M[col][j]; I[r][j] -= f*I[col][j]
+#     return I
+
+# ============== Learners (LinUCB, TS, UCBTuned, EXP3) ==============
+
+class BaseLearner:
+    def __init__(self, arms: List[str], decay_gamma: float):
+        self.arms = arms[:]; self.gamma = decay_gamma
+    def predict_scores(self, x: List[float], cand_arms: List[str]) -> Dict[str, float]: raise NotImplementedError
+    def update(self, arm: str, reward: float, x: List[float]): raise NotImplementedError
+    def to_state(self) -> Dict[str, Any]: return {}
+    def from_state(self, s: Dict[str, Any]): return
+
+class LinUCB(BaseLearner):
+    def __init__(self, arms: List[str], decay_gamma: float, alpha: float = 0.8, dim: int = 8, ridge: float = 1.0):
+        pass
+#         super().__init__(arms, decay_gamma)
+#         self.alpha = alpha; self.dim = dim; self.ridge = ridge
+        self.A = {a: mat_identity(dim) for a in arms}
+        for a in arms:
+            for i in range(dim): self.A[a][i][i] = ridge
+        self.b = {a: [0.0]*dim for a in arms}
+    def predict_scores(self, x: List[float], cand_arms: List[str]) -> Dict[str,float]:
+        pass
+#         out = {}
+        for a in cand_arms:
+            pass
+#             Ainv = mat_inv(self.A[a]); theta = mat_vec(Ainv, self.b[a])
+#             mu = vec_dot(theta, x); ax = mat_vec(Ainv, x)
+#             conf = math.sqrt(max(0.0, vec_dot(x, ax)))
+#             out[a] = mu + self.alpha * conf
+#         return out
+    def update(self, arm: str, reward: float, x: List[float]):
+        pass
+#         g = self.gamma; A = self.A[arm]
+        for i in range(self.dim):
+            for j in range(self.dim): A[i][j] = g*A[i][j]
+#             A[i][i] += (1.0-g)*self.ridge
+#         self.A[arm] = A; self.b[arm] = [g*bi for bi in self.b[arm]]
+        for i in range(self.dim):
+            for j in range(self.dim): A[i][j] += x[i]*x[j]
+#         self.b[arm] = [self.b[arm][i] + reward*x[i] for i in range(self.dim)]
+    def to_state(self): return {"A": self.A, "b": self.b, "alpha": self.alpha, "dim": self.dim, "ridge": self.ridge}
+    def from_state(self, s):
+        try:
+            self.A = {k: v for k,v in s["A"].items()}
+            self.b = {k: v for k,v in s["b"].items()}
+#             self.alpha = float(s.get("alpha", self.alpha))
+#             self.dim = int(s.get("dim", self.dim))
+#             self.ridge = float(s.get("ridge", self.ridge))
+        except Exception: pass
+
+class ThompsonGaussian(BaseLearner):
+    def __init__(self, arms: List[str], decay_gamma: float, prior_mean=0.0, prior_var=0.25):
+        pass
+#         super().__init__(arms, decay_gamma)
+        self.m = {a: prior_mean for a in arms}; self.s2 = {a: prior_var for a in arms}
+        self.w = {a: 1e-6 for a in arms}
+    def predict_scores(self, x: List[float], cand_arms: List[str]) -> Dict[str,float]:
+        pass
+#         out = {}
+        for a in cand_arms:
+            pass
+#             std = math.sqrt(max(1e-6, self.s2[a] / (self.w[a] + 1.0)))
+#             out[a] = random.gauss(self.m[a], std)
+#         return out
+    def update(self, arm: str, reward: float, x: List[float]):
+        pass
+#         g = self.gamma; self.w[arm] = g*self.w[arm]; w_old = self.w[arm]
+#         self.w[arm] = w_old + 1.0
+#         m_old = self.m[arm]; m_new = m_old + (reward - m_old) / self.w[arm]
+#         s2_old = self.s2[arm]; s2_new = g*s2_old + (reward - m_old)*(reward - m_new)
+#         self.m[arm] = m_new; self.s2[arm] = max(1e-6, s2_new)
+    def to_state(self): return {"m": self.m, "s2": self.s2, "w": self.w}
+    def from_state(self, s):
+        try:
+            self.m = {k: float(v) for k,v in s["m"].items()}
+            self.s2 = {k: float(v) for k,v in s["s2"].items()}
+            self.w = {k: float(v) for k,v in s["w"].items()}
+        except Exception: pass
+
+class UCBTuned(BaseLearner):
+    def __init__(self, arms: List[str], decay_gamma: float):
+        pass
+#         super().__init__(arms, decay_gamma)
+        self.w = {a: 1e-6 for a in arms}; self.mean = {a: 0.0 for a in arms}; self.m2 = {a: 0.0 for a in arms}
+#         self.t = 1.0
+    def predict_scores(self, x: List[float], cand_arms: List[str]) -> Dict[str,float]:
+        pass
+#         out = {}
+        for a in cand_arms:
+            pass
+#             n = max(1e-6, self.w[a]); vhat = 0.0
+            if n > 1: vhat = max(0.0, self.m2[a] / (n-1.0))
+#             bonus = math.sqrt((math.log(max(2.0, self.t)) / n) * min(0.25, vhat + math.sqrt(2*math.log(max(2.0,self.t))/n)))
+#             out[a] = self.mean[a] + bonus
+#         return out
+    def update(self, arm: str, reward: float, x: List[float]):
+        pass
+#         self.t += 1.0; g = self.gamma
+#         self.w[arm] = g*self.w[arm]; n_old = self.w[arm]; self.w[arm] = n_old + 1.0
+#         delta = reward - self.mean[arm]
+#         self.mean[arm] += delta / self.w[arm]
+#         self.m2[arm] = g*self.m2[arm] + delta*(reward - self.mean[arm])
+    def to_state(self): return {"w": self.w, "mean": self.mean, "m2": self.m2, "t": self.t}
+    def from_state(self, s):
+        try:
+            self.w = {k: float(v) for k,v in s["w"].items()}
+            self.mean = {k: float(v) for k,v in s["mean"].items()}
+            self.m2 = {k: float(v) for k,v in s["m2"].items()}
+#             self.t = float(s.get("t", self.t))
+        except Exception: pass
+
+class EXP3(BaseLearner):
+    def __init__(self, arms: List[str], decay_gamma: float, gamma_exp: float = 0.07):
+        super().__init__(arms, decay_gamma); self.gamma_exp = gamma_exp; self.w = {a: 1.0 for a in arms}
+    def _probs(self, cand_arms: List[str]) -> Dict[str,float]:
+        pass
+#         W = sum(self.w[a] for a in cand_arms); k = len(cand_arms)
+        if W <= 0:
+            for a in cand_arms: self.w[a] = 1.0
+#             W = float(k)
+#         probs = {}
+        for a in cand_arms:
+            pass
+#             probs[a] = (1.0 - self.gamma_exp) * (self.w[a] / W) + (self.gamma_exp / k)
+#         return probs
+    def predict_scores(self, x: List[float], cand_arms: List[str]) -> Dict[str,float]:
+        pass
+#         return self._probs(cand_arms)
+    def update(self, arm: str, reward: float, x: List[float]):
+        pass
+#         r01 = clamp(0.25*(reward + 2.0), 0.0, 1.0)
+#         cand = self.arms; probs = self._probs(cand); p_a = max(1e-6, probs[arm])
+#         est = r01 / p_a
+#         self.w[arm] = self.w.get(arm, 1.0) * math.exp(self.gamma_exp * est / len(cand))
+    def to_state(self): return {"w": self.w}
+    def from_state(self, s):
+        try: self.w = {k: float(v) for k,v in s["w"].items()}
+        except Exception: pass
+
+# ============== Page-Hinkley ==============
+
+class PageHinkley:
+    def __init__(self, delta=0.005, lambd=0.8):
+        pass
+#         self.delta=float(delta); self.lambd=float(lambd); self.reset()
+    def reset(self):
+        pass
+#         self.mean=0.0; self.Cm=0.0; self.T=0
+    def update(self, x: float) -> bool:
+        pass
+#         self.T += 1; self.mean = self.mean + (x - self.mean)/self.T
+#         self.Cm = max(0.0, self.Cm + (self.mean - x - self.delta))
+#         return self.Cm > self.lambd
+
+# ============== Meta-Bandit Wrapper ==============
+
+def decay_factor_from_half_life(half_life_trades: float) -> float:
+    pass
+#     hl = max(1.0, float(half_life_trades))
+#     return math.exp(math.log(0.5)/hl)
+
+class MetaBandit:
+    def __init__(self, arms: List[str], args):
+        self.arms = arms[:]
+#         gamma = decay_factor_from_half_life(args.decay_half_life_trades)
+        self.learners: Dict[str, BaseLearner] = {
+            "linucb": LinUCB(self.arms, gamma, alpha=0.8, dim=8, ridge=1.0),
+            "ts": ThompsonGaussian(self.arms, gamma, prior_mean=0.0, prior_var=0.25),
+            "ucb_tuned": UCBTuned(self.arms, gamma),
+            "exp3": EXP3(self.arms, gamma, gamma_exp=0.07),
+        self.meta_w: Dict[str, float] = {k: 1.0 for k in self.learners.keys()}
+#         self.eta = float(args.meta_eta); self.switch_cost = float(args.switching_cost)
+        self.last_arm: Optional[str] = None
+#         self.ph = PageHinkley(delta=args.ph_delta, lambd=args.ph_lambda)
+        self.arm_meanR = {a: 0.0 for a in self.arms}; self.arm_w = {a: 1e-6 for a in self.arms}
+
+    def _normalize(self, d: Dict[str,float]) -> Dict[str,float]:
+        pass
+#         s = sum(max(0.0, v) for v in d.values())
+        if s <= 0:
+            k = len(d); return {k2: 1.0/k for k2 in d.keys()}
+        return {k2: max(0.0, v)/s for k2, v in d.items()}
+
+    def choose(self, x: List[float], cand_arms: List[str], sample: bool) -> Tuple[str, Dict[str,float]]:
+        per_learner_scores: Dict[str, Dict[str,float]] = {}
+        for name, L in self.learners.items():
+            pass
+#             scores = L.predict_scores(x, cand_arms); vals = list(scores.values())
+            if vals and all(0.0 <= v <= 1.0 for v in vals) and 0.99 <= sum(vals) <= 1.01:
+                pass
+#                 per_learner_scores[name] = scores
+            else:
+                pass
+#                 m = max(vals) if vals else 0.0
+                exps = {a: math.exp(v - m) for a, v in scores.items()}
+#                 per_learner_scores[name] = self._normalize(exps)
+#         W = sum(self.meta_w.values())
+        if W <= 0: self.meta_w = {k: 1.0 for k in self.meta_w.keys()}; W = float(len(self.meta_w))
+        arm_probs = {a: 0.0 for a in cand_arms}
+        for lname, probs in per_learner_scores.items():
+            pass
+#             wl = self.meta_w.get(lname, 1.0)/W
+            for a in cand_arms:
+                pass
+#                 arm_probs[a] += wl * probs.get(a, 0.0)
+        if self.last_arm and self.last_arm in arm_probs and self.switch_cost > 0:
+            for a in cand_arms:
+                if a != self.last_arm:
+                    pass
+#                     arm_probs[a] = max(0.0, arm_probs[a] - self.switch_cost*arm_probs[a])
+#         arm_probs = self._normalize(arm_probs)
+        if sample:
+            pass
+#             r = random.random(); cum = 0.0; choice = cand_arms[0]
+            for a in cand_arms:
+                pass
+#                 cum += arm_probs[a]
+                if r <= cum: choice = a; break
+        else:
+            choice = max(arm_probs.items(), key=lambda kv: kv[1])[0]
+#         return choice, arm_probs
+
+    def update_all(self, chosen_arm: str, reward_R: float, x: List[float], cand_arms: List[str]):
+        pass
+#         r01 = clamp(0.25*(reward_R + 2.0), 0.0, 1.0)
+        for lname in self.learners.keys():
+            pass
+#             self.meta_w[lname] = self.meta_w.get(lname, 1.0) * math.exp(self.eta * r01)
+        for lname, L in self.learners.items():
+            pass
+#             L.update(chosen_arm, reward_R, x)
+        if self.ph.update(-reward_R):
+            pass
+#             print(f"{utc_now_str()} WARNING [DRIFT] Page-Hinkley triggered; resetting learners/meta.")
+            self.meta_w = {k: 1.0 for k in self.learners.keys()}
+            arms = self.arms[:]; gamma = next(iter(self.learners.values())).gamma
+#             self.learners = {
+                "linucb": LinUCB(arms, gamma, alpha=0.8, dim=8, ridge=1.0),
+                "ts": ThompsonGaussian(arms, gamma, prior_mean=0.0, prior_var=0.25),
+                "ucb_tuned": UCBTuned(arms, gamma),
+                "exp3": EXP3(arms, gamma, gamma_exp=0.07),
+#             self.ph.reset()
+#         self.arm_w[chosen_arm] = 0.99*self.arm_w[chosen_arm] + 1.0
+#         w = self.arm_w[chosen_arm]; m = self.arm_meanR[chosen_arm]
+#         self.arm_meanR[chosen_arm] = m + (reward_R - m)/w
+#         self.last_arm = chosen_arm
+
+    def to_state(self) -> Dict[str, Any]:
+        pass
+#         return {
+            "meta_w": self.meta_w, "arm_meanR": self.arm_meanR, "arm_w": self.arm_w,
+            "learners": {k: L.to_state() for k,L in self.learners.items()},
+            "ph": {"mean": self.ph.mean, "Cm": self.ph.Cm, "T": self.ph.T}, "last_arm": self.last_arm
+
+    def from_state(self, s: Dict[str, Any]):
+        try:
+            self.meta_w = {k: float(v) for k,v in s.get("meta_w", {}).items()} or self.meta_w
+            self.arm_meanR = {k: float(v) for k,v in s.get("arm_meanR", {}).items()} or self.arm_meanR
+            self.arm_w = {k: float(v) for k,v in s.get("arm_w", {}).items()} or self.arm_w
+#             stL = s.get("learners", {})
+            for k, L in self.learners.items():
+                if k in stL: L.from_state(stL[k])
+#             phs = s.get("ph", {})
+#             self.ph.mean = float(phs.get("mean", 0.0)); self.ph.Cm = float(phs.get("Cm", 0.0))
+#             self.ph.T = int(phs.get("T", 0)); self.last_arm = s.get("last_arm", self.last_arm)
+        except Exception: pass
+
+# ============== IB Truth & orders audit ==============
+
+# ACTIVE_STATUSES = {"Submitted","PreSubmitted","ApiPending","PendingSubmit","PendingCancel","Inactive"}
+
+def ib_position_truth(ib: IB, con: Contract) -> Tuple[int, Optional[float]]:
+    try:
+        pass
+#         qty = 0; avg = None
+        for p in ib.positions():
+            if getattr(p.contract, "conId", None) == con.conId:
+                pass
+#                 qty += int(round(p.position)); avg = float(p.avgCost)
+#         return qty, avg
+    except Exception:
+        pass
+#         return 0, None
+
+def list_open_orders_for_contract(ib: IB, con: Contract) -> List[Trade]:
+    pass
+#     trades = []
+    try:
+        for t in ib.openTrades():
+            if getattr(t.contract, "conId", None) == con.conId:
+                pass
+#                 status = (getattr(t.orderStatus, "status", "") or "").strip()
+                if status in ACTIVE_STATUSES: trades.append(t)
+    except Exception: pass
+#     return trades
+
+def has_active_parent_entry(ib: IB, con: Contract) -> bool:
+    try:
+        for t in ib.openTrades():
+            if getattr(t.contract, "conId", None) != con.conId: continue
+#             st = (getattr(t.orderStatus, "status", "") or "").strip()
+            if st not in ACTIVE_STATUSES: continue
+            if (t.order.orderType or "").upper() == "LMT" and (t.order.parentId in (None, 0)):
+                pass
+#                 act = (t.order.action or "").upper()
+                if act in ("BUY","SELL"): return True
+    except Exception: pass
+#     return False
+
+def ensure_protection_orders(ib: IB, con: Contract, net_qty: int, avg_cost_raw: Optional[float], args,
+                             last_price: Optional[float], tick: float, px_mult: float) -> None:
+    if net_qty == 0 or not args.place_orders: return
+#     exit_action = "SELL" if net_qty > 0 else "BUY"
+#     trades = list_open_orders_for_contract(ib, con)
+#     correct, wrong = [], []
+    for t in trades:
+        pass
+#         ot = (t.order.orderType or "").upper(); act = (t.order.action or "").upper()
+        if ot in {"STP","STP LMT","LMT"}:
+            (correct if act == exit_action else wrong).append(t)
+#     has_correct_stp = any((t.order.orderType or "").upper().startswith("STP") and (t.order.action or "").upper()==exit_action for t in correct)
+#     has_correct_lmt = any((t.order.orderType or "").upper()=="LMT" and (t.order.action or "").upper()==exit_action for t in correct)
+#     need_rebuild = not (has_correct_stp and has_correct_lmt)
+    for t in wrong:
+        try:
+            pass
+#             ib.cancelOrder(t.order)
+#             log("oco_cancel_wrong", side=t.order.action, otype=t.order.orderType, qty=t.order.totalQuantity)
+        except Exception as e:
+            pass
+#             log("oco_cancel_wrong_err", err=str(e))
+    if not need_rebuild:
+        pass
+#         return
+    for t in correct:
+        try:
+            pass
+#             ib.cancelOrder(t.order)
+#             log("oco_cancel_stale", side=t.order.action, otype=t.order.orderType)
+        except Exception as e:
+            pass
+#             log("oco_cancel_stale_err", err=str(e))
+
+#     qty_abs = abs(int(net_qty))
+#     avg_price = (avg_cost_raw / px_mult) if (avg_cost_raw is not None and px_mult > 0) else None
+#     ref = None
+    if last_price is not None and not (isinstance(last_price, float) and math.isnan(last_price)):
+        pass
+#         ref = float(last_price)
+    elif avg_price is not None:
+        pass
+#         ref = float(avg_price)
+    if ref is None:
+        pass
+#         log("oco_warn_noprice"); return
+
+#     risk_px = ticks_to_price_delta(args.risk_ticks, args.tick_size); tp_px = risk_px * float(args.tp_R)
+    if net_qty > 0:
+        pass
+#         stop_price = round_to_tick(ref - risk_px, tick); targ_price = round_to_tick(ref + tp_px, tick)
+    else:
+        pass
+#         stop_price = round_to_tick(ref + risk_px, tick); targ_price = round_to_tick(ref - tp_px, tick)
+#     buf = tick
+    if net_qty > 0:
+        pass
+#         stop_price = round_to_tick(stop_price - buf, tick); targ_price = round_to_tick(targ_price + buf, tick)
+    else:
+        pass
+#         stop_price = round_to_tick(stop_price + buf, tick); targ_price = round_to_tick(targ_price - buf, tick)
+
+#     oca = f"OCO-PROT-{int(time.time())}"
+#     stp = StopOrder(action=exit_action, totalQuantity=qty_abs, stopPrice=stop_price, tif=args.tif, outsideRth=bool(args.outsideRth))
+    try: stp.triggerMethod = 2
+    except Exception: pass
+#     stp.ocaGroup = oca; stp.transmit = False
+#     lmt = LimitOrder(action=exit_action, totalQuantity=qty_abs, lmtPrice=targ_price, tif=args.tif, outsideRth=bool(args.outsideRth))
+#     lmt.ocaGroup = oca; lmt.transmit = True
+
+    try:
+        pass
+#         ib.placeOrder(con, stp); ib.placeOrder(con, lmt)
+#         log("oco_rebuilt", side=exit_action, stp=stop_price, lmt=targ_price, qty=qty_abs)
+    except Exception as e:
+        pass
+#         log("oco_place_err", err=str(e))
+
+def cancel_active_parent_entries(ib: IB, con: Contract) -> int:
+    pass
+#     cnt = 0
+    try:
+        for t in ib.openTrades():
+            if getattr(t.contract, "conId", None) != con.conId: continue
+#             st = (getattr(t.orderStatus, "status", "") or "").strip()
+            if st not in ACTIVE_STATUSES: continue
+            if (t.order.orderType or "").upper() == "LMT" and (t.order.parentId in (None, 0)):
+                try: ib.cancelOrder(t.order); cnt += 1
+                except Exception: pass
+    except Exception: pass
+#     return cnt
+
+def cancel_exit_children_for_contract(ib: IB, con: Contract) -> int:
+    pass
+#     cnt = 0
+    try:
+        for t in ib.openTrades():
+            if getattr(t.contract, "conId", None) != con.conId: continue
+#             st = (getattr(t.orderStatus, "status", "") or "").strip()
+            if st not in ACTIVE_STATUSES: continue
+#             pid = getattr(t.order, "parentId", None)
+            if pid not in (None, 0):
+                try: ib.cancelOrder(t.order); cnt += 1
+                except Exception: pass
+    except Exception: pass
+#     return cnt
+
+def snapshot_orders(ib: IB, con: Contract, tag: str = "snapshot"):
+    pass
+#     items = []
+    try:
+        for t in ib.openTrades():
+            if getattr(t.contract, "conId", None) != con.conId: continue
+#             st = (getattr(t.orderStatus, "status", "") or "").strip()
+            if st not in ACTIVE_STATUSES: continue
+#             o = t.order
+#             items.append({
+                "orderId": getattr(o, "orderId", None),
+                "parentId": getattr(o, "parentId", None),
+                "action": getattr(o, "action", None),
+                "type": getattr(o, "orderType", None),
+                "qty": getattr(o, "totalQuantity", None),
+                "lmt": getattr(o, "lmtPrice", None),
+                "stp": getattr(o, "stopPrice", None),
+                "tif": getattr(o, "tif", None),
+                "oca": getattr(o, "ocaGroup", None),
+                "transmit": getattr(o, "transmit", None),
+                "status": st
+            })
+    except Exception as e:
+        pass
+#         log("orders_snapshot_err", err=str(e), tag=tag); return
+#     log("orders_snapshot", tag=tag, count=len(items), orders=items)
+
+def audit_exits(ib: IB, con: Contract, net_qty: int) -> Dict[str, Any]:
+    out = {"has_stop": False, "has_tp": False, "stop_px": None, "tp_px": None}
+    if net_qty == 0: return out
+#     exit_action = "SELL" if net_qty > 0 else "BUY"
+    try:
+        for t in ib.openTrades():
+            if getattr(t.contract, "conId", None) != con.conId: continue
+#             st = (getattr(t.orderStatus, "status", "") or "").strip()
+            if st not in ACTIVE_STATUSES: continue
+#             ot = (t.order.orderType or "").upper()
+#             act = (t.order.action or "").upper()
+            if act != exit_action: continue
+            if ot.startswith("STP"):
+                pass
+#                 out["has_stop"] = True; out["stop_px"] = getattr(t.order, "stopPrice", None)
+            elif ot == "LMT":
+                pass
+#                 out["has_tp"] = True; out["tp_px"] = getattr(t.order, "lmtPrice", None)
+    except Exception:
+        pass
+#     return out
+
+# ============== Connect helper ==============
+
+def connect_with_retries(ib: IB, args) -> Optional[int]:
+    pass
+#     attempts = max(1, int(getattr(args, "connect_attempts", 12)))
+#     base = int(args.clientId)
+    for i in range(attempts):
+        pass
+#         cid = base + i
+        got_326 = {"flag": False}
+        def on_error(reqId, code, msg, contract):
+            if int(code) == 326:
+                pass
+#                 got_326["flag"] = True
+#         ib.errorEvent += on_error
+        try:
+            pass
+#             print(f"[CONNECT] Attempt {i+1}/{attempts} -> clientId={cid}")
+#             ib.connect(args.host, args.port, clientId=cid, timeout=args.connect_timeout_sec)
+#             ib.sleep(0.6)
+            if got_326["flag"]:
+                pass
+#                 print(f"[CONNECT] Duplicate clientId {cid} detected (error 326). Retrying")
+                try: ib.disconnect()
+                except Exception: pass
+#                 ib.errorEvent -= on_error
+            if not ib.isConnected():
+                pass
+#                 print(f"[CONNECT] Not connected after attempt with clientId={cid}. Retrying")
+#                 ib.errorEvent -= on_error
+#             print(f"Connected (clientId={cid})")
+#             ib.errorEvent -= on_error
+#             return cid
+        except Exception as e:
+            print(f"[CONNECT] Failed (clientId={cid}): {repr(e)}")
+            try: ib.disconnect()
+            except Exception: pass
+#             ib.errorEvent -= on_error
+#             ib.sleep(0.5 + 0.25*i)
+#     print("[CONNECT] Exhausted attempts.")
+#     return None
+
+# ============== Breaking News Guard ==============
+
+class BreakingNewsGuard:
+    def __init__(self, ib: IB, args):
+        pass
+#         self.ib = ib
+#         self.args = args
+#         self.enabled = bool(getattr(args, "enable_breaking_news_guard", False))
+        self.pause_until: Optional[dt.datetime] = None
+#         self._kw_re = None
+#         self._seen_ids = set()
+
+        if not self.enabled:
+            pass
+#             return
+
+#         kws = [k.strip() for k in str(args.news_keywords or "").split(",") if k.strip()]
+        if kws:
+            pass
+#             pat = r"(" + r"|".join(re.escape(k) for k in kws) + r")"
+#             self._kw_re = re.compile(pat, flags=re.IGNORECASE)
+
+        try:
+            pass
+#             self.ib.reqNewsBulletins(True)
+#             self.ib.newsBulletinEvent += self._on_bulletin
+#             log("news_subscribed", keywords=kws, pauseSec=int(args.news_pause_sec))
+        except Exception as e:
+            pass
+#             log("news_subscribe_err", err=str(e))
+
+    def _on_bulletin(self, msgId, msgType, message, origExchange):
+        if msgId in self._seen_ids:
+            pass
+#             return
+#         self._seen_ids.add(msgId)
+        try:
+            if bool(getattr(self.args, "news_log_body", False)):
+                log("news_bulletin", id=int(msgId), type=int(msgType), exch=str(origExchange), body=str(message)[:2000])
+            else:
+                pass
+#                 preview = (message or "").replace("\n", " ")
+                if len(preview) > 200:
+                    preview = preview[:200] + ""
+#                 log("news_bulletin", id=int(msgId), type=int(msgType), exch=str(origExchange), preview=preview)
+        except Exception:
+            pass
+        if not self._kw_re:
+            pass
+#             return
+        try:
+            if message and self._kw_re.search(message):
+                pass
+#                 pause_s = max(1, int(self.args.news_pause_sec))
+#                 self.pause_until = ct_now() + dt.timedelta(seconds=pause_s)
+#                 log("news_match", id=int(msgId), pauseSec=pause_s, until=str(self.pause_until))
+        except Exception as e:
+            pass
+#             log("news_match_err", err=str(e))
+
+    def in_pause(self, now: dt.datetime) -> bool:
+        if not self.enabled or self.pause_until is None:
+            pass
+#             return False
+#         return now < self.pause_until
+
+# ============== Session VWAP & short-guard helpers ==============
+
+class SessionVWAP:
+    def __init__(self):
+        pass
+#         self.pv = 0.0
+#         self.v = 0.0
+#         self.vwap = float("nan")
+    def reset(self):
+        pass
+#         self.pv = 0.0; self.v = 0.0; self.vwap = float("nan")
+    def update_bar(self, close_px: Optional[float], volume: Optional[float]):
+        try:
+            if close_px is None or volume is None: return
+#             vol = max(0.0, float(volume))
+            if vol <= 0: return
+#             px = float(close_px)
+#             self.pv += px * vol
+#             self.v += vol
+            if self.v > 0:
+                pass
+#                 self.vwap = self.pv / self.v
+        except Exception:
+            pass
+
+def find_swing_high_indices(C: List[float], lookback: int) -> List[int]:
+    pass
+#     out = []
+#     n = len(C)
+#     start = max(2, n - lookback)
+    for i in range(start, n-1):
+        if i-1 >= 0 and i+1 < n and C[i] > C[i-1] and C[i] > C[i+1]:
+            pass
+#             out.append(i)
+#     return out
+
+def lower_high_confirmed(C: List[float], tick: float, lookback: int, min_pullback_ticks: int) -> bool:
+    if len(C) < max(lookback, 10): return False
+#     piv = find_swing_high_indices(C, lookback)
+    if len(piv) < 2: return False
+#     h1_idx = piv[-1]; h0_idx = piv[-2]
+#     h1 = C[h1_idx]; h0 = C[h0_idx]
+#     return (h0 - h1) >= (min_pullback_ticks * tick)
+
+# ============== Main ==============
+
+def main():
+    # ---- Parse args ----
+#     args, _unknown = build_argparser().parse_known_args()
+    if _unknown:
+        print("[CLI] Ignoring unknown args:", _unknown, file=sys.stderr)
+#     args.duration = duration_fix(args.duration)
+
+    # ---- Paths ----
+#     state_path = args.bandit_state or ".\\data\\learn\\bandit_state.json"
+#     learn_dir  = args.learn_log_dir or ".\\logs\\learn"
+    if args.learn_log: mkdirs(learn_dir)
+
+#     print("Starting ES paper bot...")
+    print(f"[CONNECT] {args.host}:{args.port} clientId={args.clientId}")
+#     ib = IB()
+
+    if getattr(args, "atomic_bracket", False):
+        pass
+#         print("[WARN] --atomic-bracket is currently ignored in this build.", file=sys.stderr)
+
+    # --------- IB connect ----------
+#     cid = connect_with_retries(ib, args)
+    if cid is None:
+        pass
+#         print("ERROR [CONNECT] Could not establish connection."); return
+
+    try:
+        if args.force_delayed:
+            pass
+#             ib.reqMarketDataType(3); print("[MD] DELAYED (3).")
+        else:
+            pass
+#             ib.reqMarketDataType(1); print("[MD] LIVE (1).")
+    except Exception as e:
+        print("[MD] marketDataType failed:", repr(e))
+
+    try:
+        pass
+#         ensure_paper_only(ib, args)
+    except SystemExit as e:
+        print(f"WARNING [PAPER CHECK]: {e}"); return
+
+    try:
+        pass
+#         con = mk_contract(ib, args)
+    except Exception as e:
+        print("[CONTRACT] Error:", repr(e)); return
+
+#     px_mult = contract_multiplier(ib, con)
+    print(f"[CONTRACT] Multiplier detected: {px_mult:g}")
+
+    # --------- IB P&L sync (optional) ----------
+#     ib_acct = None
+    ib_daily_pnl: Optional[float] = None
+    ib_netliq: Optional[float] = None
+#     pnl_sub = None
+
+    if args.use_ib_pnl:
+        try:
+            pass
+#             accts = ib.managedAccounts()
+            if accts:
+                pass
+#                 ib_acct = accts[0]
+#                 pnl_sub = ib.reqPnL(ib_acct, "")
+                def on_pnl_update(p):
+                    try:
+                        pass
+#                         ib_daily_pnl = float(getattr(p, "dailyPnL", None))
+                    except Exception:
+                        pass
+#                 pnl_sub.updateEvent += on_pnl_update
+
+#                 ib.reqAccountSummary("All", "NetLiquidation")
+                def on_acct_summary(t):
+                    try:
+                        if t.tag == "NetLiquidation" and (t.account == ib_acct):
+                            pass
+#                             ib_netliq = float(t.value)
+                    except Exception:
+                        pass
+#                 ib.accountSummaryEvent += on_acct_summary
+#                 print(f"[IB PNL] Sync enabled for account={ib_acct}")
+            else:
+                pass
+#                 print("[IB PNL] No managed accounts found; IB P&L sync disabled.")
+        except Exception as e:
+            print(f"[IB PNL] Failed to subscribe: {e}")
+
+    # --------- News guard ----------
+#     news_guard = BreakingNewsGuard(ib, args)
+
+    # --------- Seed history & RT bars ----------
+    H: List[float] = []; L: List[float] = []; C: List[float] = []; HL2: List[float] = []
+    V: List[float] = []
+#     last_bar_ts = None; src = "SEED"
+#     startup_bar_ts = None; startup_bar_seen = False
+
+#     vwap = SessionVWAP()
+
+    try:
+        pass
+#         hist = ib.reqHistoricalData(con, endDateTime='', durationStr='1800 S', barSizeSetting='5 secs',
+#                                     whatToShow='TRADES', useRTH=False, keepUpToDate=False)
+        for b in hist:
+            pass
+#             H.append(b.high); L.append(b.low); C.append(b.close); HL2.append(b.close)
+#             vol = getattr(b, "volume", None)
+#             V.append(vol if vol is not None else 0.0)
+#             vwap.update_bar(b.close, vol)
+#             last_bar_ts = bar_ts(b)
+#         startup_bar_ts = last_bar_ts; startup_bar_seen = False
+        print(f"[BOOT] Hist seed: {len(hist)} bars")
+    except Exception as e:
+        pass
+#         log("hist_seed_err", err=repr(e))
+
+    try:
+        pass
+#         rt = ib.reqRealTimeBars(con, 5, 'TRADES', False)
+        if rt is None:
+            pass
+#             log("rt_subscribe_warn", msg="reqRealTimeBars returned None; polling (if enabled) will be used")
+    except Exception as e:
+        pass
+#         rt = None
+#         log("rt_subscribe_err", err=repr(e))
+
+    _rt_last_seen = None
+#     poll_enabled = bool(args.poll_hist_when_no_rt)
+#     poll_iv = max(5, int(args.poll_interval_sec)) if poll_enabled else 999999
+    _last_poll = 0.0
+
+    # ===== Risk & sizing state =====
+#     risk = DayRisk(args.day_loss_cap_R, args.max_trades_per_day, args.max_consec_losses)
+#     last_entry_bar_ts = None
+    current_arm: Optional[str] = None
+    entry_price: Optional[float] = None
+#     prev_net_qty = 0
+    last_exec_price: Optional[float] = None
+
+#     cycle_commission = 0.0
+#     in_trade_cycle = False
+#     cycle_entry_qty = 0
+#     realized_pnl_total = 0.0
+#     equity = float(args.acct_base)
+#     equity_hwm = equity
+#     realized_pnl_day = 0.0
+
+    cycle_entry_time: Optional[dt.datetime] = None
+#     age_forced_flat_done = False
+
+#     week_R = 0.0
+#     week_halted = False
+#     last_week_id = iso_week_id(ct_now().date())
+    weekly_cap_R = float("-inf")  # patched by watchdog_nocaps
+
+    # --------- Sessions (AM/PM) ----------
+    if getattr(args, "session_reset_cts", None):
+        pass
+#         session_cutovers = parse_ct_list(args.session_reset_cts)
+    else:
+        session_cutovers = parse_ct_list(getattr(args, "daily_reset_ct", "16:10"))
+    last_reset_marks: Dict[str, str] = {}
+
+    # ------ Exec/commission events ------
+    def _on_exec(trade, fill):
+        try: last_exec_price = float(fill.price)
+        except Exception: pass
+
+    def _on_commission(trade, fill, report):
+        try:
+            if report is not None and getattr(report, "commission", None) is not None:
+                pass
+#                 cycle_commission += abs(float(report.commission))
+        except Exception: pass
+
+#     ib.execDetailsEvent += _on_exec
+#     ib.commissionReportEvent += _on_commission
+
+#     enabled_arms = [a.strip() for a in args.enable_arms.split(",") if a.strip()] or ["trend","breakout"]
+#     tod_blackouts = parse_blackouts(args.tod_blackouts)
+
+    # ------ Learner wiring ------
+    def build_bandit():
+        if args.bandit == "fixed": return None
+#         gamma = decay_factor_from_half_life(args.decay_half_life_trades)
+
+        class SingleWrap:
+            def __init__(self, L):
+                self.L = L; self.arm_meanR = {a: 0.0 for a in enabled_arms}; self.arm_w = {a: 1e-6 for a in enabled_arms}; self.last_arm = None
+            def choose(self, x, cand, sample):
+                pass
+#                 scores = self.L.predict_scores(x, cand); vals = list(scores.values())
+                m = max(vals) if vals else 0.0; exps = {a: math.exp(scores[a]-m) for a in cand}
+                s = sum(exps.values()) or 1.0; probs = {a: exps[a]/s for a in cand}
+                if sample:
+                    pass
+#                     r = random.random(); cum=0.0; choice=cand[0]
+                    for a in cand:
+                        pass
+#                         cum += probs[a]
+                        if r <= cum: choice=a; break
+                else:
+                    choice = max(probs.items(), key=lambda kv: kv[1])[0]
+#                 return choice, probs
+            def update_all(self, chosen_arm, reward_R, x, cand):
+                pass
+#                 self.L.update(chosen_arm, reward_R, x)
+#                 self.arm_w[chosen_arm] = 0.99*self.arm_w[chosen_arm] + 1.0
+#                 w = self.arm_w[chosen_arm]; m = self.arm_meanR[chosen_arm]
+#                 self.arm_meanR[chosen_arm] = m + (reward_R - m)/w; self.last_arm = chosen_arm
+            def to_state(self): return {"L": self.L.to_state(), "last_arm": self.last_arm, "arm_meanR": self.arm_meanR, "arm_w": self.arm_w}
+            def from_state(self, s):
+                try:
+                    pass
+#                     self.L.from_state(s.get("L", {})); self.last_arm = s.get("last_arm", None)
+                    self.arm_meanR = {k: float(v) for k,v in s.get("arm_meanR", {}).items()} or self.arm_meanR
+                    self.arm_w = {k: float(v) for k,v in s.get("arm_w", {}).items()} or self.arm_w
+                except Exception: pass
+
+        if args.bandit == "meta":
+            pass
+#             return MetaBandit(enabled_arms, args)
+        if args.bandit == "linucb":
+            pass
+#             return SingleWrap(LinUCB(enabled_arms, gamma, alpha=0.8, dim=8, ridge=1.0))
+        if args.bandit == "ts":
+            pass
+#             return SingleWrap(ThompsonGaussian(enabled_arms, gamma))
+        if args.bandit == "ucb_tuned":
+            pass
+#             return SingleWrap(UCBTuned(enabled_arms, gamma))
+        if args.bandit == "exp3":
+            pass
+#             return SingleWrap(EXP3(enabled_arms, gamma, gamma_exp=0.07))
+#         return None
+
+#     bandit = build_bandit()
+
+    def load_state():
+        try:
+            if state_path and os.path.exists(state_path):
+                with open(state_path, "r", encoding="utf-8") as f: st = json.load(f)
+                if bandit: bandit.from_state(st.get("bandit", {}))
+        except Exception as e:
+            print(f"[LEARN] State load failed: {e}")
+
+    def save_state():
+        try:
+            if not state_path: return
+#             mkdirs(os.path.dirname(state_path))
+            payload = {"bandit": bandit.to_state() if bandit else {}}
+#             tmp = state_path + ".tmp"
+            with open(tmp, "w", encoding="utf-8") as f: json.dump(payload, f)
+#             os.replace(tmp, state_path)
+        except Exception as e:
+            print(f"[LEARN] State save failed: {e}")
+
+#     load_state()
+
+    def learn_log(msg: str):
+        if not args.learn_log: return
+        try:
+            pass
+#             mkdirs(learn_dir)
+#             path = os.path.join(learn_dir, dt.datetime.now().strftime("learn_%Y%m%d.log"))
+            with open(path, "a", encoding="utf-8") as f: f.write(msg.rstrip() + "\n")
+        except Exception: pass
+
+#     start_ts = time.time()
+    _last_hb_emit = 0.0
+    _last_state_for_hb = None
+
+    # ------- Sizing helpers -------
+    def per_contract_risk_dollars() -> float:
+        pass
+#         return float(args.risk_ticks) * float(args.tick_size) * float(px_mult)
+
+    def equity_ladder_size(eq: float) -> int:
+        pass
+#         steps = 0 if eq < args.acct_base else math.floor((eq - args.acct_base) / max(1.0, args.scale_step))
+#         return int(clamp(args.start_contracts + steps, 1, args.max_contracts))
+
+    def risk_budget_size(eq: float) -> int:
+        pass
+#         risk_budget = float(eq) * float(args.risk_pct)
+#         pc_risk = per_contract_risk_dollars()
+        if pc_risk <= 0: return 1
+#         return int(clamp(math.floor(risk_budget / pc_risk), 1, args.max_contracts))
+
+    def apply_hwm_stepdown(qty_suggested: int) -> int:
+        if not args.hwm_stepdown: return qty_suggested
+#         dd = max(0.0, equity_hwm - equity)
+        if args.hwm_stepdown_dollars <= 0: return qty_suggested
+#         steps_down = int(math.floor(dd / float(args.hwm_stepdown_dollars)))
+        if steps_down <= 0: return qty_suggested
+#         return max(1, qty_suggested - steps_down)
+
+    # ----- Margin cap (NEW) -----
+    def margin_cap_qty(eq_now: float) -> int:
+        # keep a reserve; cap total contracts by remaining margin
+#         reserve = max(0.0, float(args.margin_reserve_pct))
+#         eff_eq = max(0.0, float(eq_now) * (1.0 - reserve))
+#         per = max(1.0, float(args.margin_per_contract))
+#         return int(clamp(math.floor(eff_eq / per), 0, args.max_contracts))
+
+        def determine_order_qty(current_net_qty: int) -> int:
+            pass
+#         Equity-based size (ladder + risk budget + HWM stepdown) with a hard margin cap.
+#         Emits 'sizing_debug' with all components on every call.
+        # Choose the equity source: IB NetLiq if available & enabled; else local equity calc
+        if args.use_ib_pnl and (ib_netliq is not None):
+            pass
+#             eq_now = float(ib_netliq)
+#             eq_src = "ib_netliq"
+        else:
+            pass
+#             eq_now = float(equity)
+#             eq_src = "local_equity"
+
+        # Defaults (for logging clarity)
+#         eq_size = rb_size = base_qty = 1
+#         stepdown_qty = 1
+#         mcap_total = desired_total = total_cap = 1
+#         addable = 0
+#         pc_risk = per_contract_risk_dollars()
+
+        if args.static_size:
+            pass
+#             final_qty = int(max(1, round(float(args.qty))))
+            _log_sizing_debug("static", {
+                "eq_src": eq_src, "eq_now": round(eq_now,2),
+                "risk_ticks": int(args.risk_ticks), "tick_size": float(args.tick_size),
+                "px_mult": float(px_mult), "pc_risk_dollars": round(pc_risk, 2),
+                "static_qty": final_qty, "current_net_qty": int(current_net_qty),
+                "max_contracts": int(args.max_contracts)
+            })
+            # Enforce absolute max
+            if (abs(current_net_qty) + final_qty) > args.max_contracts:
+                pass
+#                 final_qty = max(0, args.max_contracts - abs(current_net_qty))
+#             return int(final_qty)
+
+        # Dynamic flow
+#         eq_size  = equity_ladder_size(eq_now)
+#         rb_size  = risk_budget_size(eq_now)
+#         base_qty = int(clamp(min(eq_size, rb_size), 1, args.max_contracts))
+#         stepdown_qty = apply_hwm_stepdown(base_qty)
+
+        # Margin ceiling applies to TOTAL position
+#         mcap_total    = margin_cap_qty(eq_now)
+#         desired_total = int(clamp(stepdown_qty, 0, args.max_contracts))
+#         total_cap     = int(clamp(mcap_total, 0, args.max_contracts))
+#         desired_total = min(desired_total, total_cap)
+
+        if abs(current_net_qty) >= desired_total:
+            pass
+#             addable = 0
+#             final_qty = 0
+        else:
+            pass
+#             addable = desired_total - abs(int(current_net_qty))
+#             final_qty = int(max(0, addable))
+
+        # Absolute global cap
+        if (abs(current_net_qty) + final_qty) > args.max_contracts:
+            pass
+#             final_qty = max(0, args.max_contracts - abs(current_net_qty))
+
+        _log_sizing_debug("dynamic", {
+            "eq_src": eq_src, "eq_now": round(eq_now,2),
+            "acct_base": float(args.acct_base),
+            "risk_pct": float(args.risk_pct),
+            "risk_ticks": int(args.risk_ticks),
+            "tick_size": float(args.tick_size),
+            "px_mult": float(px_mult),
+            "pc_risk_dollars": round(pc_risk, 2),
+            "scale_step": float(args.scale_step),
+            "start_contracts": int(args.start_contracts),
+            "max_contracts": int(args.max_contracts),
+            "hwm_stepdown": bool(args.hwm_stepdown),
+            "hwm_stepdown_dollars": float(args.hwm_stepdown_dollars),
+            "margin_per_contract": float(args.margin_per_contract),
+            "margin_reserve_pct": float(args.margin_reserve_pct),
+            "equity_ladder_qty": int(eq_size),
+            "risk_budget_qty": int(rb_size),
+            "base_qty_min_ladder_risk": int(base_qty),
+            "after_hwm_stepdown_qty": int(stepdown_qty),
+            "margin_cap_total": int(mcap_total),
+            "desired_total_after_margin": int(desired_total),
+            "current_net_qty": int(current_net_qty),
+            "addable_qty": int(addable),
+            "final_order_qty": int(final_qty)
+        })
+
+#         return int(final_qty)
+
+
+    # ------- Entry/Place -------
+    def place_bracket(go_long: bool, last_price: float, last_bar_ts_local, net_qty_now: int):
+        pass
+#         nonlocal entry_price, current_arm, last_entry_bar_ts
+        if not args.place_orders:
+            pass
+#             log("sim_no_place", reason="--place-orders not set"); return
+        if has_active_parent_entry(ib, con):
+            pass
+#             log("gate_skip", reason="active_parent_entry"); return
+        if args.debounce_one_bar and last_entry_bar_ts is not None and last_bar_ts_local == last_entry_bar_ts:
+            pass
+#             log("gate_skip", reason="debounce_one_bar"); return
+
+        # ===== Short guard rails BEFORE order sizing/submission =====
+        if not go_long:
+            pass
+#             close_px = last_price
+#             tick = float(args.tick_size)
+
+            # VWAP buffer block
+            if args.short_guard_vwap and vwap and not math.isnan(vwap.vwap):
+                pass
+#                 buf_px = ticks_to_price_delta(args.short_guard_vwap_buffer_ticks, tick)
+                if close_px >= (vwap.vwap - 1e-12) and (close_px - vwap.vwap) <= buf_px:
+                    pass
+#                     log("short_guard_skip", reason="vwap_buffer",
+#                         price=round(close_px,2), vwap=round(vwap.vwap,2),
+#                         buffer_ticks=int(args.short_guard_vwap_buffer_ticks))
+#                     return
+
+            # Lower-high confirmation
+            if args.short_guard_lower_high:
+                pass
+#                 if not lower_high_confirmed(C, tick, int(args.short_guard_lookback_bars),
+                                            int(args.short_guard_min_pullback_ticks)):
+#                     log("short_guard_skip", reason="no_lower_high",
+#                         lookback=int(args.short_guard_lookback_bars),
+#                         min_pullback_ticks=int(args.short_guard_min_pullback_ticks))
+#                     return
+
+#         qty = determine_order_qty(net_qty_now)
+        if qty <= 0:
+            pass
+#             log("gate_skip", reason="qty_le_0"); return
+
+#         tick = float(args.tick_size)
+#         slippage = ticks_to_price_delta(args.entry_slippage_ticks, tick)
+#         risk_px = ticks_to_price_delta(args.risk_ticks, tick)
+        if go_long:
+            pass
+#             entry = round_to_tick(last_price + slippage, tick)
+#             sl = round_to_tick(entry - risk_px, tick)
+#             tp = round_to_tick(entry + risk_px * float(args.tp_R), tick)
+#             action = "BUY"
+        else:
+            pass
+#             entry = round_to_tick(last_price - slippage, tick)
+#             sl = round_to_tick(entry + risk_px, tick)
+#             tp = round_to_tick(entry - risk_px * float(args.tp_R), tick)
+#             action = "SELL"
+
+#         oid = next_order_id(ib)
+        for o in make_bracket(oid, action, qty, entry, sl, tp, args.tif, bool(args.outsideRth)):
+            pass
+#             ib.placeOrder(con, o)
+#         log("bracket_submitted", parentId=oid, action=action, qty=qty, entry=entry, stop=sl, tp=tp)
+#         snapshot_orders(ib, con, tag="after_bracket_submit")
+
+#         entry_price = entry
+#         last_entry_bar_ts = last_bar_ts_local
+#         risk.last_entry_time = time.time()
+#         risk.cool_until = ct_now() + dt.timedelta(seconds=int(args.strategy_cooldown_sec))
+#         risk.trades += 1
+
+    def flatten_market(net_qty: int):
+        if not args.place_orders: return
+#         side = "SELL" if net_qty > 0 else "BUY"
+#         qty = abs(int(net_qty))
+        try:
+            pass
+#             mo = MarketOrder(side, qty)
+#             ib.placeOrder(con, mo)
+#             log("pos_age_flatten_market", side=side, qty=qty)
+        except Exception as e:
+            pass
+#             log("pos_age_flatten_err", err=str(e))
+
+    # ---------- Persistent Day Guard (session-based) ----------
+#     DAY_STATE_PATH = r".\data\state\day_guard.json"
+
+    def load_day_state() -> Dict[str, Any]:
+        try:
+            if os.path.exists(DAY_STATE_PATH):
+                with open(DAY_STATE_PATH, "r", encoding="utf-8") as f:
+                    pass
+#                     return json.load(f)
+        except Exception as e:
+            pass
+#             log("day_state_load_err", err=str(e))
+#         return {}
+
+    def save_day_state(data: Dict[str, Any]):
+        try:
+            pass
+#             mkdirs(os.path.dirname(DAY_STATE_PATH))
+#             tmp = DAY_STATE_PATH + ".tmp"
+            with open(tmp, "w", encoding="utf-8") as f:
+                pass
+#                 json.dump(data, f)
+#             os.replace(tmp, DAY_STATE_PATH)
+        except Exception as e:
+            pass
+#             log("day_state_save_err", err=str(e))
+
+    # initialize session state
+#     day_state = load_day_state()
+#     k = session_key_multi(ct_now(), session_cutovers)
+    if k not in day_state:
+        day_state[k] = {"start_equity": float(args.acct_base), "day_realized": 0.0, "day_peak_realized": 0.0}
+#         save_day_state(day_state)
+
+#     day_realized = float(day_state[k]["day_realized"])
+#     day_peak_realized = float(day_state[k]["day_peak_realized"])
+#     start_of_day_equity = float(day_state[k]["start_equity"])
+#     day_guard_dollars = -float(args.day_guard_pct) * start_of_day_equity
+
+    # HB caps_on one-shot
+#     in_caps = False
+
+    # =========================== MAIN LOOP ===========================
+    try:
+        while True:
+            try:
+                pass
+#                 now = ct_now()
+                if (time.time() - start_ts) < args.startup_delay_sec:
+                    pass
+#                     ib.sleep(0.2); continue
+
+                # ---- ISO week rollover ----
+#                 wid = iso_week_id(now.date())
+                if wid != last_week_id:
+                    pass
+#                     week_R = 0.0; week_halted = False; last_week_id = wid
+#                     log("week_reset", week=wid)
+
+                # ---- Multi-session soft resets ----
+#                 cutover_hit = None
+                try:
+                    pass
+#                     cutover_hit = reset_due_multi(now, session_cutovers, last_reset_marks)
+                except Exception as e:
+                    pass
+#                     log("reset_due_multi_err", err=str(e))
+
+                if cutover_hit:
+                    # session soft reset
+#                     risk.reset()
+#                     realized_pnl_day = 0.0
+
+#                     nk = session_key_multi(now, session_cutovers)
+                    if nk not in day_state:
+                        pass
+#                         seed = float(args.acct_base)
+                        if 'ib_netliq' in locals() and ib_netliq is not None:
+                            pass
+#                             seed = float(ib_netliq)
+                        day_state[nk] = {"start_equity": seed, "day_realized": 0.0, "day_peak_realized": 0.0}
+                        # keep last ~6 segments
+#                         keys = sorted(day_state.keys())
+                        for old in keys[:-6]:
+                            try: del day_state[old]
+                            except: pass
+#                         save_day_state(day_state)
+
+#                     k = nk
+#                     start_of_day_equity = float(day_state[k]["start_equity"])
+#                     day_guard_dollars = -float(args.day_guard_pct) * start_of_day_equity
+#                     day_realized = float(day_state[k]["day_realized"])
+#                     day_peak_realized = float(day_state[k]["day_peak_realized"])
+                    in_caps = False  # leave caps state on new session
+
+                    # VWAP reset on session cutover (NEW)
+                    if args.vwap_reset_on_session:
+                        pass
+#                         vwap.reset()
+#                         log("vwap_reset", cutover=cutover_hit)
+
+                    # Clear learners/meta (opt-in)
+                    if args.reset_clear_learn and bandit:
+                        try:
+                            if hasattr(bandit, "ph"): bandit.ph.reset()
+                            if hasattr(bandit, "meta_w"): bandit.meta_w = {k2: 1.0 for k2 in bandit.meta_w.keys()}
+                        except Exception as e:
+                            pass
+#                             log("reset_learner_err", err=str(e))
+
+#                     canceled = 0
+                    if args.reset_cancel_working:
+                        try:
+                            pass
+#                             canceled = cancel_active_parent_entries(ib, con)
+                        except Exception as e:
+                            pass
+#                             log("reset_cancel_err", err=str(e))
+#                     log("daily_reset", cutover=cutover_hit, canceledParents=canceled)
+
+                    if args.reset_cancel_exits:
+                        try:
+                            pass
+#                             c2 = cancel_exit_children_for_contract(ib, con)
+#                             log("reset_cancel_exits", canceled=c2)
+                        except Exception as e:
+                            pass
+#                             log("reset_cancel_exits_err", err=str(e))
+
+                # ---- RT / polling ----
+                try:
+                    if rt and len(rt) > 0:
+                        pass
+#                         b = rt[-1]; ts = bar_ts(b)
+                        if last_bar_ts is None or (ts and ts != last_bar_ts):
+                            pass
+#                             H.append(b.high); L.append(b.low); C.append(b.close); HL2.append(b.close)
+#                             vol = getattr(b, "volume", None)
+#                             V.append(vol if vol is not None else 0.0)
+#                             vwap.update_bar(b.close, vol)
+#                             last_bar_ts = ts; _rt_last_seen = time.time(); src = "RT"
+                            if startup_bar_ts is not None and ts != startup_bar_ts:
+                                pass
+#                                 startup_bar_seen = True
+                except Exception:
+                    pass
+
+#                 rt_fresh = (_rt_last_seen is not None and (time.time() - _rt_last_seen) <= max(5, int(args.rt_staleness_sec)))
+                if poll_enabled and not rt_fresh and (time.time() - _last_poll) >= poll_iv:
+                    _last_poll = time.time()
+                    try:
+                        pass
+#                         hist = ib.reqHistoricalData(con, endDateTime='', durationStr='60 S', barSizeSetting='5 secs',
+#                                                     whatToShow='TRADES', useRTH=False, keepUpToDate=False)
+                        if hist:
+                            pass
+#                             last = hist[-1]; ts = bar_ts(last)
+                            if last_bar_ts is None or (ts and ts > last_bar_ts):
+                                pass
+#                                 H.append(last.high); L.append(last.low); C.append(last.close); HL2.append(last.close)
+#                                 vol = getattr(last, "volume", None)
+#                                 V.append(vol if vol is not None else 0.0)
+#                                 vwap.update_bar(last.close, vol)
+#                                 last_bar_ts = ts; src = "POLL"
+                                if startup_bar_ts is not None and ts != startup_bar_ts:
+                                    pass
+#                                     startup_bar_seen = True
+#                                 log("poll_bar", time=str(ts), close=last.close, total=len(C))
+                    except Exception:
+                        pass
+
+                # ---- Position truth ----
+#                 net_qty, avg_cost_raw = ib_position_truth(ib, con)
+
+                # ---- Trade-cycle transitions ----
+                if prev_net_qty == 0 and net_qty != 0:
+                    pass
+#                     in_trade_cycle = True
+#                     cycle_commission = 0.0
+#                     cycle_entry_qty = abs(net_qty)
+#                     entry_price = (avg_cost_raw / px_mult) if (avg_cost_raw is not None and px_mult > 0) else (C[-1] if C else None)
+#                     cycle_entry_time = now
+#                     age_forced_flat_done = False
+
+                if prev_net_qty != 0 and net_qty == 0 and entry_price is not None:
+                    pass
+#                     exit_px = last_exec_price if last_exec_price is not None else (C[-1] if C else entry_price)
+#                     signed = 1 if prev_net_qty > 0 else -1
+#                     pc_risk = float(args.risk_ticks) * float(args.tick_size) * float(px_mult)
+#                     risk_dollars_total = pc_risk * max(1, cycle_entry_qty)
+#                     pnl_dollars = (exit_px - entry_price) * px_mult * signed * max(1, cycle_entry_qty) - cycle_commission
+#                     reward_R = (pnl_dollars / risk_dollars_total) if risk_dollars_total > 0 else 0.0
+
+#                     realized_pnl_total += pnl_dollars
+#                     realized_pnl_day += pnl_dollars
+
+                    # Equity/equity_hwm from NetLiq if IB sync, else from acct_base + realized
+                    if ib_netliq is not None and args.use_ib_pnl:
+                        pass
+#                         equity = float(ib_netliq)
+                    else:
+                        pass
+#                         equity = float(args.acct_base) + realized_pnl_total
+#                     equity_hwm = max(equity_hwm, equity)
+
+#                     risk.day_R += reward_R
+                    if reward_R < 0: risk.consec_losses += 1
+                    else: risk.consec_losses = 0
+                    if risk.consec_losses >= args.max_consec_losses:
+                        pass
+#                         risk.halted = True
+
+                    if args.loss_graded_cooldown and reward_R < 0 and not risk.halted:
+                        pass
+#                         base = int(args.strategy_cooldown_sec); mult = 2.0 if risk.consec_losses >= 2 else 1.0
+#                         tgt = ct_now() + dt.timedelta(seconds=int(base*mult))
+                        if (risk.cool_until is None) or (tgt > risk.cool_until):
+                            pass
+#                             risk.cool_until = tgt
+#                         log("graded_cooldown", base=base, mult=mult, consec=risk.consec_losses, until=str(risk.cool_until))
+
+#                     week_R += reward_R
+
+                    # persistent session state update
+#                     day_realized += pnl_dollars
+#                     day_peak_realized = max(day_peak_realized, day_realized)
+#                     day_state[k]["day_realized"] = day_realized
+#                     day_state[k]["day_peak_realized"] = day_peak_realized
+#                     save_day_state(day_state)
+
+#                     log("flat_cycle",
+#                         pnl_dollars=round(pnl_dollars,2),
+#                         R=round(reward_R,3),
+#                         comm=round(cycle_commission,2),
+#                         qty=max(1, cycle_entry_qty),
+#                         dayR=round(risk.day_R,3),
+#                         consec_losses=risk.consec_losses,
+#                         equity=round(equity,2),
+#                         equity_hwm=round(equity_hwm,2),
+#                         weekR=round(week_R,3),
+#                         day_realized=round(day_realized,2),
+#                         day_peak=round(day_peak_realized,2)
+
+                    try:
+                        pass
+#                         total = 0
+                        for _ in range(3):
+                            pass
+#                             c = cancel_exit_children_for_contract(ib, con); total += c
+                            if c == 0: break
+#                             ib.sleep(0.25)
+#                         log("flat_cancel_children", count=total)
+                    except Exception as e:
+                        pass
+#                         log("flat_cancel_children_err", err=str(e))
+
+#                     in_trade_cycle = False
+#                     entry_price = None
+#                     current_arm = None
+#                     cycle_entry_qty = 0
+#                     cycle_commission = 0.0
+#                     cycle_entry_time = None
+#                     age_forced_flat_done = False
+
+#                 prev_net_qty = net_qty
+
+                # ---- IB P&L: overwrite in-session if enabled ----
+                if args.use_ib_pnl:
+                    if ib_daily_pnl is not None:
+                        pass
+#                         day_realized = float(ib_daily_pnl)
+#                         day_peak_realized = max(day_peak_realized, day_realized)
+#                         day_state[k]["day_realized"] = day_realized
+#                         day_state[k]["day_peak_realized"] = day_peak_realized
+#                         save_day_state(day_state)
+                    if ib_netliq is not None:
+                        pass
+#                         equity = float(ib_netliq); equity_hwm = max(equity_hwm, equity)
+
+                # ---- OCO-rescue ----
+#                 last_px = C[-1] if C else None
+                try:
+                    if net_qty != 0 and args.place_orders:
+                        pass
+#                         ensure_protection_orders(ib, con, net_qty, avg_cost_raw, args, last_px, float(args.tick_size), px_mult)
+#                         snapshot_orders(ib, con, tag="after_oco_rescue_verify")
+                except Exception as e:
+                    pass
+#                     log("oco_rescue_err", err=str(e))
+
+                # ---- Position-age cap ----
+                if (not args.disable_pos_age_cap) and in_trade_cycle and net_qty != 0 and entry_price is not None and cycle_entry_time is not None:
+                    pass
+#                     elapsed = (now - cycle_entry_time).total_seconds()
+                    if elapsed >= max(1, int(args.pos_age_cap_sec)) and not age_forced_flat_done:
+                        if last_px is not None and not math.isnan(last_px):
+                            pass
+#                             side = 1 if net_qty > 0 else -1
+#                             pc_risk = float(args.risk_ticks) * float(args.tick_size) * float(px_mult)
+#                             uR = 0.0
+                            if pc_risk > 0:
+                                pass
+#                                 uR = ((last_px - entry_price) * px_mult * side * max(1,cycle_entry_qty)) / (pc_risk * max(1,cycle_entry_qty))
+                            if uR < float(args.pos_age_minR):
+                                pass
+#                                 flatten_market(net_qty)
+#                                 age_forced_flat_done = True
+#                                 risk.cool_until = ct_now() + dt.timedelta(seconds=int(args.strategy_cooldown_sec))
+#                                 log("pos_age_forced_flat", uR=round(uR,3), elapsed=int(elapsed))
+
+                # ---- Weekly cap gating ----
+                if args.enable_weekly_cap and (week_R <= weekly_cap_R):
+                    pass
+#                     week_halted = True
+
+                # ---- Exit audit & auto-repair ----
+                if net_qty != 0 and args.place_orders:
+                    pass
+#                     audit = audit_exits(ib, con, net_qty)
+                    if not (audit["has_stop"] and audit["has_tp"]):
+                        pass
+#                         log("exit_audit", has_stop=bool(audit["has_stop"]), has_tp=bool(audit["has_tp"]),
+#                             stop=audit["stop_px"], tp=audit["tp_px"])
+                        try:
+                            pass
+#                             ensure_protection_orders(ib, con, net_qty, avg_cost_raw, args,
+#                                 last_px, float(args.tick_size), px_mult)
+#                             snapshot_orders(ib, con, tag="after_exit_autorepair")
+                        except Exception as e:
+                            pass
+#                             log("exit_autorepair_err", err=str(e))
+
+                # ---- Heartbeat data ----
+#                 arm_counts_disp = {}; arm_meanR_disp = {}
+                if bandit:
+                    for a in enabled_arms:
+                        pass
+#                         arm_counts_disp[a] = int(getattr(bandit, "arm_w", {}).get(a, 0.0))
+#                         arm_meanR_disp[a] = round(getattr(bandit, "arm_meanR", {}).get(a, 0.0), 3)
+                else:
+                    arm_counts_disp = {a: 0 for a in enabled_arms}
+                    arm_meanR_disp = {a: 0.0 for a in enabled_arms}
+
+#                                 in_news_pause = news_guard.in_pause(now)
+
+                # Compute a live sizing snapshot (mirrors determine_order_qty internals for the heartbeat only)
+                if args.use_ib_pnl and (ib_netliq is not None):
+                    pass
+#                     eq_now_hb = float(ib_netliq)
+#                     eq_src_hb = "ib_netliq"
+                else:
+                    pass
+#                     eq_now_hb = float(equity)
+#                     eq_src_hb = "local_equity"
+
+#                 ladder_qty = equity_ladder_size(eq_now_hb)
+#                 rb_qty = risk_budget_size(eq_now_hb)
+#                 base_qty_hb = int(clamp(min(ladder_qty, rb_qty), 1, args.max_contracts))
+#                 stepdown_qty_hb = apply_hwm_stepdown(base_qty_hb)
+#                 mcap_total_hb = margin_cap_qty(eq_now_hb)
+#                 desired_total_hb = min(int(clamp(stepdown_qty_hb, 0, args.max_contracts)),
+#                                        int(clamp(mcap_total_hb, 0, args.max_contracts)))
+                # This is the *recommended total* if flat; suggest_qty remains for backward compatibility
+#                 sugg_qty = stepdown_qty_hb
+
+
+#                 avg_disp = 0.0
+                if avg_cost_raw is not None and px_mult > 0:
+                    try: avg_disp = (avg_cost_raw / px_mult)
+                    except Exception: avg_disp = 0.0
+
+                # ---- Determine state & caps reasons ----
+#                 reasons = []
+                if risk.day_R <= -abs(args.day_loss_cap_R): reasons.append("dayR_cap")
+                if risk.trades >= args.max_trades_per_day: reasons.append("max_trades")
+                if risk.halted: reasons.append("risk_halted")
+                if args.enable_weekly_cap and week_halted: reasons.append("week_cap")
+                if day_realized <= day_guard_dollars: reasons.append("minus5pct_guard")
+                # Peak DD guard only after minimum profit achieved
+                if args.peak_dd_guard_pct > 0 and (day_peak_realized >= float(args.peak_dd_min_profit)):
+                    if day_realized <= day_peak_realized * (1.0 - float(args.peak_dd_guard_pct)):
+                        pass
+#                         reasons.append("peak_dd_guard")
+
+#                 state = (
+#                     else "news" if in_news_pause
+#                     else "wait_rt" if (args.require_rt_before_trading and not rt_fresh)
+#                     else "cooldown" if (risk.cool_until and now < risk.cool_until)
+#                     else "active" if within_session(now, args.trade_start_ct, args.trade_end_ct)
+#                     else "sleep"
+
+                if state == "caps" and not in_caps:
+                    pass
+#                     in_caps = True
+#                     log("caps_on", reasons=reasons, day_realized=round(day_realized,2),
+#                         day_peak=round(day_peak_realized,2), dayR=round(risk.day_R,3))
+                if state != "caps" and in_caps:
+                    pass
+#                     in_caps = False
+
+#                 emit = False
+#                 now_epoch = time.time()
+                if _last_state_for_hb != state:
+                    pass
+#                     emit = True; _last_state_for_hb = state
+                elif (now_epoch - _last_hb_emit) >= 1.0:
+                    pass
+#                     emit = True
+
+                if emit:
+                    pass
+#                     vwap_disp = None if (vwap is None or math.isnan(vwap.vwap)) else round(vwap.vwap, 2)
+#                     l                    log("hb",
+#                         src=src,
+#                         state=state,
+#                         rt_fresh=bool(rt_fresh),
+#                         dayR=round(risk.day_R,3),
+#                         weekR=round(week_R,3),
+#                         week_halted=bool(week_halted and args.enable_weekly_cap),
+#                         pos=net_qty,
+#                         avg=round(avg_disp, 2),
+#                         bars=len(C),
+#                         consec_losses=risk.consec_losses,
+#                         equity=round(equity,2),
+#                         equity_hwm=round(equity_hwm,2),
+
+                        # legacy displayed suggestion
+#                         suggest_qty=int(sugg_qty),
+
+                        # sizing snapshot (new)
+#                         sizing_snapshot={
+                            "eq_src": eq_src_hb,
+                            "eq_now": round(eq_now_hb,2),
+                            "equity_ladder_qty": int(ladder_qty),
+                            "risk_budget_qty": int(rb_qty),
+                            "after_hwm_stepdown_qty": int(stepdown_qty_hb),
+                            "margin_cap_total": int(mcap_total_hb),
+                            "desired_total_after_margin": int(desired_total_hb)
+                        },
+
+#                         arms=arm_counts_disp,
+#                         armR=arm_meanR_disp,
+#                         day_realized=round(day_realized,2),
+#                         day_guard=round(day_guard_dollars,2),
+#                         session_vwap=vwap_disp
+
+#                         suggest_qty=sugg_qty,
+#                         arms=arm_counts_disp,
+#                         armR=arm_meanR_disp,
+#                         day_realized=round(day_realized,2),
+#                         day_guard=round(day_guard_dollars,2),
+#                         session_vwap=vwap_disp
+                    _last_hb_emit = now_epoch
+
+                # If any cap tripped and we are flat  cancel all orders
+                if state == "caps" and net_qty == 0:
+                    try:
+                        pass
+#                         c = 0
+                        for _ in range(3):
+                            pass
+#                             c += cancel_active_parent_entries(ib, con)
+#                             c += cancel_exit_children_for_contract(ib, con)
+                            if c == 0: break
+#                             ib.sleep(0.25)
+#                         log("cap_sweep_all_orders", count=c)
+                    except Exception as e:
+                        pass
+#                         log("cap_sweep_err", err=str(e))
+
+                # ---- Gate checks before entries ----
+#                 in_window = within_session(now, args.trade_start_ct, args.trade_end_ct)
+#                 if (not in_window) or in_any_blackout(now, tod_blackouts) \
+#                    or (not risk.can_trade(now, int(args.min_seconds_between_entries))) \
+#                    or (args.enable_weekly_cap and week_halted) \
+#                    or (args.require_rt_before_trading and not rt_fresh) \
+                   or (state == "caps"):
+#                     ib.sleep(0.5); continue
+
+                if args.require_new_bar_after_start and not startup_bar_seen:
+                    pass
+#                     ib.sleep(0.5); continue
+                if len(C) < 60:
+                    pass
+#                     ib.sleep(0.5); continue
+
+                # ---- Features / arms ----
+#                 close = C[-1]; _adx = adx(H, L, C, 14); _atr = atr(H, L, C, 14)
+                _atrp = (_atr / close) if (not math.isnan(_atr) and close>0) else float("nan")
+                _bbbw = bbbw(C, 20, 2.0) or float("nan")
+                fast = ema(C[-20:], 20); slow = ema(C[-50:], 50)
+#                 is_trend = (not math.isnan(_adx)) and _adx >= args.gate_adx and fast > slow
+                is_breakout = (len(C) >= 30) and (close >= max(C[-20:]) or close <= min(C[-20:]))
+
+                if net_qty == 0 and not has_active_parent_entry(ib, con):
+                    pass
+#                     cand = []
+                    if "trend" in enabled_arms and is_trend and (not math.isnan(_atrp)) and _atrp >= args.gate_atrp:
+                        pass
+#                         cand.append("trend")
+                    if "breakout" in enabled_arms and is_breakout and (not math.isnan(_bbbw)) and _bbbw >= args.gate_bbbw:
+                        pass
+#                         cand.append("breakout")
+#                     chosen = None
+                    if len(cand) == 1 or args.bandit == "fixed":
+                        pass
+#                         chosen = cand[0] if cand else None
+                    elif len(cand) >= 2:
+                        pass
+#                         x = feature_vector(H, L, C)
+                        if bandit:
+                            pass
+#                             chosen, probs = bandit.choose(x, cand, sample=args.sample_action)
+                            if args.learn_log:
+                                pass
+#                                 learn_log(f"{utc_now_str()} choose cand={cand} probs={json.dumps(probs)} chosen={chosen}")
+                        else:
+                            pass
+#                             chosen = "trend" if "trend" in cand else cand[0] if cand else None
+                    if chosen:
+                        pass
+#                         go_long = True
+                        if chosen == "trend": go_long = fast >= slow
+                        elif chosen == "breakout": go_long = close >= max(C[-20:])
+#                         place_bracket(go_long, close, last_bar_ts, net_qty)
+#                         current_arm = chosen
+
+#                 ib.sleep(0.5)
+
+            except Exception as e:
+                tb = "".join(traceback.format_exception(type(e), e, e.__traceback__))[-4000:]
+#                 log("loop_error", err=str(e), tb=tb)
+#                 ib.sleep(1.0)
+
+    except KeyboardInterrupt:
+        pass
+#         print("INFO [CTRL-C] Shutting down...")
+    finally:
+        try:
+            pass
+#             day_state[k]["day_realized"] = day_realized
+#             day_state[k]["day_peak_realized"] = day_peak_realized
+#             save_day_state(day_state)
+        except Exception: pass
+        try: save_state()
+        except Exception: pass
+        try:
+            if 'news_guard' in locals() and getattr(news_guard, "enabled", False):
+                try: ib.newsBulletinEvent -= news_guard._on_bulletin
+                except Exception: pass
+                try: ib.cancelNewsBulletins()
+                except Exception: pass
+        except Exception: pass
+        try:
+            pass
+#             sent = getattr(getattr(ib, "client", None), "bytesSent", 0) or 0
+#             recv = getattr(getattr(ib, "client", None), "bytesReceived", 0) or 0
+            print(f"Disconnecting from {args.host}:{args.port}, {sent/1024:.0f} kB sent, {recv/1024:.0f} kB received.")
+        except Exception: pass
+        try: ib.disconnect(); print("Disconnected.")
+        except Exception: pass
+
+if __name__ == "__main__":
+    pass
+#     main()
+
+
+
+# Top-priority breakages (will crash)
+Fix: outdent it to top-level (same level as margin_cap_qty).
+
+# Undefined _log_sizing_debug (called inside determine_order_qty)
+#  NameError.
+Fix (simple):
+
+def _log_sizing_debug(mode: str, fields: Dict[str, Any]):
+    try:
+        pass
+#         log("sizing_debug", mode=mode, **fields)
+    except Exception:
+        pass
+Fix: keep one clean log("hb", ...) call; remove the stray l and the duplicate block/keywords.
+
+# In the else branch (when a window wraps midnight), one line is just True instead of return True.
+Fix:
+
+else:
+    if (t >= a) or (t <= b):
+        pass
+#         return True
+
+# in_news_pause = news_guard.in_pause(now)
+# which will produce an IndentationError given the surrounding block.
+Fix: align it with the heartbeat-prep lines above/below.
+
+# Likely-to-bite bugs (logic / robustness)
+
+# After the midnight-wrap branch fix (above), make sure the function ends with return False (it does). Good.
+
+Minor: unused imports/vars
+
+# A) Add missing debug logger
+# Place near other utilities/logging helpers
+def _log_sizing_debug(mode: str, fields: Dict[str, Any]):
+    try:
+        pass
+#         log("sizing_debug", mode=mode, **fields)
+    except Exception:
+        pass
+# B) Fix in_any_blackout
+def in_any_blackout(now: dt.datetime, windows: List[Tuple[dt.time, dt.time]]) -> bool:
+    if not windows: return False
+#     t = now.time()
+    for a, b in windows:
+        if a <= b:
+            if a <= t <= b:
+                pass
+#                 return True
+        else:
+            # window wraps midnight (e.g., 23:45-00:15)
+            if (t >= a) or (t <= b):
+                pass
+#                 return True
+#     return False
+# C) Move determine_order_qty out of margin_cap_qty
+Make sure margin_cap_qty ends like this (no nested defs below it):
+
+def margin_cap_qty(eq_now: float) -> int:
+    pass
+#     reserve = max(0.0, float(args.margin_reserve_pct))
+#     eff_eq = max(0.0, float(eq_now) * (1.0 - reserve))
+#     per = max(1.0, float(args.margin_per_contract))
+#     return int(clamp(math.floor(eff_eq / per), 0, args.max_contracts))
+Then add this as a top-level function (same indentation as margin_cap_qty):
+
+def determine_order_qty(current_net_qty: int) -> int:
+    pass
+#     Equity-based size (ladder + risk budget + HWM stepdown) with a hard margin cap.
+#     Emits 'sizing_debug' with all components on every call.
+    # Choose the equity source: IB NetLiq if available & enabled; else local equity calc
+    if args.use_ib_pnl and ('ib_netliq' in globals()) and (ib_netliq is not None):
+        pass
+#         eq_now = float(ib_netliq)
+#         eq_src = "ib_netliq"
+    else:
+        pass
+#         eq_now = float(equity)
+#         eq_src = "local_equity"
+
+#     pc_risk = per_contract_risk_dollars()
+
+    if args.static_size:
+        pass
+#         final_qty = int(max(1, round(float(args.qty))))
+        _log_sizing_debug("static", {
+            "eq_src": eq_src, "eq_now": round(eq_now,2),
+            "risk_ticks": int(args.risk_ticks), "tick_size": float(args.tick_size),
+            "px_mult": float(px_mult), "pc_risk_dollars": round(pc_risk, 2),
+            "static_qty": final_qty, "current_net_qty": int(current_net_qty),
+            "max_contracts": int(args.max_contracts)
+        })
+        if (abs(current_net_qty) + final_qty) > args.max_contracts:
+            pass
+#             final_qty = max(0, args.max_contracts - abs(current_net_qty))
+#         return int(final_qty)
+
+#     eq_size  = equity_ladder_size(eq_now)
+#     rb_size  = risk_budget_size(eq_now)
+#     base_qty = int(clamp(min(eq_size, rb_size), 1, args.max_contracts))
+#     stepdown_qty = apply_hwm_stepdown(base_qty)
+
+    # Margin ceiling applies to TOTAL position
+#     mcap_total    = margin_cap_qty(eq_now)
+#     desired_total = int(clamp(stepdown_qty, 0, args.max_contracts))
+#     total_cap     = int(clamp(mcap_total, 0, args.max_contracts))
+#     desired_total = min(desired_total, total_cap)
+
+    if abs(current_net_qty) >= desired_total:
+        pass
+#         addable = 0
+#         final_qty = 0
+    else:
+        pass
+#         addable = desired_total - abs(int(current_net_qty))
+#         final_qty = int(max(0, addable))
+
+    if (abs(current_net_qty) + final_qty) > args.max_contracts:
+        pass
+#         final_qty = max(0, args.max_contracts - abs(current_net_qty))
+
+    _log_sizing_debug("dynamic", {
+        "eq_src": eq_src, "eq_now": round(eq_now,2),
+        "acct_base": float(args.acct_base),
+        "risk_pct": float(args.risk_pct),
+        "risk_ticks": int(args.risk_ticks),
+        "tick_size": float(args.tick_size),
+        "px_mult": float(px_mult),
+        "pc_risk_dollars": round(pc_risk, 2),
+        "scale_step": float(args.scale_step),
+        "start_contracts": int(args.start_contracts),
+        "max_contracts": int(args.max_contracts),
+        "hwm_stepdown": bool(args.hwm_stepdown),
+        "hwm_stepdown_dollars": float(args.hwm_stepdown_dollars),
+        "margin_per_contract": float(args.margin_per_contract),
+        "margin_reserve_pct": float(args.margin_reserve_pct),
+        "equity_ladder_qty": int(eq_size),
+        "risk_budget_qty": int(rb_size),
+        "base_qty_min_ladder_risk": int(base_qty),
+        "after_hwm_stepdown_qty": int(stepdown_qty),
+        "margin_cap_total": int(mcap_total),
+        "desired_total_after_margin": int(desired_total),
+        "current_net_qty": int(current_net_qty),
+        "addable_qty": int(addable),
+        "final_order_qty": int(final_qty)
+    })
+#     return int(final_qty)
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # D Clean heartbeat log("hb", ...)
+Keep a single, tidy call; e.g.:
+
+# vwap_disp = None if (vwap is None or math.isnan(vwap.vwap)) else round(vwap.vwap, 2)
+# # log("hb",
+#     src=src,
+#     state=state,
+#     rt_fresh=bool(rt_fresh),
+#     dayR=round(risk.day_R,3),
+#     weekR=round(week_R,3),
+#     week_halted=bool(week_halted and args.enable_weekly_cap),
+#     pos=net_qty,
+#     avg=round(avg_disp, 2),
+#     bars=len(C),
+#     consec_losses=risk.consec_losses,
+#     equity=round(equity,2),
+#     equity_hwm=round(equity_hwm,2),
+
+    # legacy displayed suggestion
+#     suggest_qty=int(sugg_qty),
+
+    # sizing snapshot (new)
+#     sizing_snapshot={
+        "eq_src": eq_src_hb,
+        "eq_now": round(eq_now_hb,2),
+        "equity_ladder_qty": int(ladder_qty),
+        "risk_budget_qty": int(rb_qty),
+        "after_hwm_stepdown_qty": int(stepdown_qty_hb),
+        "margin_cap_total": int(mcap_total_hb),
+        "desired_total_after_margin": int(desired_total_hb)
+    },
+
+#     arms=arm_counts_disp,
+#     armR=arm_meanR_disp,
+#     day_realized=round(day_realized,2),
+#     day_guard=round(day_guard_dollars,2),
+#     session_vwap=vwap_disp
+# and delete the stray l before it and the second, duplicated block.
+
+# E) Align the in_news_pause line
+# in_news_pause = news_guard.in_pause(now)
+(no extra indent).
+
+
+
+
+
+
+# Show-stoppers (will crash)
+# determine_order_qty is nested under margin_cap_qty (and never defined)
+
+# Later you call determine_order_qty(...) in place_bracket, which will raise NameError.
+
+
+
+ Fix: Remove the stray l and the duplicated block; keep one clean log("hb", ).
+
+
+ Fix: Align it with nearby assignments in the heartbeat section.
+
+
+ Fix (either of these):
+
+
+Proper: build HL2 with (high + low) / 2 and pass that to bbbw.
+
+
+ Fix: Keep only the set inside the single log("hb", ) call.
+
+Minor: default flags pairings are unusual
+
+# Minimal patch (drop-in edits)
+# Below is a compact patch showing exactly what to change. It keeps your behavior intact, only fixes the blockers and cleans the heartbeat. You can search for the commented headers to place the edits.
+
+# ===== Sizing helpers =====
+def per_contract_risk_dollars() -> float:
+    pass
+#     return float(args.risk_ticks) * float(args.tick_size) * float(px_mult)
+
+def equity_ladder_size(eq: float) -> int:
+    pass
+#     steps = 0 if eq < args.acct_base else math.floor((eq - args.acct_base) / max(1.0, args.scale_step))
+#     return int(clamp(args.start_contracts + steps, 1, args.max_contracts))
+
+def risk_budget_size(eq: float) -> int:
+    pass
+#     risk_budget = float(eq) * float(args.risk_pct)
+#     pc_risk = per_contract_risk_dollars()
+    if pc_risk <= 0: return 1
+#     return int(clamp(math.floor(risk_budget / pc_risk), 1, args.max_contracts))
+
+def apply_hwm_stepdown(qty_suggested: int) -> int:
+    if not args.hwm_stepdown: return qty_suggested
+#     dd = max(0.0, equity_hwm - equity)
+    if args.hwm_stepdown_dollars <= 0: return qty_suggested
+#     steps_down = int(math.floor(dd / float(args.hwm_stepdown_dollars)))
+    if steps_down <= 0: return qty_suggested
+#     return max(1, qty_suggested - steps_down)
+
+def margin_cap_qty(eq_now: float) -> int:
+    # keep a reserve; cap total contracts by remaining margin
+#     reserve = max(0.0, float(args.margin_reserve_pct))
+#     eff_eq = max(0.0, float(eq_now) * (1.0 - reserve))
+#     per = max(1.0, float(args.margin_per_contract))
+#     return int(clamp(math.floor(eff_eq / per), 0, args.max_contracts))
+
+# >>> FIXED: previously (wrongly) nested under margin_cap_qty
+def determine_order_qty(current_net_qty: int) -> int:
+    pass
+#     Equity-based size (ladder + risk budget + HWM stepdown) with a hard margin cap.
+#     Emits 'sizing_debug' with all components on every call.
+    # Choose the equity source: IB NetLiq if available & enabled; else local equity calc
+    if args.use_ib_pnl and (ib_netliq is not None):
+        pass
+#         eq_now = float(ib_netliq)
+#         eq_src = "ib_netliq"
+    else:
+        pass
+#         eq_now = float(equity)
+#         eq_src = "local_equity"
+
+#     pc_risk = per_contract_risk_dollars()
+
+    if args.static_size:
+        pass
+#         final_qty = int(max(1, round(float(args.qty))))
+        _log_sizing_debug("static", {
+            "eq_src": eq_src, "eq_now": round(eq_now,2),
+            "risk_ticks": int(args.risk_ticks), "tick_size": float(args.tick_size),
+            "px_mult": float(px_mult), "pc_risk_dollars": round(pc_risk, 2),
+            "static_qty": final_qty, "current_net_qty": int(current_net_qty),
+            "max_contracts": int(args.max_contracts)
+        })
+        if (abs(current_net_qty) + final_qty) > args.max_contracts:
+            pass
+#             final_qty = max(0, args.max_contracts - abs(current_net_qty))
+#         return int(final_qty)
+
+    # Dynamic flow
+#     eq_size  = equity_ladder_size(eq_now)
+#     rb_size  = risk_budget_size(eq_now)
+#     base_qty = int(clamp(min(eq_size, rb_size), 1, args.max_contracts))
+#     stepdown_qty = apply_hwm_stepdown(base_qty)
+
+    # Margin ceiling applies to TOTAL position
+#     mcap_total    = margin_cap_qty(eq_now)
+#     desired_total = int(clamp(stepdown_qty, 0, args.max_contracts))
+#     total_cap     = int(clamp(mcap_total, 0, args.max_contracts))
+#     desired_total = min(desired_total, total_cap)
+
+    if abs(current_net_qty) >= desired_total:
+        pass
+#         addable = 0
+#         final_qty = 0
+    else:
+        pass
+#         addable = desired_total - abs(int(current_net_qty))
+#         final_qty = int(max(0, addable))
+
+    if (abs(current_net_qty) + final_qty) > args.max_contracts:
+        pass
+#         final_qty = max(0, args.max_contracts - abs(current_net_qty))
+
+    _log_sizing_debug("dynamic", {
+        "eq_src": eq_src, "eq_now": round(eq_now,2),
+        "acct_base": float(args.acct_base),
+        "risk_pct": float(args.risk_pct),
+        "risk_ticks": int(args.risk_ticks),
+        "tick_size": float(args.tick_size),
+        "px_mult": float(px_mult),
+        "pc_risk_dollars": round(pc_risk, 2),
+        "scale_step": float(args.scale_step),
+        "start_contracts": int(args.start_contracts),
+        "max_contracts": int(args.max_contracts),
+        "hwm_stepdown": bool(args.hwm_stepdown),
+        "hwm_stepdown_dollars": float(args.hwm_stepdown_dollars),
+        "margin_per_contract": float(args.margin_per_contract),
+        "margin_reserve_pct": float(args.margin_reserve_pct),
+        "equity_ladder_qty": int(eq_size),
+        "risk_budget_qty": int(rb_size),
+        "base_qty_min_ladder_risk": int(base_qty),
+        "after_hwm_stepdown_qty": int(stepdown_qty),
+        "margin_cap_total": int(mcap_total),
+        "desired_total_after_margin": int(desired_total),
+        "current_net_qty": int(current_net_qty),
+        "addable_qty": int(addable),
+        "final_order_qty": int(final_qty)
+    })
+#     return int(final_qty)
+And replace the broken heartbeat block with a clean one (keep just one log("hb", ) and fix indentation):
+
+# ---- Heartbeat data ----
+# arm_counts_disp = {}
+# arm_meanR_disp = {}
+if bandit:
+    for a in enabled_arms:
+        pass
+#         arm_counts_disp[a] = int(getattr(bandit, "arm_w", {}).get(a, 0.0))
+#         arm_meanR_disp[a] = round(getattr(bandit, "arm_meanR", {}).get(a, 0.0), 3)
+else:
+    arm_counts_disp = {a: 0 for a in enabled_arms}
+    arm_meanR_disp = {a: 0.0 for a in enabled_arms}
+
+in_news_pause = news_guard.in_pause(now)  # <<< aligned
+
+# Live sizing snapshot for the heartbeat
+if args.use_ib_pnl and (ib_netliq is not None):
+    pass
+#     eq_now_hb = float(ib_netliq); eq_src_hb = "ib_netliq"
+else:
+    pass
+#     eq_now_hb = float(equity);     eq_src_hb = "local_equity"
+
+# ladder_qty = equity_ladder_size(eq_now_hb)
+# rb_qty = risk_budget_size(eq_now_hb)
+# base_qty_hb = int(clamp(min(ladder_qty, rb_qty), 1, args.max_contracts))
+# stepdown_qty_hb = apply_hwm_stepdown(base_qty_hb)
+# mcap_total_hb = margin_cap_qty(eq_now_hb)
+# desired_total_hb = min(
+#     int(clamp(stepdown_qty_hb, 0, args.max_contracts)),
+#     int(clamp(mcap_total_hb, 0, args.max_contracts))
+sugg_qty = stepdown_qty_hb  # legacy display
+
+# avg_disp = 0.0
+if avg_cost_raw is not None and px_mult > 0:
+    try: avg_disp = (avg_cost_raw / px_mult)
+    except Exception: avg_disp = 0.0
+
+# ---- Determine state & emit ----
+# ... keep your reasons/state computation as-is ...
+
+if emit:
+    pass
+#     vwap_disp = None if (vwap is None or math.isnan(vwap.vwap)) else round(vwap.vwap, 2)
+#     log("hb",
+#         src=src,
+#         state=state,
+#         rt_fresh=bool(rt_fresh),
+#         dayR=round(risk.day_R,3),
+#         weekR=round(week_R,3),
+#         week_halted=bool(week_halted and args.enable_weekly_cap),
+#         pos=net_qty,
+#         avg=round(avg_disp, 2),
+#         bars=len(C),
+#         consec_losses=risk.consec_losses,
+#         equity=round(equity,2),
+#         equity_hwm=round(equity_hwm,2),
+
+        # legacy suggestion
+#         suggest_qty=int(sugg_qty),
+
+        # sizing snapshot
+#         sizing_snapshot={
+            "eq_src": eq_src_hb,
+            "eq_now": round(eq_now_hb,2),
+            "equity_ladder_qty": int(ladder_qty),
+            "risk_budget_qty": int(rb_qty),
+            "after_hwm_stepdown_qty": int(stepdown_qty_hb),
+            "margin_cap_total": int(mcap_total_hb),
+            "desired_total_after_margin": int(desired_total_hb)
+        },
+
+#         arms=arm_counts_disp,
+#         armR=arm_meanR_disp,
+#         day_realized=round(day_realized,2),
+#         day_guard=round(day_guard_dollars,2),
+#         session_vwap=vwap_disp
+    _last_hb_emit = now_epoch
+Optional (to make bbbw intention match the name):
+
+# When seeding bars / RT bars, also compute HL2 = (high+low)/2
+# HL2.append( (b.high + b.low) * 0.5 )
+
+# Then use: _bbbw = bbbw(HL2, 20, 2.0) or float("nan")
+# and in feature_vector: bw = bbbw(HL2, 20, 2.0) or 0.0
+# If you want, I can produce a cleaned version of the whole file with these fixes applied. Would you like me to output a full corrected script in one piece?
+
+
+
+# unnest and restore the full determine_order_qty(...) function
+
+# keep margin_cap_qty(...) correct
+
+# clean and dedupe the heartbeat log("hb", ) block (and remove the stray l)
+
+# compute proper HL2 = (high+low)/2 instead of using closes
+
+# Just paste this into a PowerShell window opened in the folder that has paper_trader.py.
+
+# 0) Back up the original
+# Copy-Item -LiteralPath '.\paper_trader.py' -Destination '.\paper_trader.py.bak' -Force
+
+# 1) Load file
+$src = Get-Content '.\paper_trader.py' -Raw
+
+# 2) Fix HL2 calculation (seed, RT, and poll blocks):
+$src = $src -replace 'HL2\.append\(b\.close\)', 'HL2.append((b.high + b.low) * 0.5)'
+$src = $src -replace 'HL2\.append\(last\.close\)', 'HL2.append((last.high + last.low) * 0.5)'
+
+# 3) Remove the stray line "l" that precedes a heartbeat log
+$src = $src -replace "(?ms)^\s*l\s*\r?\n(\s*log\(\"hb\",)","`$1"
+
+# 4) Replace the whole heartbeat block with a clean version
+$hbPattern = '(?ms)#\s*----\s*Heartbeat data\s*----.*?_last_hb_emit\s*=\s*now_epoch'
+$hbReplacement = @'
+# ---- Heartbeat data ----
+# arm_counts_disp = {}
+# arm_meanR_disp = {}
+if bandit:
+    for a in enabled_arms:
+        pass
+#         arm_counts_disp[a] = int(getattr(bandit, "arm_w", {}).get(a, 0.0))
+#         arm_meanR_disp[a] = round(getattr(bandit, "arm_meanR", {}).get(a, 0.0), 3)
+else:
+    arm_counts_disp = {a: 0 for a in enabled_arms}
+    arm_meanR_disp = {a: 0.0 for a in enabled_arms}
+
+# in_news_pause = news_guard.in_pause(now)
+
+# Live sizing snapshot for the heartbeat
+if args.use_ib_pnl and (ib_netliq is not None):
+    pass
+#     eq_now_hb = float(ib_netliq); eq_src_hb = "ib_netliq"
+else:
+    pass
+#     eq_now_hb = float(equity);     eq_src_hb = "local_equity"
+
+# ladder_qty = equity_ladder_size(eq_now_hb)
+# rb_qty = risk_budget_size(eq_now_hb)
+# base_qty_hb = int(clamp(min(ladder_qty, rb_qty), 1, args.max_contracts))
+# stepdown_qty_hb = apply_hwm_stepdown(base_qty_hb)
+# mcap_total_hb = margin_cap_qty(eq_now_hb)
+# desired_total_hb = min(
+#     int(clamp(stepdown_qty_hb, 0, args.max_contracts)),
+#     int(clamp(mcap_total_hb, 0, args.max_contracts))
+sugg_qty = stepdown_qty_hb  # legacy display
+
+# avg_disp = 0.0
+if avg_cost_raw is not None and px_mult > 0:
+    try: avg_disp = (avg_cost_raw / px_mult)
+    except Exception: avg_disp = 0.0
+
+# ---- Determine state & caps reasons ----
+# reasons = []
+if risk.day_R <= -abs(args.day_loss_cap_R): reasons.append("dayR_cap")
+if risk.trades >= args.max_trades_per_day: reasons.append("max_trades")
+if risk.halted: reasons.append("risk_halted")
+if args.enable_weekly_cap and week_halted: reasons.append("week_cap")
+if day_realized <= day_guard_dollars: reasons.append("minus5pct_guard")
+if args.peak_dd_guard_pct > 0 and (day_peak_realized >= float(args.peak_dd_min_profit)):
+    if day_realized <= day_peak_realized * (1.0 - float(args.peak_dd_guard_pct)):
+        pass
+#         reasons.append("peak_dd_guard")
+
+# state = (
+#     else "news" if in_news_pause
+#     else "wait_rt" if (args.require_rt_before_trading and not rt_fresh)
+#     else "cooldown" if (risk.cool_until and now < risk.cool_until)
+#     else "active" if within_session(now, args.trade_start_ct, args.trade_end_ct)
+#     else "sleep"
+
+if state == "caps" and not in_caps:
+    pass
+#     in_caps = True
+#     log("caps_on", reasons=reasons, day_realized=round(day_realized,2),
+#         day_peak=round(day_peak_realized,2), dayR=round(risk.day_R,3))
+if state != "caps" and in_caps:
+    pass
+#     in_caps = False
+
+# emit = False
+# now_epoch = time.time()
+if _last_state_for_hb != state:
+    pass
+#     emit = True; _last_state_for_hb = state
+elif (now_epoch - _last_hb_emit) >= 1.0:
+    pass
+#     emit = True
+
+if emit:
+    pass
+#     vwap_disp = None if (vwap is None or math.isnan(vwap.vwap)) else round(vwap.vwap, 2)
+#     log("hb",
+#         src=src,
+#         state=state,
+#         rt_fresh=bool(rt_fresh),
+#         dayR=round(risk.day_R,3),
+#         weekR=round(week_R,3),
+#         week_halted=bool(week_halted and args.enable_weekly_cap),
+#         pos=net_qty,
+#         avg=round(avg_disp, 2),
+#         bars=len(C),
+#         consec_losses=risk.consec_losses,
+#         equity=round(equity,2),
+#         equity_hwm=round(equity_hwm,2),
+
+        # legacy displayed suggestion
+#         suggest_qty=int(sugg_qty),
+
+        # sizing snapshot (new)
+#         sizing_snapshot={
+            "eq_src": eq_src_hb,
+            "eq_now": round(eq_now_hb,2),
+            "equity_ladder_qty": int(ladder_qty),
+            "risk_budget_qty": int(rb_qty),
+            "after_hwm_stepdown_qty": int(stepdown_qty_hb),
+            "margin_cap_total": int(mcap_total_hb),
+            "desired_total_after_margin": int(desired_total_hb)
+        },
+
+#         arms=arm_counts_disp,
+#         armR=arm_meanR_disp,
+#         day_realized=round(day_realized,2),
+#         day_guard=round(day_guard_dollars,2),
+#         session_vwap=vwap_disp
+    _last_hb_emit = now_epoch
+$src = [regex]::Replace($src, $hbPattern, [System.Text.RegularExpressions.MatchEvaluator]{ param($m) $hbReplacement })
+
+# 5) Replace the whole sizing section (margin_cap_qty + determine_order_qty) with a clean pair of functions
+$sizingPattern = '(?ms)#\s*-----\s*Margin cap.*?def\s+place_bracket'
+$sizingReplacement = @'
+# ----- Margin cap (NEW) -----
+def margin_cap_qty(eq_now: float) -> int:
+    # keep a reserve; cap total contracts by remaining margin
+#     reserve = max(0.0, float(args.margin_reserve_pct))
+#     eff_eq = max(0.0, float(eq_now) * (1.0 - reserve))
+#     per = max(1.0, float(args.margin_per_contract))
+#     return int(clamp(math.floor(eff_eq / per), 0, args.max_contracts))
+
+def determine_order_qty(current_net_qty: int) -> int:
+    pass
+#     Equity-based size (ladder + risk budget + HWM stepdown) with a hard margin cap.
+#     Emits 'sizing_debug' with all components on every call.
+    # Choose the equity source: IB NetLiq if available & enabled; else local equity calc
+    if args.use_ib_pnl and (ib_netliq is not None):
+        pass
+#         eq_now = float(ib_netliq)
+#         eq_src = "ib_netliq"
+    else:
+        pass
+#         eq_now = float(equity)
+#         eq_src = "local_equity"
+
+#     pc_risk = per_contract_risk_dollars()
+
+    if args.static_size:
+        pass
+#         final_qty = int(max(1, round(float(args.qty))))
+        _log_sizing_debug("static", {
+            "eq_src": eq_src, "eq_now": round(eq_now,2),
+            "risk_ticks": int(args.risk_ticks), "tick_size": float(args.tick_size),
+            "px_mult": float(px_mult), "pc_risk_dollars": round(pc_risk, 2),
+            "static_qty": final_qty, "current_net_qty": int(current_net_qty),
+            "max_contracts": int(args.max_contracts)
+        })
+        if (abs(current_net_qty) + final_qty) > args.max_contracts:
+            pass
+#             final_qty = max(0, args.max_contracts - abs(current_net_qty))
+#         return int(final_qty)
+
+    # Dynamic flow
+#     eq_size  = equity_ladder_size(eq_now)
+#     rb_size  = risk_budget_size(eq_now)
+#     base_qty = int(clamp(min(eq_size, rb_size), 1, args.max_contracts))
+#     stepdown_qty = apply_hwm_stepdown(base_qty)
+
+    # Margin ceiling applies to TOTAL position
+#     mcap_total    = margin_cap_qty(eq_now)
+#     desired_total = int(clamp(stepdown_qty, 0, args.max_contracts))
+#     total_cap     = int(clamp(mcap_total, 0, args.max_contracts))
+#     desired_total = min(desired_total, total_cap)
+
+    if abs(current_net_qty) >= desired_total:
+        pass
+#         addable = 0
+#         final_qty = 0
+    else:
+        pass
+#         addable = desired_total - abs(int(current_net_qty))
+#         final_qty = int(max(0, addable))
+
+    # Absolute cap
+    if (abs(current_net_qty) + final_qty) > args.max_contracts:
+        pass
+#         final_qty = max(0, args.max_contracts - abs(current_net_qty))
+
+    _log_sizing_debug("dynamic", {
+        "eq_src": eq_src, "eq_now": round(eq_now,2),
+        "acct_base": float(args.acct_base),
+        "risk_pct": float(args.risk_pct),
+        "risk_ticks": int(args.risk_ticks),
+        "tick_size": float(args.tick_size),
+        "px_mult": float(px_mult),
+        "pc_risk_dollars": round(pc_risk, 2),
+        "scale_step": float(args.scale_step),
+        "start_contracts": int(args.start_contracts),
+        "max_contracts": int(args.max_contracts),
+        "hwm_stepdown": bool(args.hwm_stepdown),
+        "hwm_stepdown_dollars": float(args.hwm_stepdown_dollars),
+        "margin_per_contract": float(args.margin_per_contract),
+        "margin_reserve_pct": float(args.margin_reserve_pct),
+        "equity_ladder_qty": int(eq_size),
+        "risk_budget_qty": int(rb_size),
+        "base_qty_min_ladder_risk": int(base_qty),
+        "after_hwm_stepdown_qty": int(stepdown_qty),
+        "margin_cap_total": int(mcap_total),
+        "desired_total_after_margin": int(desired_total),
+        "current_net_qty": int(current_net_qty),
+        "addable_qty": int(addable),
+        "final_order_qty": int(final_qty)
+    })
+#     return int(final_qty)
+
+# ------- Entry/Place -------
+$src = [regex]::Replace($src, $sizingPattern, $sizingReplacement)
+
+# 6) Save the fixed file
+# Set-Content -LiteralPath '.\paper_trader.py' -Value $src -Encoding UTF8
+
+# Write-Host " Applied fixes. A backup is at paper_trader.py.bak"
+# If anything looks off after running it, we can adjust the regex to match your local formatting. Want me to also include a quick PowerShell lint pass (run python -m pyflakes and show errors) or a tiny PS test harness to import the module and sanity-check those functions?
+
+# Copyright (C) Microsoft Corporation. All rights reserved.
+
+Install the latest PowerShell for new features and improvements! https://aka.ms/PSWindows
+
+PS C:\Users\owner\Desktop\es_futures_backtester> # 0) Back up the original
+PS C:\Users\owner\Desktop\es_futures_backtester> Copy-Item -LiteralPath '.\paper_trader.py' -Destination '.\paper_trader.py.bak' -Force
+PS C:\Users\owner\Desktop\es_futures_backtester>
+PS C:\Users\owner\Desktop\es_futures_backtester> # 1) Load file
+PS C:\Users\owner\Desktop\es_futures_backtester> $src = Get-Content '.\paper_trader.py' -Raw
+PS C:\Users\owner\Desktop\es_futures_backtester>
+PS C:\Users\owner\Desktop\es_futures_backtester> # 2) Fix HL2 calculation (seed, RT, and poll blocks):
+PS C:\Users\owner\Desktop\es_futures_backtester> $src = $src -replace 'HL2\.append\(b\.close\)', 'HL2.append((b.high + b.low) * 0.5)'
+PS C:\Users\owner\Desktop\es_futures_backtester> $src = $src -replace 'HL2\.append\(last\.close\)', 'HL2.append((last.high + last.low) * 0.5)'
+PS C:\Users\owner\Desktop\es_futures_backtester>
+PS C:\Users\owner\Desktop\es_futures_backtester> # 3) Remove the stray line "l" that precedes a heartbeat log
+PS C:\Users\owner\Desktop\es_futures_backtester> $src = $src -replace "(?ms)^\s*l\s*\r?\n(\s*log\(\"hb\",)","$1"
+At line:1 char:52
++ $src = $src -replace "(?ms)^\s*l\s*\r?\n(\s*log\(\"hb\",)","$1"
+# Unexpected token 'hb\",)"' in expression or statement.
+At line:1 char:59
++ $src = $src -replace "(?ms)^\s*l\s*\r?\n(\s*log\(\"hb\",)","$1"
+# Missing argument in parameter list.
+    + CategoryInfo          : ParserError: (:) [], ParentContainsErrorRecordException
+    + FullyQualifiedErrorId : UnexpectedToken
+
+PS C:\Users\owner\Desktop\es_futures_backtester>
+PS C:\Users\owner\Desktop\es_futures_backtester> # 4) Replace the whole heartbeat block with a clean version
+PS C:\Users\owner\Desktop\es_futures_backtester> $hbPattern = '(?ms)#\s*----\s*Heartbeat data\s*----.*?_last_hb_emit\s*=\s*now_epoch'
+PS C:\Users\owner\Desktop\es_futures_backtester> $hbReplacement = @'
+>> arm_counts_disp = {}
+>> arm_meanR_disp = {}
+>> if bandit:
+>>     for a in enabled_arms:
+>>         arm_counts_disp[a] = int(getattr(bandit, "arm_w", {}).get(a, 0.0))
+>>         arm_meanR_disp[a] = round(getattr(bandit, "arm_meanR", {}).get(a, 0.0), 3)
+>> else:
+>>     arm_counts_disp = {a: 0 for a in enabled_arms}
+>>     arm_meanR_disp = {a: 0.0 for a in enabled_arms}
+>> in_news_pause = news_guard.in_pause(now)
+>> if args.use_ib_pnl and (ib_netliq is not None):
+>>     eq_now_hb = float(ib_netliq); eq_src_hb = "ib_netliq"
+>> else:
+>>     eq_now_hb = float(equity);     eq_src_hb = "local_equity"
+>> ladder_qty = equity_ladder_size(eq_now_hb)
+>> rb_qty = risk_budget_size(eq_now_hb)
+>> base_qty_hb = int(clamp(min(ladder_qty, rb_qty), 1, args.max_contracts))
+>> stepdown_qty_hb = apply_hwm_stepdown(base_qty_hb)
+>> mcap_total_hb = margin_cap_qty(eq_now_hb)
+>> desired_total_hb = min(
+>>     int(clamp(stepdown_qty_hb, 0, args.max_contracts)),
+>>     int(clamp(mcap_total_hb, 0, args.max_contracts))
+>> )
+>> sugg_qty = stepdown_qty_hb  # legacy display
+>> avg_disp = 0.0
+>> if avg_cost_raw is not None and px_mult > 0:
+>>     try: avg_disp = (avg_cost_raw / px_mult)
+>>     except Exception: avg_disp = 0.0
+>> reasons = []
+>> if risk.day_R <= -abs(args.day_loss_cap_R): reasons.append("dayR_cap")
+>> if risk.trades >= args.max_trades_per_day: reasons.append("max_trades")
+>> if risk.halted: reasons.append("risk_halted")
+>> if args.enable_weekly_cap and week_halted: reasons.append("week_cap")
+>> if day_realized <= day_guard_dollars: reasons.append("minus5pct_guard")
+>> if args.peak_dd_guard_pct > 0 and (day_peak_realized >= float(args.peak_dd_min_profit)):
+>>     if day_realized <= day_peak_realized * (1.0 - float(args.peak_dd_guard_pct)):
+>>         reasons.append("peak_dd_guard")
+>> state = (
+>>     else "wait_rt" if (args.require_rt_before_trading and not rt_fresh)
+>>     else "cooldown" if (risk.cool_until and now < risk.cool_until)
+>>     else "active" if within_session(now, args.trade_start_ct, args.trade_end_ct)
+>> )
+>> if state == "caps" and not in_caps:
+>>     in_caps = True
+>>     log("caps_on", reasons=reasons, day_realized=round(day_realized,2),
+>>         day_peak=round(day_peak_realized,2), dayR=round(risk.day_R,3))
+>> if state != "caps" and in_caps:
+>>     in_caps = False
+>> emit = False
+>> now_epoch = time.time()
+>> if _last_state_for_hb != state:
+>>     emit = True; _last_state_for_hb = state
+>> elif (now_epoch - _last_hb_emit) >= 1.0:
+>>     emit = True
+>> if emit:
+>>     vwap_disp = None if (vwap is None or math.isnan(vwap.vwap)) else round(vwap.vwap, 2)
+>>     log("hb",
+>>         src=src,
+>>         state=state,
+>>         rt_fresh=bool(rt_fresh),
+>>         dayR=round(risk.day_R,3),
+>>         weekR=round(week_R,3),
+>>         week_halted=bool(week_halted and args.enable_weekly_cap),
+>>         pos=net_qty,
+>>         avg=round(avg_disp, 2),
+>>         bars=len(C),
+>>         consec_losses=risk.consec_losses,
+>>         equity=round(equity,2),
+>>         equity_hwm=round(equity_hwm,2),
+>>         suggest_qty=int(sugg_qty),
+>>         # sizing snapshot (new)
+>>         sizing_snapshot={
+>>             "eq_src": eq_src_hb,
+>>             "eq_now": round(eq_now_hb,2),
+>>             "equity_ladder_qty": int(ladder_qty),
+>>             "risk_budget_qty": int(rb_qty),
+>>             "after_hwm_stepdown_qty": int(stepdown_qty_hb),
+>>             "margin_cap_total": int(mcap_total_hb),
+>>             "desired_total_after_margin": int(desired_total_hb)
+>>         },
+>>         arms=arm_counts_disp,
+>>         armR=arm_meanR_disp,
+>>         day_realized=round(day_realized,2),
+>>         day_guard=round(day_guard_dollars,2),
+>>         session_vwap=vwap_disp
+>>     )
+>>     _last_hb_emit = now_epoch
+PS C:\Users\owner\Desktop\es_futures_backtester> $src = [regex]::Replace($src, $hbPattern, [System.Text.RegularExpressions.MatchEvaluator]{ param($m) $hbReplacement })
+PS C:\Users\owner\Desktop\es_futures_backtester>
+PS C:\Users\owner\Desktop\es_futures_backtester> # 5) Replace the whole sizing section (margin_cap_qty + determine_order_qty) with a clean pair of functions
+PS C:\Users\owner\Desktop\es_futures_backtester> $sizingPattern = '(?ms)#\s*-----\s*Margin cap.*?def\s+place_bracket'
+PS C:\Users\owner\Desktop\es_futures_backtester> $sizingReplacement = @'
+>> # ----- Margin cap (NEW) -----
+>> def margin_cap_qty(eq_now: float) -> int:
+>>     reserve = max(0.0, float(args.margin_reserve_pct))
+>>     eff_eq = max(0.0, float(eq_now) * (1.0 - reserve))
+>>     per = max(1.0, float(args.margin_per_contract))
+>>     return int(clamp(math.floor(eff_eq / per), 0, args.max_contracts))
+>> def determine_order_qty(current_net_qty: int) -> int:
+>>     Equity-based size (ladder + risk budget + HWM stepdown) with a hard margin cap.
+>>     Emits 'sizing_debug' with all components on every call.
+>>     # Choose the equity source: IB NetLiq if available & enabled; else local equity calc
+>>     if args.use_ib_pnl and (ib_netliq is not None):
+>>         eq_now = float(ib_netliq)
+>>         eq_src = "ib_netliq"
+>>     else:
+>>         eq_now = float(equity)
+>>         eq_src = "local_equity"
+>>     pc_risk = per_contract_risk_dollars()
+>>     if args.static_size:
+>>         final_qty = int(max(1, round(float(args.qty))))
+>>         _log_sizing_debug("static", {
+>>             "eq_src": eq_src, "eq_now": round(eq_now,2),
+>>             "risk_ticks": int(args.risk_ticks), "tick_size": float(args.tick_size),
+>>             "px_mult": float(px_mult), "pc_risk_dollars": round(pc_risk, 2),
+>>             "static_qty": final_qty, "current_net_qty": int(current_net_qty),
+>>             "max_contracts": int(args.max_contracts)
+>>         })
+>>         if (abs(current_net_qty) + final_qty) > args.max_contracts:
+>>             final_qty = max(0, args.max_contracts - abs(current_net_qty))
+>>         return int(final_qty)
+>>     eq_size  = equity_ladder_size(eq_now)
+>>     rb_size  = risk_budget_size(eq_now)
+>>     base_qty = int(clamp(min(eq_size, rb_size), 1, args.max_contracts))
+>>     stepdown_qty = apply_hwm_stepdown(base_qty)
+>>     mcap_total    = margin_cap_qty(eq_now)
+>>     desired_total = int(clamp(stepdown_qty, 0, args.max_contracts))
+>>     total_cap     = int(clamp(mcap_total, 0, args.max_contracts))
+>>     desired_total = min(desired_total, total_cap)
+>>     if abs(current_net_qty) >= desired_total:
+>>         addable = 0
+>>         final_qty = 0
+>>     else:
+>>         addable = desired_total - abs(int(current_net_qty))
+>>         final_qty = int(max(0, addable))
+>>     if (abs(current_net_qty) + final_qty) > args.max_contracts:
+>>         final_qty = max(0, args.max_contracts - abs(current_net_qty))
+>>     _log_sizing_debug("dynamic", {
+>>         "eq_src": eq_src, "eq_now": round(eq_now,2),
+>>         "acct_base": float(args.acct_base),
+>>         "risk_pct": float(args.risk_pct),
+>>         "risk_ticks": int(args.risk_ticks),
+>>         "tick_size": float(args.tick_size),
+>>         "px_mult": float(px_mult),
+>>         "pc_risk_dollars": round(pc_risk, 2),
+>>         "scale_step": float(args.scale_step),
+>>         "start_contracts": int(args.start_contracts),
+>>         "max_contracts": int(args.max_contracts),
+>>         "hwm_stepdown": bool(args.hwm_stepdown),
+>>         "hwm_stepdown_dollars": float(args.hwm_stepdown_dollars),
+>>         "margin_per_contract": float(args.margin_per_contract),
+>>         "margin_reserve_pct": float(args.margin_reserve_pct),
+>>         "equity_ladder_qty": int(eq_size),
+>>         "risk_budget_qty": int(rb_size),
+>>         "base_qty_min_ladder_risk": int(base_qty),
+>>         "after_hwm_stepdown_qty": int(stepdown_qty),
+>>         "margin_cap_total": int(mcap_total),
+>>         "desired_total_after_margin": int(desired_total),
+>>         "current_net_qty": int(current_net_qty),
+>>         "addable_qty": int(addable),
+>>         "final_order_qty": int(final_qty)
+>>     })
+>>     return int(final_qty)
+PS C:\Users\owner\Desktop\es_futures_backtester> $src = [regex]::Replace($src, $sizingPattern, $sizingReplacement)
+PS C:\Users\owner\Desktop\es_futures_backtester>
+PS C:\Users\owner\Desktop\es_futures_backtester> # 6) Save the fixed file
+PS C:\Users\owner\Desktop\es_futures_backtester> Set-Content -LiteralPath '.\paper_trader.py' -Value $src -Encoding UTF8
+
+PS C:\Users\owner\Desktop\es_futures_backtester>
+PS C:\Users\owner\Desktop\es_futures_backtester> Write-Host " Applied fixes. A backup is at paper_trader.py.bak"
+#  Applied fixes. A backup is at paper_trader.py.bak
+PS C:\Users\owner\Desktop\es_futures_backtester>
+
+
+
+1) Add _log_sizing_debug helper (only if missing)
+Paste this in PowerShell from the project folder:
+
+$path = '.\paper_trader.py'
+$src  = Get-Content $path -Raw
+# if ($src -notmatch 'def\s+_log_sizing_debug\(') {
+  $helper = @'
+def _log_sizing_debug(mode: str, d: dict):
+    """Emit a compact sizing debug entry; safe if anything goes wrong."""
+    try:
+        payload = {"mode": str(mode)}
+        payload.update({k: (float(v) if isinstance(v, (int, float)) else v) for k, v in d.items()})
+#         log("sizing_debug", **payload)
+    except Exception:
+        try: log("sizing_debug_err", mode=str(mode))
+        except Exception: pass
+
+  # Insert the helper just before per_contract_risk_dollars()
+  $src = $src -replace '(?ms)(\n\s*def\s+per_contract_risk_dollars\()', "`n$helper`$1"
+#   Write-Host " Added _log_sizing_debug helper."
+} else {
+#   Write-Host "  _log_sizing_debug already present; no changes made."
+2) Quick syntax & lint checks
+If you have Python and (optionally) pyflakes:
+    pass
+
+# Syntax compile
+# python -m py_compile .\paper_trader.py
+
+# Optional: lightweight lint (install once if needed)
+# pyflakes .\paper_trader.py
+3) Smoke test (no trading)
+This just runs CLI/argparse without connecting (it will exit fast on connect attempts):
+
+# python .\paper_trader.py --help
+# python .\paper_trader.py --connect-attempts 1 --force-delayed
+
+# Copyright (C) Microsoft Corporation. All rights reserved.
+
+Install the latest PowerShell for new features and improvements! https://aka.ms/PSWindows
+
+PS C:\Users\owner\Desktop\es_futures_backtester> $path = '.\paper_trader.py'
+PS C:\Users\owner\Desktop\es_futures_backtester> $src  = Get-Content $path -Raw
+PS C:\Users\owner\Desktop\es_futures_backtester> if ($src -notmatch 'def\s+_log_sizing_debug\(') {
+>>   $helper = @'
+>> def _log_sizing_debug(mode: str, d: dict):
+>>     """Emit a compact sizing debug entry; safe if anything goes wrong."""
+>>     try:
+>>         payload = {"mode": str(mode)}
+>>         payload.update({k: (float(v) if isinstance(v, (int, float)) else v) for k, v in d.items()})
+>>         log("sizing_debug", **payload)
+>>     except Exception:
+>>         try: log("sizing_debug_err", mode=str(mode))
+>>         except Exception: pass
+>>   # Insert the helper just before per_contract_risk_dollars()
+>>   $src = $src -replace '(?ms)(\n\s*def\s+per_contract_risk_dollars\()', "n$helper$1"
+>>   Write-Host " Added _log_sizing_debug helper."
+>> } else {
+>>   Write-Host "  _log_sizing_debug already present; no changes made."
+>> }
+#  Added _log_sizing_debug helper.
+PS C:\Users\owner\Desktop\es_futures_backtester> # Syntax compile
+PS C:\Users\owner\Desktop\es_futures_backtester> python -m py_compile .\paper_trader.py
+PS C:\Users\owner\Desktop\es_futures_backtester>
+PS C:\Users\owner\Desktop\es_futures_backtester> # Optional: lightweight lint (install once if needed)
+PS C:\Users\owner\Desktop\es_futures_backtester> python -m pip install --upgrade pyflakes
+#   Downloading pyflakes-3.4.0-py2.py3-none-any.whl.metadata (3.5 kB)
+# Downloading pyflakes-3.4.0-py2.py3-none-any.whl (63 kB)
+Installing collected packages: pyflakes
+# Successfully installed pyflakes-3.4.0
+PS C:\Users\owner\Desktop\es_futures_backtester> pyflakes .\paper_trader.py
+PS C:\Users\owner\Desktop\es_futures_backtester> python .\paper_trader.py --help
+PS C:\Users\owner\Desktop\es_futures_backtester> python .\paper_trader.py --connect-attempts 1 --force-delayed
+PS C:\Users\owner\Desktop\es_futures_backtester>
+
+
+# Quick checks (copy/paste)
+
+# python -c "print('hello from', __import__('sys').executable)"
+
+# python -c "import ib_insync, sys; print('ib_insync OK', ib_insync.__version__)"
+Run the script unbuffered with faulthandler (forces flushes & shows crashes):
+
+# python -u -X faulthandler .\paper_trader.py --help
+# python -u -X faulthandler .\paper_trader.py --connect-attempts 1 --force-delayed
+
+# python -v .\paper_trader.py --help 2>&1 | more
+
+(Get-Content .\paper_trader.py -TotalCount 30) -join "`n"
+# Select-String -Path .\paper_trader.py -Pattern 'Starting ES paper bot|\[CONNECT\]'
+Compare backup vs current (just to ensure no accidental wipe happened):
+
+# fc .\paper_trader.py.bak .\paper_trader.py
+
+
+
+
+# Copyright (C) Microsoft Corporation. All rights reserved.
+
+Install the latest PowerShell for new features and improvements! https://aka.ms/PSWindows
+
+PS C:\Users\owner\Desktop\es_futures_backtester> $path = '.\paper_trader.py'
+PS C:\Users\owner\Desktop\es_futures_backtester> $src  = Get-Content $path -Raw
+PS C:\Users\owner\Desktop\es_futures_backtester> if ($src -notmatch 'def\s+_log_sizing_debug\(') {
+>>   $helper = @'
+>> def _log_sizing_debug(mode: str, d: dict):
+>>     """Emit a compact sizing debug entry; safe if anything goes wrong."""
+>>     try:
+>>         payload = {"mode": str(mode)}
+>>         payload.update({k: (float(v) if isinstance(v, (int, float)) else v) for k, v in d.items()})
+>>         log("sizing_debug", **payload)
+>>     except Exception:
+>>         try: log("sizing_debug_err", mode=str(mode))
+>>         except Exception: pass
+>>   # Insert the helper just before per_contract_risk_dollars()
+>>   $src = $src -replace '(?ms)(\n\s*def\s+per_contract_risk_dollars\()', "n$helper$1"
+>>   Write-Host " Added _log_sizing_debug helper."
+>> } else {
+>>   Write-Host "  _log_sizing_debug already present; no changes made."
+>> }
+#  Added _log_sizing_debug helper.
+PS C:\Users\owner\Desktop\es_futures_backtester> # Syntax compile
+PS C:\Users\owner\Desktop\es_futures_backtester> python -m py_compile .\paper_trader.py
+PS C:\Users\owner\Desktop\es_futures_backtester>
+PS C:\Users\owner\Desktop\es_futures_backtester> # Optional: lightweight lint (install once if needed)
+PS C:\Users\owner\Desktop\es_futures_backtester> python -m pip install --upgrade pyflakes
+#   Downloading pyflakes-3.4.0-py2.py3-none-any.whl.metadata (3.5 kB)
+# Downloading pyflakes-3.4.0-py2.py3-none-any.whl (63 kB)
+Installing collected packages: pyflakes
+# Successfully installed pyflakes-3.4.0
+PS C:\Users\owner\Desktop\es_futures_backtester> pyflakes .\paper_trader.py
+PS C:\Users\owner\Desktop\es_futures_backtester> python .\paper_trader.py --help
+PS C:\Users\owner\Desktop\es_futures_backtester> python .\paper_trader.py --connect-attempts 1 --force-delayed
+PS C:\Users\owner\Desktop\es_futures_backtester> python -V
+# Python 3.13.5
+PS C:\Users\owner\Desktop\es_futures_backtester> where python
+PS C:\Users\owner\Desktop\es_futures_backtester> python -c "print('hello from', __import__('sys').executable)"
+hello from C:\Users\owner\AppData\Local\Programs\Python\Python313\python.exe
+PS C:\Users\owner\Desktop\es_futures_backtester> python -c "import ib_insync, sys; print('ib_insync OK', ib_insync.__version__)"
+# ib_insync OK 0.9.86
+PS C:\Users\owner\Desktop\es_futures_backtester> python -u -X faulthandler .\paper_trader.py --help
+PS C:\Users\owner\Desktop\es_futures_backtester> python -u -X faulthandler .\paper_trader.py --connect-attempts 1 --force-delayed
+PS C:\Users\owner\Desktop\es_futures_backtester> echo $LASTEXITCODE
+PS C:\Users\owner\Desktop\es_futures_backtester> python -v .\paper_trader.py --help 2>&1 | more
+python : import _frozen_importlib # frozen
+At line:1 char:1
++ python -v .\paper_trader.py --help 2>&1 | more
+    + CategoryInfo          : NotSpecified: (import _frozen_importlib # frozen:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+
+import _imp # builtin
+import '_thread' # <class '_frozen_importlib.BuiltinImporter'>
+import '_warnings' # <class '_frozen_importlib.BuiltinImporter'>
+import '_weakref' # <class '_frozen_importlib.BuiltinImporter'>
+import 'winreg' # <class '_frozen_importlib.BuiltinImporter'>
+import '_io' # <class '_frozen_importlib.BuiltinImporter'>
+import 'marshal' # <class '_frozen_importlib.BuiltinImporter'>
+import 'nt' # <class '_frozen_importlib.BuiltinImporter'>
+import '_frozen_importlib_external' # <class '_frozen_importlib.FrozenImporter'>
+# installing zipimport hook
+import 'time' # <class '_frozen_importlib.BuiltinImporter'>
+import 'zipimport' # <class '_frozen_importlib.FrozenImporter'>
+# installed zipimport hook
+# C:\Users\owner\AppData\Local\Programs\Python\Python313\Lib\encodings\__pycache__\__init__.cpython-313.pyc matches
+C:\Users\owner\AppData\Local\Programs\Python\Python313\Lib\encodings\__init__.py
+# code object from
+'C:\\Users\\owner\\AppData\\Local\\Programs\\Python\\Python313\\Lib\\encodings\\__pycache__\\__init__.cpython-313.pyc'
+import '_codecs' # <class '_frozen_importlib.BuiltinImporter'>
+import 'codecs' # <class '_frozen_importlib.FrozenImporter'>
+# C:\Users\owner\AppData\Local\Programs\Python\Python313\Lib\encodings\__pycache__\aliases.cpython-313.pyc matches
+C:\Users\owner\AppData\Local\Programs\Python\Python313\Lib\encodings\aliases.py
+# code object from
+'C:\\Users\\owner\\AppData\\Local\\Programs\\Python\\Python313\\Lib\\encodings\\__pycache__\\aliases.cpython-313.pyc'
+
+
+Copy/paste these exactly in PowerShell from your project folder:
+
+# 1) Add an early "BOOT" print the moment the file is executed
+$path = '.\paper_trader.py'
+$src  = Get-Content $path -Raw
+$boot = @'
+print(">>> BOOT: paper_trader.py is executing", flush=True)
+
+# Insert right after the module docstring or the first import block
+# if ($src -match '^(?ms)(\A\s*("""[\s\S]*?"""|\'\'\'[\s\S]*?\'\'\')\s*)') {
+  $src = $src -replace '^(?ms)(\A\s*("""[\s\S]*?"""|\'\'\'[\s\S]*?\'\'\')\s*)', "`$1`r`n$boot"
+} else {
+  $src = $src -replace '^(?ms)(\s*import\s+[^\r\n]+[\r\n]+)', "`$1$boot"
+# Write-Host " Inserted BOOT print."
+# 2) Force argparse help to print (in case something odd swallows --help)
+#   We add a tiny guard near the start of main() before parsing args.
+$src = Get-Content $path -Raw
+$forceHelp = @'
+    # Hard guard: if user asked for help, print it explicitly and exit
+    if any(s in sys.argv for s in ("-h","--help")):
+        pass
+#         build_argparser().print_help()
+#         sys.exit(0)
+
+$src = $src -replace '(?ms)(def\s+main\(\):\s*\r?\n\s*#\s*----\s*Parse args\s*----\s*\r?\n\s*args,\s*_unknown\s*=\s*build_argparser\(\)\.parse_known_args\(\))', "`$1`r`n$forceHelp"
+# Write-Host " Added explicit --help guard."
+# 3) Add a final safety net around main() to print exceptions and SystemExit codes
+$src = Get-Content $path -Raw
+$runner = @'
+if __name__ == "__main__":
+    pass
+#     print(">>> ENTER main()", flush=True)
+    try:
+        pass
+#         main()
+    except SystemExit as e:
+        print(f">>> SystemExit: {e.code}", flush=True)
+    except Exception as e:
+        pass
+#         import traceback
+#         print(">>> Unhandled exception! See traceback below.", flush=True)
+#         traceback.print_exc()
+
+# Replace the existing __main__ block with our wrapped runner
+$src = $src -replace '(?ms)if __name__ == "__main__":\s*main\(\)\s*$', $runner
+# Write-Host " Wrapped main() with debug runner."
+Now run these to confirm we see output:
+
+# python -u -X faulthandler .\paper_trader.py --help
+# python -u -X faulthandler .\paper_trader.py --connect-attempts 1 --force-delayed
+What to expect:
+
+You should see >>> BOOT: ... immediately for any run.
+
+# With --help, you should get the argparse help text because we explicitly print it and sys.exit(0).
+
+
+
+# import runpy, os, sys
+# print("cwd =", os.getcwd())
+# print("exists =", os.path.exists(r'.\paper_trader.py'))
+# print("running run_path", flush=True)
+# runpy.run_path(r'.\paper_trader.py', run_name='__main__')
+# print("done run_path", flush=True)
+# and tell me exactly what prints. That will definitively tell us if Python can see and execute the file in the current directory.
+
+# Once we see output, we can remove the debug prints again with a quick cleanup snippet.
+
+# Copyright (C) Microsoft Corporation. All rights reserved.
+
+Install the latest PowerShell for new features and improvements! https://aka.ms/PSWindows
+
+PS C:\Users\owner\Desktop\es_futures_backtester> $path = '.\paper_trader.py'
+PS C:\Users\owner\Desktop\es_futures_backtester> $src  = Get-Content $path -Raw
+PS C:\Users\owner\Desktop\es_futures_backtester> if ($src -notmatch 'def\s+_log_sizing_debug\(') {
+>>   $helper = @'
+>> def _log_sizing_debug(mode: str, d: dict):
+>>     """Emit a compact sizing debug entry; safe if anything goes wrong."""
+>>     try:
+>>         payload = {"mode": str(mode)}
+>>         payload.update({k: (float(v) if isinstance(v, (int, float)) else v) for k, v in d.items()})
+>>         log("sizing_debug", **payload)
+>>     except Exception:
+>>         try: log("sizing_debug_err", mode=str(mode))
+>>         except Exception: pass
+>>   # Insert the helper just before per_contract_risk_dollars()
+>>   $src = $src -replace '(?ms)(\n\s*def\s+per_contract_risk_dollars\()', "n$helper$1"
+>>   Write-Host " Added _log_sizing_debug helper."
+>> } else {
+>>   Write-Host "  _log_sizing_debug already present; no changes made."
+>> }
+#  Added _log_sizing_debug helper.
+PS C:\Users\owner\Desktop\es_futures_backtester> # Syntax compile
+PS C:\Users\owner\Desktop\es_futures_backtester> python -m py_compile .\paper_trader.py
+PS C:\Users\owner\Desktop\es_futures_backtester>
+PS C:\Users\owner\Desktop\es_futures_backtester> # Optional: lightweight lint (install once if needed)
+PS C:\Users\owner\Desktop\es_futures_backtester> python -m pip install --upgrade pyflakes
+#   Downloading pyflakes-3.4.0-py2.py3-none-any.whl.metadata (3.5 kB)
+# Downloading pyflakes-3.4.0-py2.py3-none-any.whl (63 kB)
+Installing collected packages: pyflakes
+# Successfully installed pyflakes-3.4.0
+PS C:\Users\owner\Desktop\es_futures_backtester> pyflakes .\paper_trader.py
+PS C:\Users\owner\Desktop\es_futures_backtester> python .\paper_trader.py --help
+PS C:\Users\owner\Desktop\es_futures_backtester> python .\paper_trader.py --connect-attempts 1 --force-delayed
+PS C:\Users\owner\Desktop\es_futures_backtester> python -V
+# Python 3.13.5
+PS C:\Users\owner\Desktop\es_futures_backtester> where python
+PS C:\Users\owner\Desktop\es_futures_backtester> python -c "print('hello from', __import__('sys').executable)"
+hello from C:\Users\owner\AppData\Local\Programs\Python\Python313\python.exe
+PS C:\Users\owner\Desktop\es_futures_backtester> python -c "import ib_insync, sys; print('ib_insync OK', ib_insync.__version__)"
+# ib_insync OK 0.9.86
+PS C:\Users\owner\Desktop\es_futures_backtester> python -u -X faulthandler .\paper_trader.py --help
+PS C:\Users\owner\Desktop\es_futures_backtester> python -u -X faulthandler .\paper_trader.py --connect-attempts 1 --force-delayed
+PS C:\Users\owner\Desktop\es_futures_backtester> echo $LASTEXITCODE
+PS C:\Users\owner\Desktop\es_futures_backtester> python -v .\paper_trader.py --help 2>&1 | more
+python : import _frozen_importlib # frozen
+At line:1 char:1
++ python -v .\paper_trader.py --help 2>&1 | more
+    + CategoryInfo          : NotSpecified: (import _frozen_importlib # frozen:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+
+import _imp # builtin
+import '_thread' # <class '_frozen_importlib.BuiltinImporter'>
+import '_warnings' # <class '_frozen_importlib.BuiltinImporter'>
+import '_weakref' # <class '_frozen_importlib.BuiltinImporter'>
+import 'winreg' # <class '_frozen_importlib.BuiltinImporter'>
+import '_io' # <class '_frozen_importlib.BuiltinImporter'>
+import 'marshal' # <class '_frozen_importlib.BuiltinImporter'>
+import 'nt' # <class '_frozen_importlib.BuiltinImporter'>
+import '_frozen_importlib_external' # <class '_frozen_importlib.FrozenImporter'>
+# installing zipimport hook
+import 'time' # <class '_frozen_importlib.BuiltinImporter'>
+import 'zipimport' # <class '_frozen_importlib.FrozenImporter'>
+# installed zipimport hook
+# C:\Users\owner\AppData\Local\Programs\Python\Python313\Lib\encodings\__pycache__\__init__.cpython-313.pyc matches
+C:\Users\owner\AppData\Local\Programs\Python\Python313\Lib\encodings\__init__.py
+# code object from
+'C:\\Users\\owner\\AppData\\Local\\Programs\\Python\\Python313\\Lib\\encodings\\__pycache__\\__init__.cpython-313.pyc'
+import '_codecs' # <class '_frozen_importlib.BuiltinImporter'>
+import 'codecs' # <class '_frozen_importlib.FrozenImporter'>
+# C:\Users\owner\AppData\Local\Programs\Python\Python313\Lib\encodings\__pycache__\aliases.cpython-313.pyc matches
+C:\Users\owner\AppData\Local\Programs\Python\Python313\Lib\encodings\aliases.py
+# code object from
+'C:\\Users\\owner\\AppData\\Local\\Programs\\Python\\Python313\\Lib\\encodings\\__pycache__\\aliases.cpython-313.pyc'
+PS C:\Users\owner\Desktop\es_futures_backtester> # 1) Add an early "BOOT" print the moment the file is executed
+PS C:\Users\owner\Desktop\es_futures_backtester> $path = '.\paper_trader.py'
+PS C:\Users\owner\Desktop\es_futures_backtester> $src  = Get-Content $path -Raw
+PS C:\Users\owner\Desktop\es_futures_backtester> $boot = @'
+>> print(">>> BOOT: paper_trader.py is executing", flush=True)
+PS C:\Users\owner\Desktop\es_futures_backtester>
+PS C:\Users\owner\Desktop\es_futures_backtester> # Insert right after the module docstring or the first import block
+PS C:\Users\owner\Desktop\es_futures_backtester> if ($src -match '^(?ms)(\A\s*("""[\s\S]*?"""|\'\'\'[\s\S]*?\'\'\')\s*)') {
+>>   $src = $src -replace '^(?ms)(\A\s*("""[\s\S]*?"""|\'\'\'[\s\S]*?\'\'\')\s*)', "$1rn$boot"
+>> } else {
+>>   $src = $src -replace '^(?ms)(\s*import\s+[^\r\n]+[\r\n]+)', "$1$boot"
+>> }
+At line:1 char:48
++ ... src -match '^(?ms)(\A\s*("""[\s\S]*?"""|\'\'\'[\s\S]*?\'\'\')\s*)') {
+# Unexpected token '\'\'[\s\S]*?\'\'\')\s*)'' in expression or statement.
+At line:1 char:48
++ ... src -match '^(?ms)(\A\s*("""[\s\S]*?"""|\'\'\'[\s\S]*?\'\'\')\s*)') {
+# Missing closing ')' after expression in 'if' statement.
+At line:1 char:72
++ ... src -match '^(?ms)(\A\s*("""[\s\S]*?"""|\'\'\'[\s\S]*?\'\'\')\s*)') {
+# Unexpected token ')' in expression or statement.
+At line:2 char:55
++ ... place '^(?ms)(\A\s*("""[\s\S]*?"""|\'\'\'[\s\S]*?\'\'\')\s*)', "$1r ...
+# Unexpected token '\'\'[\s\S]*?\'\'\')\s*)'' in expression or statement.
+At line:2 char:79
++ ... lace '^(?ms)(\A\s*("""[\s\S]*?"""|\'\'\'[\s\S]*?\'\'\')\s*)', "$1r ...
+# Missing argument in parameter list.
+At line:3 char:3
++ } else {
+# Unexpected token 'else' in expression or statement.
+    + CategoryInfo          : ParserError: (:) [], ParentContainsErrorRecordException
+    + FullyQualifiedErrorId : UnexpectedToken
+
+PS C:\Users\owner\Desktop\es_futures_backtester> Set-Content -LiteralPath $path -Value $src -Encoding UTF8
+PS C:\Users\owner\Desktop\es_futures_backtester> Write-Host " Inserted BOOT print."
+#  Inserted BOOT print.
+PS C:\Users\owner\Desktop\es_futures_backtester>
+
+
+# 0) Backup
+# Copy-Item -LiteralPath '.\paper_trader.py' -Destination '.\paper_trader.py.bak' -Force
+
+# 1) Load file
+$path = '.\paper_trader.py'
+$src  = Get-Content $path -Raw
+
+# 2) Replace the minimal __main__ block with a wrapped one that *always prints*
+$wrapped = @"
+if __name__ == "__main__":
+    pass
+#     print(">>> ENTER main()", flush=True)
+    try:
+        pass
+#         main()
+    except SystemExit as e:
+        print(f">>> SystemExit: {e.code}", flush=True)
+    except Exception as e:
+        pass
+#         import traceback
+#         print(">>> Unhandled exception! See traceback below.", flush=True)
+#         traceback.print_exc()
+
+# This regex is simple (no nested quotes). It matches the usual 'if __name__ == "__main__": main()' at EOF.
+$src = [regex]::Replace($src, '(?ms)if __name__ == "__main__":\s*main\(\)\s*$', $wrapped)
+
+# 3) Save
+# Write-Host " Wrapped __main__ with debug prints."
+# python -u -X faulthandler .\paper_trader.py --help
+# python -u -X faulthandler .\paper_trader.py --connect-attempts 1 --force-delayed
+You should see at least:
+
+>>> ENTER main()
+and for --help the argparse help text (or a SystemExit: 0).
+
+# If you still see nothing at all (even the ENTER line)
+
+# import os, runpy
+# print("cwd =", os.getcwd())
+# print("file exists =", os.path.exists(r'.\paper_trader.py'))
+# print("running run_path", flush=True)
+# runpy.run_path(r'.\paper_trader.py', run_name='__main__')
+# print("done run_path", flush=True)
+# Tell me exactly what prints. That will pinpoint whether Python can see and execute your file in the current working directory.
+
+
+# Copyright (C) Microsoft Corporation. All rights reserved.
+
+Install the latest PowerShell for new features and improvements! https://aka.ms/PSWindows
+
+PS C:\Users\owner\Desktop\es_futures_backtester> # 0) Backup
+PS C:\Users\owner\Desktop\es_futures_backtester> Copy-Item -LiteralPath '.\paper_trader.py' -Destination '.\paper_trader.py.bak' -Force
+PS C:\Users\owner\Desktop\es_futures_backtester>
+PS C:\Users\owner\Desktop\es_futures_backtester> # 1) Load file
+PS C:\Users\owner\Desktop\es_futures_backtester> $path = '.\paper_trader.py'
+PS C:\Users\owner\Desktop\es_futures_backtester> $src  = Get-Content $path -Raw
+PS C:\Users\owner\Desktop\es_futures_backtester>
+PS C:\Users\owner\Desktop\es_futures_backtester> # 2) Replace the minimal __main__ block with a wrapped one that *always prints*
+PS C:\Users\owner\Desktop\es_futures_backtester> $wrapped = @"
+>> if __name__ == "__main__":
+>>     print(">>> ENTER main()", flush=True)
+>>     try:
+>>         main()
+>>     except SystemExit as e:
+>>         print(f">>> SystemExit: {e.code}", flush=True)
+>>     except Exception as e:
+>>         print(">>> Unhandled exception! See traceback below.", flush=True)
+>>         traceback.print_exc()
+PS C:\Users\owner\Desktop\es_futures_backtester>
+PS C:\Users\owner\Desktop\es_futures_backtester> # This regex is simple (no nested quotes). It matches the usual 'if __name__ == "__main__": main()' at EOF.
+PS C:\Users\owner\Desktop\es_futures_backtester> $src = [regex]::Replace($src, '(?ms)if __name__ == "__main__":\s*main\(\)\s*$', $wrapped)
+PS C:\Users\owner\Desktop\es_futures_backtester>
+PS C:\Users\owner\Desktop\es_futures_backtester> # 3) Save
+PS C:\Users\owner\Desktop\es_futures_backtester> Set-Content -LiteralPath $path -Value $src -Encoding UTF8
+PS C:\Users\owner\Desktop\es_futures_backtester> Write-Host " Wrapped __main__ with debug prints."
+#  Wrapped __main__ with debug prints.
+PS C:\Users\owner\Desktop\es_futures_backtester> python -u -X faulthandler .\paper_trader.py --help
+PS C:\Users\owner\Desktop\es_futures_backtester> python -u -X faulthandler .\paper_trader.py --connect-attempts 1 --force-delayed
+PS C:\Users\owner\Desktop\es_futures_backtester> python - <<'PY'
+At line:1 char:11
+# Missing file specification after redirection operator.
+At line:1 char:10
+# The '<' operator is reserved for future use.
+At line:1 char:11
+# The '<' operator is reserved for future use.
+    + CategoryInfo          : ParserError: (:) [], ParentContainsErrorRecordException
+    + FullyQualifiedErrorId : MissingFileSpecification
+
+PS C:\Users\owner\Desktop\es_futures_backtester> import os, runpy
+import : The term 'import' is not recognized as the name of a cmdlet, function, script file, or operable program.
+# Check the spelling of the name, or if a path was included, verify that the path is correct and try again.
+At line:1 char:1
++ import os, runpy
+    + CategoryInfo          : ObjectNotFound: (import:String) [], CommandNotFoundException
+    + FullyQualifiedErrorId : CommandNotFoundException
+
+PS C:\Users\owner\Desktop\es_futures_backtester> print("cwd =", os.getcwd())
+At line:1 char:15
++ print("cwd =", os.getcwd())
+# Missing expression after ','.
+At line:1 char:16
++ print("cwd =", os.getcwd())
+# Unexpected token 'os.getcwd' in expression or statement.
+At line:1 char:15
++ print("cwd =", os.getcwd())
+# Missing closing ')' in expression.
+At line:1 char:26
++ print("cwd =", os.getcwd())
+# An expression was expected after '('.
+At line:1 char:27
++ print("cwd =", os.getcwd())
+# Unexpected token ')' in expression or statement.
+    + CategoryInfo          : ParserError: (:) [], ParentContainsErrorRecordException
+    + FullyQualifiedErrorId : MissingExpressionAfterToken
+
+PS C:\Users\owner\Desktop\es_futures_backtester> print("file exists =", os.path.exists(r'.\paper_trader.py'))
+At line:1 char:23
++ print("file exists =", os.path.exists(r'.\paper_trader.py'))
+# Missing expression after ','.
+At line:1 char:24
++ print("file exists =", os.path.exists(r'.\paper_trader.py'))
+# Unexpected token 'os.path.exists' in expression or statement.
+At line:1 char:23
++ print("file exists =", os.path.exists(r'.\paper_trader.py'))
+# Missing closing ')' in expression.
+At line:1 char:60
++ print("file exists =", os.path.exists(r'.\paper_trader.py'))
+# Unexpected token ')' in expression or statement.
+    + CategoryInfo          : ParserError: (:) [], ParentContainsErrorRecordException
+    + FullyQualifiedErrorId : MissingExpressionAfterToken
+
+PS C:\Users\owner\Desktop\es_futures_backtester> print("running run_path", flush=True)
+At line:1 char:27
++ print("running run_path", flush=True)
+# Missing expression after ','.
+At line:1 char:28
++ print("running run_path", flush=True)
+# Unexpected token 'flush=True' in expression or statement.
+At line:1 char:27
++ print("running run_path", flush=True)
+# Missing closing ')' in expression.
+At line:1 char:38
++ print("running run_path", flush=True)
+# Unexpected token ')' in expression or statement.
+    + CategoryInfo          : ParserError: (:) [], ParentContainsErrorRecordException
+    + FullyQualifiedErrorId : MissingExpressionAfterToken
+
+PS C:\Users\owner\Desktop\es_futures_backtester> runpy.run_path(r'.\paper_trader.py', run_name='__main__')
+At line:1 char:36
++ runpy.run_path(r'.\paper_trader.py', run_name='__main__')
+# Missing argument in parameter list.
+    + CategoryInfo          : ParserError: (:) [], ParentContainsErrorRecordException
+    + FullyQualifiedErrorId : MissingArgument
+
+PS C:\Users\owner\Desktop\es_futures_backtester> print("done run_path", flush=True)
+At line:1 char:23
++ print("done run_path", flush=True)
+# Missing expression after ','.
+At line:1 char:24
++ print("done run_path", flush=True)
+# Unexpected token 'flush=True' in expression or statement.
+At line:1 char:23
++ print("done run_path", flush=True)
+# Missing closing ')' in expression.
+At line:1 char:34
++ print("done run_path", flush=True)
+# Unexpected token ')' in expression or statement.
+    + CategoryInfo          : ParserError: (:) [], ParentContainsErrorRecordException
+    + FullyQualifiedErrorId : MissingExpressionAfterToken
+
+PS C:\Users\owner\Desktop\es_futures_backtester> PY
+Python 3.13.5 (tags/v3.13.5:6cb20a2, Jun 11 2025, 16:15:46) [MSC v.1943 64 bit (AMD64)] on win32
+# Type "help", "copyright", "credits" or "
+
+You ran into two things at once:
+
+
+# The python - <<'PY' and typing import ... directly are bash/Python REPL patterns, not PowerShell. In PowerShell, either use python -c "..." or write a temp .py file and run it.
+
+
+# A) Add absolutely reliable debug prints
+# Prepend a BOOT print so it runs on import, and wrap the __main__ block to log entering main().
+
+# 0) Backup
+# Copy-Item -LiteralPath '.\paper_trader.py' -Destination '.\paper_trader.py.bak' -Force
+
+# 1) Prepend a BOOT print (runs on import)
+$path = '.\paper_trader.py'
+$src  = Get-Content $path -Raw
+$boot = 'print(">>> BOOT: paper_trader.py imported", flush=True)'
+if ($src -notmatch 'BOOT: paper_trader\.py imported') {
+#   Set-Content -LiteralPath $path -Value ($boot + "`r`n" + $src) -Encoding UTF8
+#   Write-Host " Prepended BOOT print."
+} else {
+#   Write-Host "  BOOT print already present."
+
+# 2) Wrap the __main__ block (very lenient replace; if no match, we append a wrapped block)
+$src  = Get-Content $path -Raw
+$wrapped = @"
+if __name__ == "__main__":
+    pass
+#     print(">>> ENTER main()", flush=True)
+    try:
+        pass
+#         main()
+    except SystemExit as e:
+        print(f">>> SystemExit: {getattr(e, 'code', None)}", flush=True)
+    except Exception as e:
+        pass
+#         import traceback
+        print(">>> Unhandled exception! Traceback follows:", flush=True)
+#         traceback.print_exc()
+
+$replaced = [bool]([regex]::IsMatch($src, 'if __name__ == "__main__":\s*main\(\)', 'Singleline'))
+# if ($replaced) {
+  $src = [regex]::Replace($src, 'if __name__ == "__main__":\s*main\(\)', $wrapped, 'Singleline')
+#   Write-Host " Replaced minimal __main__ with wrapped version."
+} else {
+#   if ($src -notmatch 'ENTER main\(\)') {
+    $src = $src.TrimEnd() + "`r`n`r`n" + $wrapped + "`r`n"
+  } else {
+#     Write-Host "  Wrapped __main__ already present."
+Now try:
+
+# python -u -X faulthandler .\paper_trader.py --help
+# python -u -X faulthandler .\paper_trader.py --connect-attempts 1 --force-delayed
+You should see at least:
+
+>>> BOOT: paper_trader.py imported
+>>> ENTER main()
+(For --help, argparse will still exit afterwards, but those two lines prove the file is running.)
+
+The python - <<'PY' heredoc is bash, not PowerShell. In PowerShell, use a here-string into a temp file:
+
+# import os, runpy
+# print("cwd =", os.getcwd(), flush=True)
+# print("file exists =", os.path.exists(r'.\paper_trader.py'), flush=True)
+# print("running run_path", flush=True)
+# runpy.run_path(r'.\paper_trader.py', run_name='__main__')
+# print("done run_path", flush=True)
+"@ | Set-Content .\_runner.py -Encoding UTF8
+
+# python -u .\_runner.py
+# That will positively confirm whether Python can see and execute paper_trader.py from your current directory.
+
+# If you still get no prints
+Show me the first ~40 lines so I can verify the BOOT line is really there:
+
+# Get-Content .\paper_trader.py -TotalCount 40
+and also the last ~40 lines to check the __main__ block:
+
+# Get-Content .\paper_trader.py -Tail 40
+
+# Copyright (C) Microsoft Corporation. All rights reserved.
+
+Install the latest PowerShell for new features and improvements! https://aka.ms/PSWindows
+
+PS C:\Users\owner\Desktop\es_futures_backtester> # 0) Backup
+PS C:\Users\owner\Desktop\es_futures_backtester> Copy-Item -LiteralPath '.\paper_trader.py' -Destination '.\paper_trader.py.bak' -Force
+PS C:\Users\owner\Desktop\es_futures_backtester>
+PS C:\Users\owner\Desktop\es_futures_backtester> # 1) Load file
+PS C:\Users\owner\Desktop\es_futures_backtester> $path = '.\paper_trader.py'
+PS C:\Users\owner\Desktop\es_futures_backtester> $src  = Get-Content $path -Raw
+PS C:\Users\owner\Desktop\es_futures_backtester>
+PS C:\Users\owner\Desktop\es_futures_backtester> # 2) Replace the minimal __main__ block with a wrapped one that *always prints*
+PS C:\Users\owner\Desktop\es_futures_backtester> $wrapped = @"
+>> if __name__ == "__main__":
+>>     print(">>> ENTER main()", flush=True)
+>>     try:
+>>         main()
+>>     except SystemExit as e:
+>>         print(f">>> SystemExit: {e.code}", flush=True)
+>>     except Exception as e:
+>>         print(">>> Unhandled exception! See traceback below.", flush=True)
+>>         traceback.print_exc()
+PS C:\Users\owner\Desktop\es_futures_backtester>
+PS C:\Users\owner\Desktop\es_futures_backtester> # This regex is simple (no nested quotes). It matches the usual 'if __name__ == "__main__": main()' at EOF.
+PS C:\Users\owner\Desktop\es_futures_backtester> $src = [regex]::Replace($src, '(?ms)if __name__ == "__main__":\s*main\(\)\s*$', $wrapped)
+PS C:\Users\owner\Desktop\es_futures_backtester>
+PS C:\Users\owner\Desktop\es_futures_backtester> # 3) Save
+PS C:\Users\owner\Desktop\es_futures_backtester> Set-Content -LiteralPath $path -Value $src -Encoding UTF8
+PS C:\Users\owner\Desktop\es_futures_backtester> Write-Host " Wrapped __main__ with debug prints."
+#  Wrapped __main__ with debug prints.
+PS C:\Users\owner\Desktop\es_futures_backtester> python -u -X faulthandler .\paper_trader.py --help
+PS C:\Users\owner\Desktop\es_futures_backtester> python -u -X faulthandler .\paper_trader.py --connect-attempts 1 --force-delayed
+PS C:\Users\owner\Desktop\es_futures_backtester> python - <<'PY'
+At line:1 char:11
+# Missing file specification after redirection operator.
+At line:1 char:10
+# The '<' operator is reserved for future use.
+At line:1 char:11
+# The '<' operator is reserved for future use.
+    + CategoryInfo          : ParserError: (:) [], ParentContainsErrorRecordException
+    + FullyQualifiedErrorId : MissingFileSpecification
+
+PS C:\Users\owner\Desktop\es_futures_backtester> import os, runpy
+import : The term 'import' is not recognized as the name of a cmdlet, function, script file, or operable program.
+# Check the spelling of the name, or if a path was included, verify that the path is correct and try again.
+At line:1 char:1
++ import os, runpy
+    + CategoryInfo          : ObjectNotFound: (import:String) [], CommandNotFoundException
+    + FullyQualifiedErrorId : CommandNotFoundException
+
+PS C:\Users\owner\Desktop\es_futures_backtester> print("cwd =", os.getcwd())
+At line:1 char:15
++ print("cwd =", os.getcwd())
+# Missing expression after ','.
+At line:1 char:16
++ print("cwd =", os.getcwd())
+# Unexpected token 'os.getcwd' in expression or statement.
+At line:1 char:15
++ print("cwd =", os.getcwd())
+# Missing closing ')' in expression.
+At line:1 char:26
++ print("cwd =", os.getcwd())
+# An expression was expected after '('.
+At line:1 char:27
++ print("cwd =", os.getcwd())
+# Unexpected token ')' in expression or statement.
+    + CategoryInfo          : ParserError: (:) [], ParentContainsErrorRecordException
+    + FullyQualifiedErrorId : MissingExpressionAfterToken
+
+PS C:\Users\owner\Desktop\es_futures_backtester> print("file exists =", os.path.exists(r'.\paper_trader.py'))
+At line:1 char:23
++ print("file exists =", os.path.exists(r'.\paper_trader.py'))
+# Missing expression after ','.
+At line:1 char:24
++ print("file exists =", os.path.exists(r'.\paper_trader.py'))
+# Unexpected token 'os.path.exists' in expression or statement.
+At line:1 char:23
++ print("file exists =", os.path.exists(r'.\paper_trader.py'))
+# Missing closing ')' in expression.
+At line:1 char:60
++ print("file exists =", os.path.exists(r'.\paper_trader.py'))
+# Unexpected token ')' in expression or statement.
+    + CategoryInfo          : ParserError: (:) [], ParentContainsErrorRecordException
+    + FullyQualifiedErrorId : MissingExpressionAfterToken
+
+PS C:\Users\owner\Desktop\es_futures_backtester> print("running run_path", flush=True)
+At line:1 char:27
++ print("running run_path", flush=True)
+# Missing expression after ','.
+At line:1 char:28
++ print("running run_path", flush=True)
+# Unexpected token 'flush=True' in expression or statement.
+At line:1 char:27
++ print("running run_path", flush=True)
+# Missing closing ')' in expression.
+At line:1 char:38
++ print("running run_path", flush=True)
+# Unexpected token ')' in expression or statement.
+    + CategoryInfo          : ParserError: (:) [], ParentContainsErrorRecordException
+    + FullyQualifiedErrorId : MissingExpressionAfterToken
+
+PS C:\Users\owner\Desktop\es_futures_backtester> runpy.run_path(r'.\paper_trader.py', run_name='__main__')
+At line:1 char:36
++ runpy.run_path(r'.\paper_trader.py', run_name='__main__')
+# Missing argument in parameter list.
+    + CategoryInfo          : ParserError: (:) [], ParentContainsErrorRecordException
+    + FullyQualifiedErrorId : MissingArgument
+
+PS C:\Users\owner\Desktop\es_futures_backtester> print("done run_path", flush=True)
+At line:1 char:23
++ print("done run_path", flush=True)
+# Missing expression after ','.
+At line:1 char:24
++ print("done run_path", flush=True)
+# Unexpected token 'flush=True' in expression or statement.
+At line:1 char:23
++ print("done run_path", flush=True)
+# Missing closing ')' in expression.
+At line:1 char:34
++ print("done run_path", flush=True)
+# Unexpected token ')' in expression or statement.
+    + CategoryInfo          : ParserError: (:) [], ParentContainsErrorRecordException
+    + FullyQualifiedErrorId : MissingExpressionAfterToken
+
+PS C:\Users\owner\Desktop\es_futures_backtester> PY
+Python 3.13.5 (tags/v3.13.5:6cb20a2, Jun 11 2025, 16:15:46) [MSC v.1943 64 bit (AMD64)] on win32
+# Type "help", "copyright", "credits" or "license" for more information.
+... $src  = Get-Content $path -Raw
+... $wrapped = @"
+... if __name__ == "__main__":
+...     print(">>> ENTER main()", flush=True)
+...     try:
+...         main()
+...     except SystemExit as e:
+...         print(f">>> SystemExit: {getattr(e, 'code', None)}", flush=True)
+...         raise
+...     except Exception as e:
+...         import traceback
+...         print(">>> Unhandled exception! Traceback follows:", flush=True)
+...         traceback.print_exc()
+...         raise
+... "@
+...
+... $replaced = [bool]([regex]::IsMatch($src, 'if __name__ == "__main__":\s*main\(\)', 'Singleline'))
+... if ($replaced) {
+...   $src = [regex]::Replace($src, 'if __name__ == "__main__":\s*main\(\)', $wrapped, 'Singleline')
+...   Write-Host " Replaced minimal __main__ with wrapped version."
+... } else {
+...   if ($src -notmatch 'ENTER main\(\)') {
+...     $src = $src.TrimEnd() + "rnrn" + $wrapped + "rn"
+...   } else {
+...     Write-Host "  Wrapped __main__ already present."
+...   }
+... }
+... Set-Content -LiteralPath $path -Value $src -Encoding UTF8
+
+
+1) Exit the Python REPL
+
+(or type exit() and Enter)
+
+2) Add guaranteed debug prints (idempotent, PowerShell-safe)
+Run these exactly in PowerShell:
+
+# Backup
+# Copy-Item -LiteralPath '.\paper_trader.py' -Destination '.\paper_trader.py.bak' -Force
+
+# Prepend a BOOT print (runs on import)
+$path = '.\paper_trader.py'
+$src  = Get-Content $path -Raw
+$boot = 'print(">>> BOOT: paper_trader.py imported", flush=True)'
+if ($src -notmatch 'BOOT: paper_trader\.py imported') {
+#   Set-Content -LiteralPath $path -Value ($boot + "`r`n" + $src) -Encoding UTF8
+#   Write-Host " Prepended BOOT print."
+} else {
+#   Write-Host "  BOOT print already present."
+
+# Ensure a wrapped __main__ that always prints
+$src  = Get-Content $path -Raw
+$wrapped = @"
+if __name__ == "__main__":
+    pass
+#     print(">>> ENTER main()", flush=True)
+    try:
+        pass
+#         main()
+    except SystemExit as e:
+        print(f">>> SystemExit: {getattr(e, 'code', None)}", flush=True)
+    except Exception as e:
+        pass
+#         import traceback
+        print(">>> Unhandled exception! Traceback follows:", flush=True)
+#         traceback.print_exc()
+
+# Replace a minimal main if present; otherwise append at EOF once
+if ([regex]::IsMatch($src, 'if __name__ == "__main__":\s*main\(\)', 'Singleline')) {
+  $src = [regex]::Replace($src, 'if __name__ == "__main__":\s*main\(\)', $wrapped, 'Singleline')
+#   Write-Host " Replaced minimal __main__ with wrapped version."
+} elseif ($src -notmatch '>>> ENTER main\(\)') {
+  $src = $src.TrimEnd() + "`r`n`r`n" + $wrapped + "`r`n"
+#   Write-Host "  Appended wrapped __main__ at EOF."
+} else {
+#   Write-Host "  Wrapped __main__ already present."
+3) Confirm the prints are physically in the file
+# Get-Content .\paper_trader.py -Head 5
+# Get-Content .\paper_trader.py -Tail 25
+You should see the >>> BOOT: ... at the top and the if __name__ == "__main__": block at the bottom with >>> ENTER main().
+
+4) Run the script (PowerShell, not REPL)
+# python -u -X faulthandler .\paper_trader.py --help
+# python -u -X faulthandler .\paper_trader.py --connect-attempts 1 --force-delayed
+Expected at minimum:
+
+>>> BOOT: paper_trader.py imported
+>>> ENTER main()
+(For --help, argparse should also print the usage and exit with code 0. Your wrapper logs that ENTER main() happened.)
+
+5) If you still see nothing, bypass argparse entirely
+Run the module explicitly via runpy to make sure stdout is visible:
+
+# import runpy
+print(">>> driver: running run_path", flush=True)
+# runpy.run_path(r'.\paper_trader.py', run_name='__main__')
+print(">>> driver: done", flush=True)
+"@ | Set-Content .\_driver.py -Encoding UTF8
+
+# python -u .\_driver.py
+
+# Get-Item .\paper_trader.py
+# python - <<'PY' is a bash heredoc (not PowerShell). Use the here-string into a temp file approach shown above.
+
+# Typing import ... or print(...) at the PowerShell prompt will error; that only works inside the Python REPL. Keep Python code in a .py or pass with python -c "...".
+
+
+# Copyright (C) Microsoft Corporation. All rights reserved.
+
+Install the latest PowerShell for new features and improvements! https://aka.ms/PSWindows
+
+PS C:\Users\owner\Desktop\es_futures_backtester> # 0) Backup
+PS C:\Users\owner\Desktop\es_futures_backtester> Copy-Item -LiteralPath '.\paper_trader.py' -Destination '.\paper_trader.py.bak' -Force
+PS C:\Users\owner\Desktop\es_futures_backtester>
+PS C:\Users\owner\Desktop\es_futures_backtester> # 1) Load file
+PS C:\Users\owner\Desktop\es_futures_backtester> $path = '.\paper_trader.py'
+PS C:\Users\owner\Desktop\es_futures_backtester> $src  = Get-Content $path -Raw
+PS C:\Users\owner\Desktop\es_futures_backtester>
+PS C:\Users\owner\Desktop\es_futures_backtester> # 2) Replace the minimal __main__ block with a wrapped one that *always prints*
+PS C:\Users\owner\Desktop\es_futures_backtester> $wrapped = @"
+>> if __name__ == "__main__":
+>>     print(">>> ENTER main()", flush=True)
+>>     try:
+>>         main()
+>>     except SystemExit as e:
+>>         print(f">>> SystemExit: {e.code}", flush=True)
+>>     except Exception as e:
+>>         print(">>> Unhandled exception! See traceback below.", flush=True)
+>>         traceback.print_exc()
+PS C:\Users\owner\Desktop\es_futures_backtester>
+PS C:\Users\owner\Desktop\es_futures_backtester> # This regex is simple (no nested quotes). It matches the usual 'if __name__ == "__main__": main()' at EOF.
+PS C:\Users\owner\Desktop\es_futures_backtester> $src = [regex]::Replace($src, '(?ms)if __name__ == "__main__":\s*main\(\)\s*$', $wrapped)
+PS C:\Users\owner\Desktop\es_futures_backtester>
+PS C:\Users\owner\Desktop\es_futures_backtester> # 3) Save
+PS C:\Users\owner\Desktop\es_futures_backtester> Set-Content -LiteralPath $path -Value $src -Encoding UTF8
+PS C:\Users\owner\Desktop\es_futures_backtester> Write-Host " Wrapped __main__ with debug prints."
+#  Wrapped __main__ with debug prints.
+PS C:\Users\owner\Desktop\es_futures_backtester> python -u -X faulthandler .\paper_trader.py --help
+PS C:\Users\owner\Desktop\es_futures_backtester> python -u -X faulthandler .\paper_trader.py --connect-attempts 1 --force-delayed
+PS C:\Users\owner\Desktop\es_futures_backtester> python - <<'PY'
+At line:1 char:11
+# Missing file specification after redirection operator.
+At line:1 char:10
+# The '<' operator is reserved for future use.
+At line:1 char:11
+# The '<' operator is reserved for future use.
+    + CategoryInfo          : ParserError: (:) [], ParentContainsErrorRecordException
+    + FullyQualifiedErrorId : MissingFileSpecification
+
+PS C:\Users\owner\Desktop\es_futures_backtester> import os, runpy
+import : The term 'import' is not recognized as the name of a cmdlet, function, script file, or operable program.
+# Check the spelling of the name, or if a path was included, verify that the path is correct and try again.
+At line:1 char:1
++ import os, runpy
+    + CategoryInfo          : ObjectNotFound: (import:String) [], CommandNotFoundException
+    + FullyQualifiedErrorId : CommandNotFoundException
+
+PS C:\Users\owner\Desktop\es_futures_backtester> print("cwd =", os.getcwd())
+At line:1 char:15
++ print("cwd =", os.getcwd())
+# Missing expression after ','.
+At line:1 char:16
++ print("cwd =", os.getcwd())
+# Unexpected token 'os.getcwd' in expression or statement.
+At line:1 char:15
++ print("cwd =", os.getcwd())
+# Missing closing ')' in expression.
+At line:1 char:26
++ print("cwd =", os.getcwd())
+# An expression was expected after '('.
+At line:1 char:27
++ print("cwd =", os.getcwd())
+# Unexpected token ')' in expression or statement.
+    + CategoryInfo          : ParserError: (:) [], ParentContainsErrorRecordException
+    + FullyQualifiedErrorId : MissingExpressionAfterToken
+
+PS C:\Users\owner\Desktop\es_futures_backtester> print("file exists =", os.path.exists(r'.\paper_trader.py'))
+At line:1 char:23
++ print("file exists =", os.path.exists(r'.\paper_trader.py'))
+# Missing expression after ','.
+At line:1 char:24
++ print("file exists =", os.path.exists(r'.\paper_trader.py'))
+# Unexpected token 'os.path.exists' in expression or statement.
+At line:1 char:23
++ print("file exists =", os.path.exists(r'.\paper_trader.py'))
+# Missing closing ')' in expression.
+At line:1 char:60
++ print("file exists =", os.path.exists(r'.\paper_trader.py'))
+# Unexpected token ')' in expression or statement.
+    + CategoryInfo          : ParserError: (:) [], ParentContainsErrorRecordException
+    + FullyQualifiedErrorId : MissingExpressionAfterToken
+
+PS C:\Users\owner\Desktop\es_futures_backtester> print("running run_path", flush=True)
+At line:1 char:27
++ print("running run_path", flush=True)
+# Missing expression after ','.
+At line:1 char:28
++ print("running run_path", flush=True)
+# Unexpected token 'flush=True' in expression or statement.
+At line:1 char:27
++ print("running run_path", flush=True)
+# Missing closing ')' in expression.
+At line:1 char:38
++ print("running run_path", flush=True)
+# Unexpected token ')' in expression or statement.
+    + CategoryInfo          : ParserError: (:) [], ParentContainsErrorRecordException
+    + FullyQualifiedErrorId : MissingExpressionAfterToken
+
+PS C:\Users\owner\Desktop\es_futures_backtester> runpy.run_path(r'.\paper_trader.py', run_name='__main__')
+At line:1 char:36
++ runpy.run_path(r'.\paper_trader.py', run_name='__main__')
+# Missing argument in parameter list.
+    + CategoryInfo          : ParserError: (:) [], ParentContainsErrorRecordException
+    + FullyQualifiedErrorId : MissingArgument
+
+PS C:\Users\owner\Desktop\es_futures_backtester> print("done run_path", flush=True)
+At line:1 char:23
++ print("done run_path", flush=True)
+# Missing expression after ','.
+At line:1 char:24
++ print("done run_path", flush=True)
+# Unexpected token 'flush=True' in expression or statement.
+At line:1 char:23
++ print("done run_path", flush=True)
+# Missing closing ')' in expression.
+At line:1 char:34
++ print("done run_path", flush=True)
+# Unexpected token ')' in expression or statement.
+    + CategoryInfo          : ParserError: (:) [], ParentContainsErrorRecordException
+    + FullyQualifiedErrorId : MissingExpressionAfterToken
+
+PS C:\Users\owner\Desktop\es_futures_backtester> PY
+Python 3.13.5 (tags/v3.13.5:6cb20a2, Jun 11 2025, 16:15:46) [MSC v.1943 64 bit (AMD64)] on win32
+# Type "help", "copyright", "credits" or "license" for more information.
+... $src  = Get-Content $path -Raw
+... $wrapped = @"
+... if __name__ == "__main__":
+...     print(">>> ENTER main()", flush=True)
+...     try:
+...         main()
+...     except SystemExit as e:
+...         print(f">>> SystemExit: {getattr(e, 'code', None)}", flush=True)
+...         raise
+...     except Exception as e:
+...         import traceback
+...         print(">>> Unhandled exception! Traceback follows:", flush=True)
+...         traceback.print_exc()
+...         raise
+... "@
+...
+... $replaced = [bool]([regex]::IsMatch($src, 'if __name__ == "__main__":\s*main\(\)', 'Singleline'))
+... if ($replaced) {
+...   $src = [regex]::Replace($src, 'if __name__ == "__main__":\s*main\(\)', $wrapped, 'Singleline')
+...   Write-Host " Replaced minimal __main__ with wrapped version."
+... } else {
+...   if ($src -notmatch 'ENTER main\(\)') {
+...     $src = $src.TrimEnd() + "rnrn" + $wrapped + "rn"
+...   } else {
+...     Write-Host "  Wrapped __main__ already present."
+...   }
+... }
+... Set-Content -LiteralPath $path -Value $src -Encoding UTF8
+
+<python-input-0>:2: SyntaxWarning: invalid escape sequence '\p'
+#   File "<python-input-0>", line 17
+    $wrapped = @"
+SyntaxError: unterminated string literal (detected at line 17)
+PS C:\Users\owner\Desktop\es_futures_backtester> # Backup
+PS C:\Users\owner\Desktop\es_futures_backtester> Copy-Item -LiteralPath '.\paper_trader.py' -Destination '.\paper_trader.py.bak' -Force
+PS C:\Users\owner\Desktop\es_futures_backtester>
+PS C:\Users\owner\Desktop\es_futures_backtester> # Prepend a BOOT print (runs on import)
+PS C:\Users\owner\Desktop\es_futures_backtester> $path = '.\paper_trader.py'
+PS C:\Users\owner\Desktop\es_futures_backtester> $src  = Get-Content $path -Raw
+PS C:\Users\owner\Desktop\es_futures_backtester> $boot = 'print(">>> BOOT: paper_trader.py imported", flush=True)'
+PS C:\Users\owner\Desktop\es_futures_backtester> if ($src -notmatch 'BOOT: paper_trader\.py imported') {
+>>   Set-Content -LiteralPath $path -Value ($boot + "rn" + $src) -Encoding UTF8
+>>   Write-Host " Prepended BOOT print."
+>> } else {
+>>   Write-Host "  BOOT print already present."
+>> }
+#  Prepended BOOT print.
+PS C:\Users\owner\Desktop\es_futures_backtester>
+PS C:\Users\owner\Desktop\es_futures_backtester> # Ensure a wrapped __main__ that always prints
+PS C:\Users\owner\Desktop\es_futures_backtester> $src  = Get-Content $path -Raw
+PS C:\Users\owner\Desktop\es_futures_backtester> $wrapped = @"
+>> if __name__ == "__main__":
+>>     print(">>> ENTER main()", flush=True)
+>>     try:
+>>         main()
+>>     except SystemExit as e:
+>>         print(f">>> SystemExit: {getattr(e, 'code', None)}", flush=True)
+>>     except Exception as e:
+>>         print(">>> Unhandled exception! Traceback follows:", flush=True)
+>>         traceback.print_exc()
+PS C:\Users\owner\Desktop\es_futures_backtester>
+PS C:\Users\owner\Desktop\es_futures_backtester> # Replace a minimal main if present; otherwise append at EOF once
+PS C:\Users\owner\Desktop\es_futures_backtester> if ([regex]::IsMatch($src, 'if __name__ == "__main__":\s*main\(\)', 'Singleline')) {
+>>   $src = [regex]::Replace($src, 'if __name__ == "__main__":\s*main\(\)', $wrapped, 'Singleline')
+>>   Write-Host " Replaced minimal __main__ with wrapped version."
+>> } elseif ($src -notmatch '>>> ENTER main\(\)') {
+>>   $src = $src.TrimEnd() + "rnrn" + $wrapped + "rn"
+>>   Write-Host "  Appended wrapped __main__ at EOF."
+>> } else {
+>>   Write-Host "  Wrapped __main__ already present."
+>> }
+#   Appended wrapped __main__ at EOF.
+PS C:\Users\owner\Desktop\es_futures_backtester> Set-Content -LiteralPath $path -Value $src -Encoding UTF8
+PS C:\Users\owner\Desktop\es_futures_backtester> Get-Content .\paper_trader.py -Head 5
+print(">>> BOOT: paper_trader.py imported", flush=True)
+
+if __name__ == "__main__":
+    pass
+#     print(">>> ENTER main()", flush=True)
+    try:
+        pass
+PS C:\Users\owner\Desktop\es_futures_backtester> Get-Content .\paper_trader.py -Tail 25
+print(">>> BOOT: paper_trader.py imported", flush=True)
+
+if __name__ == "__main__":
+    pass
+#     print(">>> ENTER main()", flush=True)
+    try:
+        pass
+#         main()
+    except SystemExit as e:
+        print(f">>> SystemExit: {getattr(e, 'code', None)}", flush=True)
+    except Exception as e:
+        pass
+#         import traceback
+        print(">>> Unhandled exception! Traceback follows:", flush=True)
+#         traceback.print_exc()
+
+PS C:\Users\owner\Desktop\es_futures_backtester> python -u -X faulthandler .\paper_trader.py --help
+>>> BOOT: paper_trader.py imported
+>>> ENTER main()
+>>> Unhandled exception! Traceback follows:
+Traceback (most recent call last):
+  File "C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py", line 6, in <module>
+#     main()
+NameError: name 'main' is not defined. Did you mean: 'min'?
+Traceback (most recent call last):
+  File "C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py", line 6, in <module>
+#     main()
+NameError: name 'main' is not defined. Did you mean: 'min'?
+PS C:\Users\owner\Desktop\es_futures_backtester> python -u -X faulthandler .\paper_trader.py --connect-attempts 1 --force-delayed
+>>> BOOT: paper_trader.py imported
+>>> ENTER main()
+>>> Unhandled exception! Traceback follows:
+Traceback (most recent call last):
+  File "C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py", line 6, in <module>
+#     main()
+NameError: name 'main' is not defined. Did you mean: 'min'?
+Traceback (most recent call last):
+  File "C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py", line 6, in <module>
+#     main()
+NameError: name 'main' is not defined. Did you mean: 'min'?
+PS C:\Users\owner\Desktop\es_futures_backtester> @"
+>> print(">>> driver: running run_path", flush=True)
+>> runpy.run_path(r'.\paper_trader.py', run_name='__main__')
+>> print(">>> driver: done", flush=True)
+>> "@ | Set-Content .\_driver.py -Encoding UTF8
+PS C:\Users\owner\Desktop\es_futures_backtester>
+PS C:\Users\owner\Desktop\es_futures_backtester> python -u .\_driver.py
+>>> driver: running run_path
+>>> BOOT: paper_trader.py imported
+>>> ENTER main()
+>>> Unhandled exception! Traceback follows:
+Traceback (most recent call last):
+#   File ".\paper_trader.py", line 6, in <module>
+#     main()
+NameError: name 'main' is not defined. Did you mean: 'min'?
+Traceback (most recent call last):
+  File "C:\Users\owner\Desktop\es_futures_backtester\_driver.py", line 3, in <module>
+#     runpy.run_path(r'.\paper_trader.py', run_name='__main__')
+#   File "<frozen runpy>", line 287, in run_path
+#   File "<frozen runpy>", line 98, in _run_module_code
+#   File "<frozen runpy>", line 88, in _run_code
+#   File ".\paper_trader.py", line 6, in <module>
+#     main()
+NameError: name 'main' is not defined. Did you mean: 'min'?
+PS C:\Users\owner\Desktop\es_futures_backtester> Get-Location
+
+C:\Users\owner\Desktop\es_futures_backtester
+
+
+PS C:\Users\owner\Desktop\es_futures_backtester> Get-Item .\paper_trader.py
+
+
+    Directory: C:\Users\owner\Desktop\es_futures_backtester
+
+
+-a----        10/18/2025  12:59 AM            442 paper_trader.py
+
+
+PS C:\Users\owner\Desktop\es_futures_backtester>
+
+
+Run these in PowerShell exactly:
+
+# 1) Inspect sizes: the .bak should be large; the current .py is tiny (442 bytes)
+# Get-Item .\paper_trader.py, .\paper_trader.py.bak | Select Name, Length, LastWriteTime
+
+# 2) Restore the original from the backup
+# Copy-Item -LiteralPath '.\paper_trader.py.bak' -Destination '.\paper_trader.py' -Force
+
+# 3) Sanity check  the restored file should now be large again
+# Get-Item .\paper_trader.py | Select Name, Length, LastWriteTime
+# Get-Content .\paper_trader.py -Head 5
+# Get-Content .\paper_trader.py -Tail 5
+# python -m py_compile .\paper_trader.py
+# python -u -X faulthandler .\paper_trader.py --help
+# python -u -X faulthandler .\paper_trader.py --connect-attempts 1 --force-delayed
+
+(Optional) Re-apply the safe fixes you previously added
+
+$path = '.\paper_trader.py'
+$src  = Get-Content $path -Raw
+
+# 0) add helper once
+# if ($src -notmatch 'def\s+_log_sizing_debug\(') {
+  $helper = @'
+def _log_sizing_debug(mode: str, d: dict):
+    """Emit a compact sizing debug entry; safe if anything goes wrong."""
+    try:
+        payload = {"mode": str(mode)}
+        payload.update({k: (float(v) if isinstance(v, (int, float)) else v) for k, v in d.items()})
+#         log("sizing_debug", **payload)
+    except Exception:
+        try: log("sizing_debug_err", mode=str(mode))
+        except Exception: pass
+
+  $src = $src -replace '(?ms)(\n\s*def\s+per_contract_risk_dollars\()', "`n$helper`$1"
+
+# 1) correct HL2 appends in seed/RT/poll
+$src = $src -replace 'HL2\.append\(b\.close\)', 'HL2.append((b.high + b.low) * 0.5)'
+$src = $src -replace 'HL2\.append\(last\.close\)', 'HL2.append((last.high + last.low) * 0.5)'
+
+# 2) replace the whole sizing block (margin_cap_qty + determine_order_qty) up to place_bracket
+$sizingPattern = '(?ms)#\s*-----\s*Margin cap.*?def\s+place_bracket'
+$sizingReplacement = @'
+# ----- Margin cap (NEW) -----
+def margin_cap_qty(eq_now: float) -> int:
+    pass
+#     reserve = max(0.0, float(args.margin_reserve_pct))
+#     eff_eq = max(0.0, float(eq_now) * (1.0 - reserve))
+#     per = max(1.0, float(args.margin_per_contract))
+#     return int(clamp(math.floor(eff_eq / per), 0, args.max_contracts))
+
+def determine_order_qty(current_net_qty: int) -> int:
+    pass
+#     Equity-based size (ladder + risk budget + HWM stepdown) with a hard margin cap.
+#     Emits 'sizing_debug' with all components on every call.
+    if args.use_ib_pnl and (ib_netliq is not None):
+        pass
+#         eq_now = float(ib_netliq); eq_src = "ib_netliq"
+    else:
+        pass
+#         eq_now = float(equity);     eq_src = "local_equity"
+
+#     pc_risk = per_contract_risk_dollars()
+
+    if args.static_size:
+        pass
+#         final_qty = int(max(1, round(float(args.qty))))
+        _log_sizing_debug("static", {
+            "eq_src": eq_src, "eq_now": round(eq_now,2),
+            "risk_ticks": int(args.risk_ticks), "tick_size": float(args.tick_size),
+            "px_mult": float(px_mult), "pc_risk_dollars": round(pc_risk, 2),
+            "static_qty": final_qty, "current_net_qty": int(current_net_qty),
+            "max_contracts": int(args.max_contracts)
+        })
+        if (abs(current_net_qty) + final_qty) > args.max_contracts:
+            pass
+#             final_qty = max(0, args.max_contracts - abs(current_net_qty))
+#         return int(final_qty)
+
+#     eq_size  = equity_ladder_size(eq_now)
+#     rb_size  = risk_budget_size(eq_now)
+#     base_qty = int(clamp(min(eq_size, rb_size), 1, args.max_contracts))
+#     stepdown_qty = apply_hwm_stepdown(base_qty)
+
+#     mcap_total    = margin_cap_qty(eq_now)
+#     desired_total = int(clamp(stepdown_qty, 0, args.max_contracts))
+#     total_cap     = int(clamp(mcap_total, 0, args.max_contracts))
+#     desired_total = min(desired_total, total_cap)
+
+    if abs(current_net_qty) >= desired_total:
+        pass
+#         addable = 0; final_qty = 0
+    else:
+        pass
+#         addable = desired_total - abs(int(current_net_qty))
+#         final_qty = int(max(0, addable))
+
+    if (abs(current_net_qty) + final_qty) > args.max_contracts:
+        pass
+#         final_qty = max(0, args.max_contracts - abs(current_net_qty))
+
+    _log_sizing_debug("dynamic", {
+        "eq_src": eq_src, "eq_now": round(eq_now,2),
+        "acct_base": float(args.acct_base),
+        "risk_pct": float(args.risk_pct),
+        "risk_ticks": int(args.risk_ticks),
+        "tick_size": float(args.tick_size),
+        "px_mult": float(px_mult),
+        "pc_risk_dollars": round(pc_risk, 2),
+        "scale_step": float(args.scale_step),
+        "start_contracts": int(args.start_contracts),
+        "max_contracts": int(args.max_contracts),
+        "hwm_stepdown": bool(args.hwm_stepdown),
+        "hwm_stepdown_dollars": float(args.hwm_stepdown_dollars),
+        "margin_per_contract": float(args.margin_per_contract),
+        "margin_reserve_pct": float(args.margin_reserve_pct),
+        "equity_ladder_qty": int(eq_size),
+        "risk_budget_qty": int(rb_size),
+        "base_qty_min_ladder_risk": int(base_qty),
+        "after_hwm_stepdown_qty": int(stepdown_qty),
+        "margin_cap_total": int(mcap_total),
+        "desired_total_after_margin": int(desired_total),
+        "current_net_qty": int(current_net_qty),
+        "addable_qty": int(addable),
+        "final_order_qty": int(final_qty)
+    })
+#     return int(final_qty)
+
+# ------- Entry/Place -------
+$src = [regex]::Replace($src, $sizingPattern, $sizingReplacement)
+
+# 3) fix the stray 'l' before a heartbeat log (just in case)
+$src = $src -replace "(?ms)^\s*l\s*\r?\n(\s*log\(""hb"",)","`$1"
+
+
+# Re-check
+# python -m py_compile .\paper_trader.py
+# python -u -X faulthandler .\paper_trader.py --help
+# Work on a copy (e.g., paper_trader.work.py) until patches are stable.
+
+# Put the folder under git (git init, commit, then you can revert instantly).
+
+# When doing regex replaces in PowerShell, always back up (you did ) and check Head/Tail before running.
+
+
+# Copyright (C) Microsoft Corporation. All rights reserved.
+
+Install the latest PowerShell for new features and improvements! https://aka.ms/PSWindows
+
+PS C:\Users\owner\Desktop\es_futures_backtester> # 0) Backup
+PS C:\Users\owner\Desktop\es_futures_backtester> Copy-Item -LiteralPath '.\paper_trader.py' -Destination '.\paper_trader.py.bak' -Force
+PS C:\Users\owner\Desktop\es_futures_backtester>
+PS C:\Users\owner\Desktop\es_futures_backtester> # 1) Load file
+PS C:\Users\owner\Desktop\es_futures_backtester> $path = '.\paper_trader.py'
+PS C:\Users\owner\Desktop\es_futures_backtester> $src  = Get-Content $path -Raw
+PS C:\Users\owner\Desktop\es_futures_backtester>
+PS C:\Users\owner\Desktop\es_futures_backtester> # 2) Replace the minimal __main__ block with a wrapped one that *always prints*
+PS C:\Users\owner\Desktop\es_futures_backtester> $wrapped = @"
+>> if __name__ == "__main__":
+>>     print(">>> ENTER main()", flush=True)
+>>     try:
+>>         main()
+>>     except SystemExit as e:
+>>         print(f">>> SystemExit: {e.code}", flush=True)
+>>     except Exception as e:
+>>         print(">>> Unhandled exception! See traceback below.", flush=True)
+>>         traceback.print_exc()
+PS C:\Users\owner\Desktop\es_futures_backtester>
+PS C:\Users\owner\Desktop\es_futures_backtester> # This regex is simple (no nested quotes). It matches the usual 'if __name__ == "__main__": main()' at EOF.
+PS C:\Users\owner\Desktop\es_futures_backtester> $src = [regex]::Replace($src, '(?ms)if __name__ == "__main__":\s*main\(\)\s*$', $wrapped)
+PS C:\Users\owner\Desktop\es_futures_backtester>
+PS C:\Users\owner\Desktop\es_futures_backtester> # 3) Save
+PS C:\Users\owner\Desktop\es_futures_backtester> Set-Content -LiteralPath $path -Value $src -Encoding UTF8
+PS C:\Users\owner\Desktop\es_futures_backtester> Write-Host " Wrapped __main__ with debug prints."
+#  Wrapped __main__ with debug prints.
+PS C:\Users\owner\Desktop\es_futures_backtester> python -u -X faulthandler .\paper_trader.py --help
+PS C:\Users\owner\Desktop\es_futures_backtester> python -u -X faulthandler .\paper_trader.py --connect-attempts 1 --force-delayed
+PS C:\Users\owner\Desktop\es_futures_backtester> python - <<'PY'
+At line:1 char:11
+# Missing file specification after redirection operator.
+At line:1 char:10
+# The '<' operator is reserved for future use.
+At line:1 char:11
+# The '<' operator is reserved for future use.
+    + CategoryInfo          : ParserError: (:) [], ParentContainsErrorRecordException
+    + FullyQualifiedErrorId : MissingFileSpecification
+
+PS C:\Users\owner\Desktop\es_futures_backtester> import os, runpy
+import : The term 'import' is not recognized as the name of a cmdlet, function, script file, or operable program.
+# Check the spelling of the name, or if a path was included, verify that the path is correct and try again.
+At line:1 char:1
++ import os, runpy
+    + CategoryInfo          : ObjectNotFound: (import:String) [], CommandNotFoundException
+    + FullyQualifiedErrorId : CommandNotFoundException
+
+PS C:\Users\owner\Desktop\es_futures_backtester> print("cwd =", os.getcwd())
+At line:1 char:15
++ print("cwd =", os.getcwd())
+# Missing expression after ','.
+At line:1 char:16
++ print("cwd =", os.getcwd())
+# Unexpected token 'os.getcwd' in expression or statement.
+At line:1 char:15
++ print("cwd =", os.getcwd())
+# Missing closing ')' in expression.
+At line:1 char:26
++ print("cwd =", os.getcwd())
+# An expression was expected after '('.
+At line:1 char:27
++ print("cwd =", os.getcwd())
+# Unexpected token ')' in expression or statement.
+    + CategoryInfo          : ParserError: (:) [], ParentContainsErrorRecordException
+    + FullyQualifiedErrorId : MissingExpressionAfterToken
+
+PS C:\Users\owner\Desktop\es_futures_backtester> print("file exists =", os.path.exists(r'.\paper_trader.py'))
+At line:1 char:23
++ print("file exists =", os.path.exists(r'.\paper_trader.py'))
+# Missing expression after ','.
+At line:1 char:24
++ print("file exists =", os.path.exists(r'.\paper_trader.py'))
+# Unexpected token 'os.path.exists' in expression or statement.
+At line:1 char:23
++ print("file exists =", os.path.exists(r'.\paper_trader.py'))
+# Missing closing ')' in expression.
+At line:1 char:60
++ print("file exists =", os.path.exists(r'.\paper_trader.py'))
+# Unexpected token ')' in expression or statement.
+    + CategoryInfo          : ParserError: (:) [], ParentContainsErrorRecordException
+    + FullyQualifiedErrorId : MissingExpressionAfterToken
+
+PS C:\Users\owner\Desktop\es_futures_backtester> print("running run_path", flush=True)
+At line:1 char:27
++ print("running run_path", flush=True)
+# Missing expression after ','.
+At line:1 char:28
++ print("running run_path", flush=True)
+# Unexpected token 'flush=True' in expression or statement.
+At line:1 char:27
++ print("running run_path", flush=True)
+# Missing closing ')' in expression.
+At line:1 char:38
++ print("running run_path", flush=True)
+# Unexpected token ')' in expression or statement.
+    + CategoryInfo          : ParserError: (:) [], ParentContainsErrorRecordException
+    + FullyQualifiedErrorId : MissingExpressionAfterToken
+
+PS C:\Users\owner\Desktop\es_futures_backtester> runpy.run_path(r'.\paper_trader.py', run_name='__main__')
+At line:1 char:36
++ runpy.run_path(r'.\paper_trader.py', run_name='__main__')
+# Missing argument in parameter list.
+    + CategoryInfo          : ParserError: (:) [], ParentContainsErrorRecordException
+    + FullyQualifiedErrorId : MissingArgument
+
+PS C:\Users\owner\Desktop\es_futures_backtester> print("done run_path", flush=True)
+At line:1 char:23
++ print("done run_path", flush=True)
+# Missing expression after ','.
+At line:1 char:24
++ print("done run_path", flush=True)
+# Unexpected token 'flush=True' in expression or statement.
+At line:1 char:23
++ print("done run_path", flush=True)
+# Missing closing ')' in expression.
+At line:1 char:34
++ print("done run_path", flush=True)
+# Unexpected token ')' in expression or statement.
+    + CategoryInfo          : ParserError: (:) [], ParentContainsErrorRecordException
+    + FullyQualifiedErrorId : MissingExpressionAfterToken
+
+PS C:\Users\owner\Desktop\es_futures_backtester> PY
+Python 3.13.5 (tags/v3.13.5:6cb20a2, Jun 11 2025, 16:15:46) [MSC v.1943 64 bit (AMD64)] on win32
+# Type "help", "copyright", "credits" or "license" for more information.
+... $src  = Get-Content $path -Raw
+... $wrapped = @"
+... if __name__ == "__main__":
+...     print(">>> ENTER main()", flush=True)
+...     try:
+...         main()
+...     except SystemExit as e:
+...         print(f">>> SystemExit: {getattr(e, 'code', None)}", flush=True)
+...         raise
+...     except Exception as e:
+...         import traceback
+...         print(">>> Unhandled exception! Traceback follows:", flush=True)
+...         traceback.print_exc()
+...         raise
+... "@
+...
+... $replaced = [bool]([regex]::IsMatch($src, 'if __name__ == "__main__":\s*main\(\)', 'Singleline'))
+... if ($replaced) {
+...   $src = [regex]::Replace($src, 'if __name__ == "__main__":\s*main\(\)', $wrapped, 'Singleline')
+...   Write-Host " Replaced minimal __main__ with wrapped version."
+... } else {
+...   if ($src -notmatch 'ENTER main\(\)') {
+...     $src = $src.TrimEnd() + "rnrn" + $wrapped + "rn"
+...   } else {
+...     Write-Host "  Wrapped __main__ already present."
+...   }
+... }
+... Set-Content -LiteralPath $path -Value $src -Encoding UTF8
+
+<python-input-0>:2: SyntaxWarning: invalid escape sequence '\p'
+#   File "<python-input-0>", line 17
+    $wrapped = @"
+SyntaxError: unterminated string literal (detected at line 17)
+PS C:\Users\owner\Desktop\es_futures_backtester> # Backup
+PS C:\Users\owner\Desktop\es_futures_backtester> Copy-Item -LiteralPath '.\paper_trader.py' -Destination '.\paper_trader.py.bak' -Force
+PS C:\Users\owner\Desktop\es_futures_backtester>
+PS C:\Users\owner\Desktop\es_futures_backtester> # Prepend a BOOT print (runs on import)
+PS C:\Users\owner\Desktop\es_futures_backtester> $path = '.\paper_trader.py'
+PS C:\Users\owner\Desktop\es_futures_backtester> $src  = Get-Content $path -Raw
+PS C:\Users\owner\Desktop\es_futures_backtester> $boot = 'print(">>> BOOT: paper_trader.py imported", flush=True)'
+PS C:\Users\owner\Desktop\es_futures_backtester> if ($src -notmatch 'BOOT: paper_trader\.py imported') {
+>>   Set-Content -LiteralPath $path -Value ($boot + "rn" + $src) -Encoding UTF8
+>>   Write-Host " Prepended BOOT print."
+>> } else {
+>>   Write-Host "  BOOT print already present."
+>> }
+#  Prepended BOOT print.
+PS C:\Users\owner\Desktop\es_futures_backtester>
+PS C:\Users\owner\Desktop\es_futures_backtester> # Ensure a wrapped __main__ that always prints
+PS C:\Users\owner\Desktop\es_futures_backtester> $src  = Get-Content $path -Raw
+PS C:\Users\owner\Desktop\es_futures_backtester> $wrapped = @"
+>> if __name__ == "__main__":
+>>     print(">>> ENTER main()", flush=True)
+>>     try:
+>>         main()
+>>     except SystemExit as e:
+>>         print(f">>> SystemExit: {getattr(e, 'code', None)}", flush=True)
+>>     except Exception as e:
+>>         print(">>> Unhandled exception! Traceback follows:", flush=True)
+>>         traceback.print_exc()
+PS C:\Users\owner\Desktop\es_futures_backtester>
+PS C:\Users\owner\Desktop\es_futures_backtester> # Replace a minimal main if present; otherwise append at EOF once
+PS C:\Users\owner\Desktop\es_futures_backtester> if ([regex]::IsMatch($src, 'if __name__ == "__main__":\s*main\(\)', 'Singleline')) {
+>>   $src = [regex]::Replace($src, 'if __name__ == "__main__":\s*main\(\)', $wrapped, 'Singleline')
+>>   Write-Host " Replaced minimal __main__ with wrapped version."
+>> } elseif ($src -notmatch '>>> ENTER main\(\)') {
+>>   $src = $src.TrimEnd() + "rnrn" + $wrapped + "rn"
+>>   Write-Host "  Appended wrapped __main__ at EOF."
+>> } else {
+>>   Write-Host "  Wrapped __main__ already present."
+>> }
+#   Appended wrapped __main__ at EOF.
+PS C:\Users\owner\Desktop\es_futures_backtester> Set-Content -LiteralPath $path -Value $src -Encoding UTF8
+PS C:\Users\owner\Desktop\es_futures_backtester> Get-Content .\paper_trader.py -Head 5
+print(">>> BOOT: paper_trader.py imported", flush=True)
+
+if __name__ == "__main__":
+    pass
+#     print(">>> ENTER main()", flush=True)
+    try:
+        pass
+PS C:\Users\owner\Desktop\es_futures_backtester> Get-Content .\paper_trader.py -Tail 25
+print(">>> BOOT: paper_trader.py imported", flush=True)
+
+if __name__ == "__main__":
+    pass
+#     print(">>> ENTER main()", flush=True)
+    try:
+        pass
+#         main()
+    except SystemExit as e:
+        print(f">>> SystemExit: {getattr(e, 'code', None)}", flush=True)
+    except Exception as e:
+        pass
+#         import traceback
+        print(">>> Unhandled exception! Traceback follows:", flush=True)
+#         traceback.print_exc()
+
+PS C:\Users\owner\Desktop\es_futures_backtester> python -u -X faulthandler .\paper_trader.py --help
+>>> BOOT: paper_trader.py imported
+>>> ENTER main()
+>>> Unhandled exception! Traceback follows:
+Traceback (most recent call last):
+  File "C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py", line 6, in <module>
+#     main()
+NameError: name 'main' is not defined. Did you mean: 'min'?
+Traceback (most recent call last):
+  File "C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py", line 6, in <module>
+#     main()
+NameError: name 'main' is not defined. Did you mean: 'min'?
+PS C:\Users\owner\Desktop\es_futures_backtester> python -u -X faulthandler .\paper_trader.py --connect-attempts 1 --force-delayed
+>>> BOOT: paper_trader.py imported
+>>> ENTER main()
+>>> Unhandled exception! Traceback follows:
+Traceback (most recent call last):
+  File "C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py", line 6, in <module>
+#     main()
+NameError: name 'main' is not defined. Did you mean: 'min'?
+Traceback (most recent call last):
+  File "C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py", line 6, in <module>
+#     main()
+NameError: name 'main' is not defined. Did you mean: 'min'?
+PS C:\Users\owner\Desktop\es_futures_backtester> @"
+>> print(">>> driver: running run_path", flush=True)
+>> runpy.run_path(r'.\paper_trader.py', run_name='__main__')
+>> print(">>> driver: done", flush=True)
+>> "@ | Set-Content .\_driver.py -Encoding UTF8
+PS C:\Users\owner\Desktop\es_futures_backtester>
+PS C:\Users\owner\Desktop\es_futures_backtester> python -u .\_driver.py
+>>> driver: running run_path
+>>> BOOT: paper_trader.py imported
+>>> ENTER main()
+>>> Unhandled exception! Traceback follows:
+Traceback (most recent call last):
+#   File ".\paper_trader.py", line 6, in <module>
+#     main()
+NameError: name 'main' is not defined. Did you mean: 'min'?
+Traceback (most recent call last):
+  File "C:\Users\owner\Desktop\es_futures_backtester\_driver.py", line 3, in <module>
+#     runpy.run_path(r'.\paper_trader.py', run_name='__main__')
+#   File "<frozen runpy>", line 287, in run_path
+#   File "<frozen runpy>", line 98, in _run_module_code
+#   File "<frozen runpy>", line 88, in _run_code
+#   File ".\paper_trader.py", line 6, in <module>
+#     main()
+NameError: name 'main' is not defined. Did you mean: 'min'?
+PS C:\Users\owner\Desktop\es_futures_backtester> Get-Location
+
+C:\Users\owner\Desktop\es_futures_backtester
+
+
+PS C:\Users\owner\Desktop\es_futures_backtester> Get-Item .\paper_trader.py
+
+
+    Directory: C:\Users\owner\Desktop\es_futures_backtester
+
+
+-a----        10/18/2025  12:59 AM            442 paper_trader.py
+
+
+PS C:\Users\owner\Desktop\es_futures_backtester> # 1) Inspect sizes: the .bak should be large; the current .py is tiny (442 bytes)
+PS C:\Users\owner\Desktop\es_futures_backtester> Get-Item .\paper_trader.py, .\paper_trader.py.bak | Select Name, Length, LastWriteTime
+
+paper_trader.py        442 10/18/2025 12:59:20 AM
+paper_trader.py.bak     13 10/18/2025 12:55:37 AM
+
+
+PS C:\Users\owner\Desktop\es_futures_backtester>
+PS C:\Users\owner\Desktop\es_futures_backtester> # 2) Restore the original from the backup
+PS C:\Users\owner\Desktop\es_futures_backtester> Copy-Item -LiteralPath '.\paper_trader.py.bak' -Destination '.\paper_trader.py' -Force
+PS C:\Users\owner\Desktop\es_futures_backtester>
+PS C:\Users\owner\Desktop\es_futures_backtester> # 3) Sanity check  the restored file should now be large again
+PS C:\Users\owner\Desktop\es_futures_backtester> Get-Item .\paper_trader.py | Select Name, Length, LastWriteTime
+
+paper_trader.py     13 10/18/2025 12:55:37 AM
+
+
+PS C:\Users\owner\Desktop\es_futures_backtester> Get-Content .\paper_trader.py -Head 5
+
+
+
+
+
+PS C:\Users\owner\Desktop\es_futures_backtester> Get-Content .\paper_trader.py -Tail 5
+
+
+
+
+
+PS C:\Users\owner\Desktop\es_futures_backtester> python -m py_compile .\paper_trader.py
+PS C:\Users\owner\Desktop\es_futures_backtester> python -u -X faulthandler .\paper_trader.py --help
+PS C:\Users\owner\Desktop\es_futures_backtester> python -u -X faulthandler .\paper_trader.py --connect-attempts 1 --force-delayed
+PS C:\Users\owner\Desktop\es_futures_backtester> $path = '.\paper_trader.py'
+PS C:\Users\owner\Desktop\es_futures_backtester> $src  = Get-Content $path -Raw
+PS C:\Users\owner\Desktop\es_futures_backtester>
+PS C:\Users\owner\Desktop\es_futures_backtester> # 0) add helper once
+PS C:\Users\owner\Desktop\es_futures_backtester> if ($src -notmatch 'def\s+_log_sizing_debug\(') {
+>>   $helper = @'
+>> def _log_sizing_debug(mode: str, d: dict):
+>>     """Emit a compact sizing debug entry; safe if anything goes wrong."""
+>>     try:
+>>         payload = {"mode": str(mode)}
+>>         payload.update({k: (float(v) if isinstance(v, (int, float)) else v) for k, v in d.items()})
+>>         log("sizing_debug", **payload)
+>>     except Exception:
+>>         try: log("sizing_debug_err", mode=str(mode))
+>>         except Exception: pass
+>>   $src = $src -replace '(?ms)(\n\s*def\s+per_contract_risk_dollars\()', "n$helper$1"
+>> }
+PS C:\Users\owner\Desktop\es_futures_backtester>
+PS C:\Users\owner\Desktop\es_futures_backtester> # 1) correct HL2 appends in seed/RT/poll
+PS C:\Users\owner\Desktop\es_futures_backtester> $src = $src -replace 'HL2\.append\(b\.close\)', 'HL2.append((b.high + b.low) * 0.5)'
+PS C:\Users\owner\Desktop\es_futures_backtester> $src = $src -replace 'HL2\.append\(last\.close\)', 'HL2.append((last.high + last.low) * 0.5)'
+PS C:\Users\owner\Desktop\es_futures_backtester>
+PS C:\Users\owner\Desktop\es_futures_backtester> # 2) replace the whole sizing block (margin_cap_qty + determine_order_qty) up to place_bracket
+PS C:\Users\owner\Desktop\es_futures_backtester> $sizingPattern = '(?ms)#\s*-----\s*Margin cap.*?def\s+place_bracket'
+PS C:\Users\owner\Desktop\es_futures_backtester> $sizingReplacement = @'
+>> # ----- Margin cap (NEW) -----
+>> def margin_cap_qty(eq_now: float) -> int:
+>>     reserve = max(0.0, float(args.margin_reserve_pct))
+>>     eff_eq = max(0.0, float(eq_now) * (1.0 - reserve))
+>>     per = max(1.0, float(args.margin_per_contract))
+>>     return int(clamp(math.floor(eff_eq / per), 0, args.max_contracts))
+>> def determine_order_qty(current_net_qty: int) -> int:
+>>     Equity-based size (ladder + risk budget + HWM stepdown) with a hard margin cap.
+>>     Emits 'sizing_debug' with all components on every call.
+>>     if args.use_ib_pnl and (ib_netliq is not None):
+>>         eq_now = float(ib_netliq); eq_src = "ib_netliq"
+>>     else:
+>>         eq_now = float(equity);     eq_src = "local_equity"
+>>     pc_risk = per_contract_risk_dollars()
+>>     if args.static_size:
+>>         final_qty = int(max(1, round(float(args.qty))))
+>>         _log_sizing_debug("static", {
+>>             "eq_src": eq_src, "eq_now": round(eq_now,2),
+>>             "risk_ticks": int(args.risk_ticks), "tick_size": float(args.tick_size),
+>>             "px_mult": float(px_mult), "pc_risk_dollars": round(pc_risk, 2),
+>>             "static_qty": final_qty, "current_net_qty": int(current_net_qty),
+>>             "max_contracts": int(args.max_contracts)
+>>         })
+>>         if (abs(current_net_qty) + final_qty) > args.max_contracts:
+>>             final_qty = max(0, args.max_contracts - abs(current_net_qty))
+>>         return int(final_qty)
+>>     eq_size  = equity_ladder_size(eq_now)
+>>     rb_size  = risk_budget_size(eq_now)
+>>     base_qty = int(clamp(min(eq_size, rb_size), 1, args.max_contracts))
+>>     stepdown_qty = apply_hwm_stepdown(base_qty)
+>>     mcap_total    = margin_cap_qty(eq_now)
+>>     desired_total = int(clamp(stepdown_qty, 0, args.max_contracts))
+>>     total_cap     = int(clamp(mcap_total, 0, args.max_contracts))
+>>     desired_total = min(desired_total, total_cap)
+>>     if abs(current_net_qty) >= desired_total:
+>>         addable = 0; final_qty = 0
+>>     else:
+>>         addable = desired_total - abs(int(current_net_qty))
+>>         final_qty = int(max(0, addable))
+>>     if (abs(current_net_qty) + final_qty) > args.max_contracts:
+>>         final_qty = max(0, args.max_contracts - abs(current_net_qty))
+>>     _log_sizing_debug("dynamic", {
+>>         "eq_src": eq_src, "eq_now": round(eq_now,2),
+>>         "acct_base": float(args.acct_base),
+>>         "risk_pct": float(args.risk_pct),
+>>         "risk_ticks": int(args.risk_ticks),
+>>         "tick_size": float(args.tick_size),
+>>         "px_mult": float(px_mult),
+>>         "pc_risk_dollars": round(pc_risk, 2),
+>>         "scale_step": float(args.scale_step),
+>>         "start_contracts": int(args.start_contracts),
+>>         "max_contracts": int(args.max_contracts),
+>>         "hwm_stepdown": bool(args.hwm_stepdown),
+>>         "hwm_stepdown_dollars": float(args.hwm_stepdown_dollars),
+>>         "margin_per_contract": float(args.margin_per_contract),
+>>         "margin_reserve_pct": float(args.margin_reserve_pct),
+>>         "equity_ladder_qty": int(eq_size),
+>>         "risk_budget_qty": int(rb_size),
+>>         "base_qty_min_ladder_risk": int(base_qty),
+>>         "after_hwm_stepdown_qty": int(stepdown_qty),
+>>         "margin_cap_total": int(mcap_total),
+>>         "desired_total_after_margin": int(desired_total),
+>>         "current_net_qty": int(current_net_qty),
+>>         "addable_qty": int(addable),
+>>         "final_order_qty": int(final_qty)
+>>     })
+>>     return int(final_qty)
+PS C:\Users\owner\Desktop\es_futures_backtester> $src = [regex]::Replace($src, $sizingPattern, $sizingReplacement)
+PS C:\Users\owner\Desktop\es_futures_backtester>
+PS C:\Users\owner\Desktop\es_futures_backtester> # 3) fix the stray 'l' before a heartbeat log (just in case)
+PS C:\Users\owner\Desktop\es_futures_backtester> $src = $src -replace "(?ms)^\s*l\s*\r?\n(\s*log\(""hb"",)","$1"
+PS C:\Users\owner\Desktop\es_futures_backtester>
+PS C:\Users\owner\Desktop\es_futures_backtester> Set-Content -LiteralPath $path -Value $src -Encoding UTF8
+PS C:\Users\owner\Desktop\es_futures_backtester>
+PS C:\Users\owner\Desktop\es_futures_backtester> # Re-check
+PS C:\Users\owner\Desktop\es_futures_backtester> python -m py_compile .\paper_trader.py
+PS C:\Users\owner\Desktop\es_futures_backtester> python -u -X faulthandler .\paper_trader.py --help
+PS C:\Users\owner\Desktop\es_futures_backtester>
+
+
+# Quickest recovery paths (try in order)
+# Search entire C: for any copy and show biggest first
+Get-ChildItem -Path C:\ -Include paper_trader.py, paper_trader.py.bak -File -Recurse -ErrorAction SilentlyContinue |
+#   Select-Object FullName, Length, LastWriteTime |
+If you find a larger copy, copy it back:
+    pass
+
+Copy-Item "C:\path\to\big\paper_trader.py" -Destination ".\paper_trader.py" -Force
+2) If Desktop is synced with OneDrive, use Version History
+Open OneDrive web  navigate to Desktop/es_futures_backtester  right-click paper_trader.py (or the folder)  Version history  restore a version from before 12:59 AM.
+
+Or locally: Start-Process "explorer.exe" "$env:OneDrive\Desktop"
+
+# Right-click the es_futures_backtester folder  Properties  Previous Versions tab  pick a snapshot from earlier  Open  copy out paper_trader.py from there.
+
+
+4) Git (if repo exists)
+# if True:
+# git log --oneline -- .\paper_trader.py
+# git checkout HEAD -- .\paper_trader.py
+5) Check Recycle Bin (if you deleted an older copy)
+Start-Process shell:RecycleBinFolder
+6) Try to recover from a compiled .pyc (decompile)
+# If you ever ran the good script, a .pyc might still exist and be older than the clobber time.
+
+# Look for cached bytecode
+# Get-ChildItem -Recurse -Filter "paper_trader*.pyc" | Select FullName, Length, LastWriteTime
+If you find an older .pyc, decompile it:
+    pass
+
+# Adjust path to the .pyc you found:
+# python -m decompyle3 ".\__pycache__\paper_trader.cpython-313.pyc" > ".\paper_trader.recovered.py"
+Open paper_trader.recovered.py, sanity-check it, then replace your main file:
+
+# Copy-Item ".\paper_trader.recovered.py" ".\paper_trader.py" -Force
+Make multiple backups right away:
+
+# Copy-Item .\paper_trader.py .\paper_trader.safe.copy.1.py -Force
+# Copy-Item .\paper_trader.py .\paper_trader.py.bak -Force
+Put the folder under git so you can revert easily next time:
+
+# git add .
+Re-run your compile/run checks:
+
+# python -m py_compile .\paper_trader.py
+# python -u -X faulthandler .\paper_trader.py --help
+
+# -*- coding: utf-8 -*-
+# risk/sizing rails + governance + news guard; optional IB P&L sync)
+
+Key baked-in defaults (override via CLI if desired):
+# - Account base: $30,000
+# - Risk per trade: 1% of equity
+# - Start size: 2 contracts; +1 per +$10,000 equity (max 6)
+# - Trades/day cap: 12; Day loss cap: 3R; Cooldown after entry: 150s
+# - Graded loss cooldowns (opt-in): after 1 loss  +150s; after 2 losses  2 cooldown; after 3 losses  halt
+# - Weekly cap (opt-in): halt at min(5R, 2daily_cap)
+# - Position-age cap (opt-in): flat at 20m if unrealized < +0.5R
+# - Equity-aware step-down: $5k from HWM  1 contract until recovered
+# - Multi-session soft reset defaults (AM/PM): cutovers at 08:30 and 17:00 CT
+# - Optional IB P&L sync: --use-ib-pnl (dailyPnL + NetLiquidation)
+# - Breaking News Guard (opt-in): pauses entries on IB bulletins
+# - RT gating (opt-in): require fresh realtime bars before trading
+# - Emits one-shot {"evt":"caps_on","reasons":[...]} when entering caps
+
+# import sys, os, time, json, math, random, argparse, datetime as dt, re, traceback
+# from typing import Optional, List, Dict, Any, Tuple
+
+# 3rd party
+# from ib_insync import IB, Future, Contract, LimitOrder, StopOrder, Trade, MarketOrder
+
+# ============== Utilities & Logging ==============
+
+def ct_now() -> dt.datetime:
+    # assumes local machine clock is CT
+    return dt.datetime.now()
+def utc_now_str() -> str:
+    return dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+def parse_hhmm(s: str) -> dt.time:
+    hh, mm = s.split(":")
+#     return dt.time(int(hh), int(mm))
+
+def within_session(now: dt.datetime, start_ct: str, end_ct: str) -> bool:
+    pass
+#     t = now.time(); a = parse_hhmm(start_ct); b = parse_hhmm(end_ct)
+    if a <= b:
+        pass
+#         return a <= t <= b
+#     return (t >= a) or (t <= b)
+
+def clamp(x, lo, hi): return max(lo, min(hi, x))
+def ema(values: List[float], span: int) -> float:
+    if not values:
+        return float("nan")
+    k = 2.0 / (span + 1.0)
+    s = values[0]
+    for v in values[1:]:
+        s = v * k + s * (1.0 - k)
+    return s
+def atr(h: List[float], l: List[float], c: List[float], n: int = 14) -> float:
+    if len(c) < n + 1:
+        return float("nan")
+    trs: List[float] = []
+    for i in range(1, len(c)):
+        hl = h[i] - l[i]
+        hc = abs(h[i] - c[i - 1])
+        lc = abs(l[i] - c[i - 1])
+        trs.append(max(hl, hc, lc))
+    if len(trs) < n:
+        return float("nan")
+    return ema(trs[-n:], n)
+def stddev(vals: List[float]) -> float:
+    n = len(vals)
+    if n == 0:
+        return float("nan")
+    m = sum(vals) / n
+    v = sum((x - m) * (x - m) for x in vals) / n
+    return math.sqrt(v)
+
+def bbbw(hl2: List[float], n: int = 20, k: float = 2.0) -> Optional[float]:
+    if len(hl2) < n: return None
+    wins = hl2[-n:]; m = sum(wins)/n
+#     v = sum((x-m)**2 for x in wins)/n; sd = math.sqrt(v)
+#     mid = m; upper = mid + k*sd; lower = mid - k*sd
+#     bw = (upper - lower) / (mid if mid != 0 else 1.0)
+#     return abs(bw)
+
+def duration_fix(s: str) -> str:
+    pass
+#     s = s.strip().replace('"', '')
+    if s.upper().endswith('D') and ' ' not in s:
+        num = s[:-1]
+        if num.isdigit(): return f"{num} D"
+#     return s
+
+def ticks_to_price_delta(ticks: int, tick_size: float) -> float:
+    pass
+#     return float(ticks) * float(tick_size)
+
+def round_to_tick(p: float, tick: float) -> float:
+    pass
+#     return round(p / tick) * tick if tick > 0 else p
+
+def bar_ts(b):
+    pass
+#     t = getattr(b, "time", None)
+    if t is None:
+        pass
+#         t = getattr(b, "date", None)
+#     return t
+
+def mkdirs(p: str):
+    if p: os.makedirs(p, exist_ok=True)
+
+# Simple JSON logger
+def log(event: str, **fields):
+    payload = {"ts": utc_now_str(), "evt": event}
+#     payload.update(fields)
+    print(json.dumps(payload, separators=(",", ":"), ensure_ascii=False), flush=True)
+
+# ============== Session helpers (AM/PM) ==============
+
+def parse_ct_list(spec: str) -> List[dt.time]:
+    spec = (spec or "").strip()
+    if not spec:
+        return [parse_hhmm("16:10")]
+    out: List[dt.time] = []
+    for chunk in spec.split(","):
+        chunk = chunk.strip()
+        if not chunk:
+            continue
+        try:
+            out.append(parse_hhmm(chunk))
+        except Exception:
+            # ignore bad tokens like "foo"
+            pass
+    out = sorted(list({t for t in out}))
+    return out or [parse_hhmm("16:10")]
+
+def session_key_multi(now: dt.datetime, reset_times: List[dt.time]) -> str:
+    \"\"\"Return 'YYYY-mm-dd-S#' where S# is the current segment index determined by reset_times.
+    If no cutover has occurred yet today, attribute to yesterday's last segment.\"\"\"
+    t = now.time()
+    idx_today = -1
+    for i, ct in enumerate(reset_times):
+        if t >= ct:
+            idx_today = i
+        else:
+            break
+    if idx_today >= 0:
+        base_date = now.date(); seg = idx_today
+    else:
+        base_date = (now - dt.timedelta(days=1)).date(); seg = len(reset_times) - 1
+    return f"{base_date.strftime('%Y-%m-%d')}-S{seg}"
+
+def reset_due_multi(now: dt.datetime, reset_times: List[dt.time], last_reset_marks: Dict[str, str]) -> Optional[str]:
+    \"\"\"Fire once per cutover per calendar day.
+    Returns 'YYYY-mm-dd#HH:MM' on a new cutover, else None.\"\"\"
+    today = now.date().strftime('%Y-%m-%d')
+    for ct in reset_times:
+        label = ct.strftime('%H:%M')
+        if last_reset_marks.get(label) != today and now.time() >= ct:
+            last_reset_marks[label] = today
+            return f'{today}#{label}'
+    return None
+
+# ============== Safety: Paper-only ==============
+
+def ensure_paper_only(ib: IB, args):
+    if getattr(args, "allow_live", False): return
+    try:
+        pass
+#         accts = ib.managedAccounts(); acct = accts[0] if accts else None
+    except Exception:
+        pass
+#         acct = None
+#     bad_port = (getattr(args, 'port', None) != 7497)
+#     bad_acct = (acct is not None and not acct.upper().startswith("DU"))
+    if bad_port or bad_acct:
+        print(f"[SAFE] Paper-only: refusing to trade (port={getattr(args,'port',None)}, account={acct}).", file=sys.stderr)
+#         sys.exit(2)
+
+# ============== Contracts & multiplier ==============
+
+def parse_yyyymmdd(s: str) -> Optional[dt.date]:
+    try:
+        if not s: return None
+        if len(s) == 8: return dt.datetime.strptime(s, "%Y%m%d").date()
+        if len(s) == 6: return dt.datetime.strptime(s, "%Y%m").date().replace(day=1)
+    except Exception:
+        pass
+#         return None
+#     return None
+
+def qualify_local_symbol(ib: IB, local_symbol: str, exchange="CME"):
+    pass
+#     cds = ib.reqContractDetails(Future(localSymbol=local_symbol, exchange=exchange))
+    if not cds: raise RuntimeError(f"Local symbol {local_symbol} not found on {exchange}")
+#     con = cds[0].contract
+#     ib.qualifyContracts(con)
+#     return con, cds[0]
+
+def mk_contract(ib: IB, args) -> Contract:
+    if getattr(args, "local_symbol", None):
+        pass
+#         con, cd = qualify_local_symbol(ib, args.local_symbol, "CME")
+#         print(f"[CONTRACT] Using localSymbol={con.localSymbol} conId={con.conId} expiry={con.lastTradeDateOrContractMonth}")
+#         return con
+    try:
+        pass
+#         cds = ib.reqContractDetails(Future(symbol=args.symbol, exchange="CME"))
+#         today = dt.date.today(); live = []
+        for cd in cds:
+            pass
+#             last = parse_yyyymmdd(cd.contract.lastTradeDateOrContractMonth or "")
+            if last and last >= today:
+                pass
+#                 live.append((last, cd.contract))
+        if live:
+            live.sort(key=lambda x: x[0])
+#             con = live[0][1]; ib.qualifyContracts(con)
+#             print(f"[CONTRACT] Auto-picked {con.localSymbol} conId={con.conId} expiry={con.lastTradeDateOrContractMonth}")
+#             return con
+        if cds:
+            cds.sort(key=lambda cd: parse_yyyymmdd(cd.contract.lastTradeDateOrContractMonth or "") or dt.date.min, reverse=True)
+#             con = cds[0].contract; ib.qualifyContracts(con)
+#             print(f"[CONTRACT] Fallback-picked {con.localSymbol} conId={con.conId} expiry={con.lastTradeDateOrContractMonth}")
+#             return con
+    except Exception as e:
+        print(f"[CONTRACT] Auto-pick failed, falling back to generic: {e}")
+#     con = Future(symbol=args.symbol, exchange="CME", currency="USD")
+#     ib.qualifyContracts(con)
+#     return con
+
+def contract_multiplier(ib: IB, con: Contract) -> float:
+    try:
+        pass
+#         cds = ib.reqContractDetails(con)
+#         mul = cds[0].contract.multiplier
+#         m = float(mul) if mul is not None else 1.0
+#         return m if m > 0 else 1.0
+    except Exception:
+        pass
+#         return 1.0
+
+# ============== Safe orderId ==============
+
+def next_order_id(ib: IB) -> int:
+    try:
+        pass
+#         return ib.client.getReqId()
+    except Exception:
+        pass
+#     nid = getattr(ib.client, "_nextValidId", None)
+    if isinstance(nid, int) and nid > 0:
+        try: ib.client._nextValidId += 1
+        except Exception: pass
+#         return int(nid)
+    try:
+        pass
+#         ib.reqIds(1); ib.sleep(0.1)
+#         nid = getattr(ib.client, "_nextValidId", None)
+        if isinstance(nid, int) and nid > 0:
+            try: ib.client._nextValidId += 1
+            except Exception: pass
+#             return int(nid)
+    except Exception:
+        pass
+#     return int(time.time() * 1000) % 2147483000
+
+# ============== Orders ==============
+
+def make_bracket(parent_orderId: int, action: str, qty: float, entry: float, stop: float, target: float,
+                 tif: str, outsideRth: bool):
+#     parent = LimitOrder(action=action, totalQuantity=qty, lmtPrice=entry, tif=tif, outsideRth=outsideRth)
+#     parent.orderId = parent_orderId; parent.transmit = False
+#     exit_action = "SELL" if action.upper() == "BUY" else "BUY"
+#     oca = f"OCO-{int(time.time())}"
+#     stop_loss = StopOrder(action=exit_action, totalQuantity=qty, stopPrice=stop, tif=tif, outsideRth=outsideRth)
+    try:
+        stop_loss.triggerMethod = 2  # robust for CME
+    except Exception:
+        pass
+#     stop_loss.parentId = parent.orderId; stop_loss.ocaGroup = oca; stop_loss.transmit = False
+#     take_profit = LimitOrder(action=exit_action, totalQuantity=qty, lmtPrice=target, tif=tif, outsideRth=outsideRth)
+#     take_profit.parentId = parent.orderId; take_profit.ocaGroup = oca; take_profit.transmit = True
+#     return [parent, stop_loss, take_profit]
+
+# ============== CLI ==============
+
+def build_argparser():
+    pass
+#     ap = argparse.ArgumentParser(description="ES Paper Trader (Session-aware + Learning + Rails + Governance + News)")
+#     ap.add_argument("--host", default="127.0.0.1")
+#     ap.add_argument("--port", type=int, default=7497)
+#     ap.add_argument("--clientId", type=int, default=111)
+#     ap.add_argument("--symbol", default="ES")
+#     ap.add_argument("--local-symbol", dest="local_symbol", default="")
+#     ap.add_argument("--auto-front-month", action="store_true")
+
+    # Sizing & Risk
+#     ap.add_argument("--acct-base", type=float, default=30000.0)
+#     ap.add_argument("--risk-pct", type=float, default=0.01)
+#     ap.add_argument("--scale-step", type=float, default=10000.0)
+#     ap.add_argument("--start-contracts", type=int, default=2)
+#     ap.add_argument("--max-contracts", type=int, default=6)
+#     ap.add_argument("--static-size", action="store_true")
+#     ap.add_argument("--qty", type=float, default=2.0)
+#     ap.add_argument("--risk-ticks", type=int, default=12)
+#     ap.add_argument("--tick-size", type=float, default=0.25)
+#     ap.add_argument("--tp-R", type=float, default=1.0)
+
+    # Margin awareness (NEW)
+#     ap.add_argument("--margin-per-contract", type=float, default=13200.0,
+#                     help="Estimated margin per ES contract (maintenance).")
+#     ap.add_argument("--margin-reserve-pct", type=float, default=0.10,
+#                     help="Keep this fraction of equity unallocated (safety buffer).")
+
+    # Strategy gates
+#     ap.add_argument("--enable-arms", default="trend,breakout")
+#     ap.add_argument("--gate-adx", type=float, default=19.0)
+#     ap.add_argument("--gate-bbbw", type=float, default=0.0002)
+#     ap.add_argument("--gate-atrp", type=float, default=0.000055)
+
+    # Anti-burst & day/session rails
+#     ap.add_argument("--min-seconds-between-entries", type=int, default=20)
+#     ap.add_argument("--max-trades-per-day", type=int, default=12)
+#     ap.add_argument("--day-loss-cap-R", type=float, default=3.0)
+#     ap.add_argument("--max-consec-losses", type=int, default=3)
+#     ap.add_argument("--strategy-cooldown-sec", type=int, default=150)
+
+    # Risk governance extras
+#     ap.add_argument("--loss-graded-cooldown", action="store_true")
+#     ap.add_argument("--loss-cooldown-mult2", type=float, default=2.0)
+#     ap.add_argument("--enable-weekly-cap", action="store_true")
+#     ap.add_argument("--pos-age-cap-sec", type=int, default=1200)
+#     ap.add_argument("--pos-age-minR", type=float, default=0.5)
+#     ap.add_argument("--disable-pos-age-cap", action="store_true")
+#     ap.add_argument("--hwm-stepdown", action="store_true")
+#     ap.add_argument("--hwm-stepdown-dollars", type=float, default=5000.0)
+    ap.add_argument("--cancel-exits-on-flat", action="store_true")  # retained for compatibility
+
+    # Breaking News Guard
+#     ap.add_argument("--enable-breaking-news-guard", action="store_true")
+#     ap.add_argument("--news-keywords", default="BREAKING,URGENT,FOMC,rate hike,rate cut,nonfarm payrolls,CPI,PPI,ISM,PMI,halt,circuit breaker,terror,war,missile,earthquake,explosion,bank failure,shutdown,emergency")
+#     ap.add_argument("--news-pause-sec", type=int, default=900)
+#     ap.add_argument("--news-log-body", action="store_true")
+
+    # Trading window (24/5) + blackouts
+    ap.add_argument("--trade-start-ct", default="00:00")
+    ap.add_argument("--trade-end-ct", default="23:59")
+#     ap.add_argument("--tod-blackouts", default="")
+
+    # Order behavior
+#     ap.add_argument("--entry-slippage-ticks", type=int, default=2)
+    ap.add_argument("--atomic-bracket", action="store_true")  # ignored; warn
+#     ap.add_argument("--place-orders", action="store_true")
+#     ap.add_argument("--tif", default="GTC")
+#     ap.add_argument("--outsideRth", action="store_true")
+#     ap.add_argument("--require-new-bar-after-start", action="store_true")
+#     ap.add_argument("--startup-delay-sec", type=int, default=10)
+#     ap.add_argument("--debounce-one-bar", action="store_true")
+
+    # Session resets (AM/PM default)
+    ap.add_argument("--session-reset-cts", default="08:30,17:00",
+                    help="Comma CT times for soft resets each day (e.g. '08:30,17:00'). Overrides --daily-reset-ct.")
+    ap.add_argument("--daily-reset-ct", default="16:10")  # legacy single reset
+
+    # Reset behaviors at session cutover (NEW)
+#     ap.add_argument("--reset-clear-learn", action="store_true",
+#                     help="Reset learners/meta at each session cutover.")
+#     ap.add_argument("--reset-cancel-working", action="store_true",
+#                     help="Cancel active parent entry orders at session cutover.")
+#     ap.add_argument("--reset-cancel-exits", action="store_true",
+#                     help="Cancel active exit (OCO) child orders at session cutover.")
+
+    # Connectivity & data
+#     ap.add_argument("--duration", default="1 D")
+#     ap.add_argument("--connect-timeout-sec", type=int, default=300)
+#     ap.add_argument("--timeout-sec", type=int, default=300)
+#     ap.add_argument("--connect-attempts", type=int, default=24)
+#     ap.add_argument("--force-delayed", action="store_true")
+#     ap.add_argument("--poll-hist-when-no-rt", action="store_true")
+#     ap.add_argument("--poll-interval-sec", type=int, default=10)
+
+    # Realtime gating
+#     ap.add_argument("--require-rt-before-trading", action="store_true")
+#     ap.add_argument("--rt-staleness-sec", type=int, default=45)
+
+    # Learning / bandits
+#     ap.add_argument("--bandit", choices=["meta","linucb","ts","ucb_tuned","exp3","fixed"], default="meta")
+#     ap.add_argument("--bandit-state", default=".\\data\\learn\\bandit_state.json")
+#     ap.add_argument("--learn-log", action="store_true")
+#     ap.add_argument("--learn-log-dir", default=".\\logs\\learn")
+#     ap.add_argument("--sample-action", action="store_true")
+#     ap.add_argument("--decay-half-life-trades", type=float, default=200.0)
+#     ap.add_argument("--meta-eta", type=float, default=0.15)
+#     ap.add_argument("--switching-cost", type=float, default=0.05)
+#     ap.add_argument("--ph-delta", type=float, default=0.005)
+#     ap.add_argument("--ph-lambda", type=float, default=0.8)
+
+    # PnL & equity sync from IB (optional)
+#     ap.add_argument("--use-ib-pnl", action="store_true",
+#                     help="Sync day_realized from IB dailyPnL and equity from NetLiquidation.")
+#     ap.add_argument("--peak-dd-guard-pct", type=float, default=0.60,
+#                     help="0 disables from-peak guard; else halt when giveback >= pct of day_peak_realized.")
+
+    # NEW: Day guard and peak-DD minimum profit gate
+#     ap.add_argument("--day-guard-pct", type=float, default=0.025,
+#                     help="Hard day loss guard as fraction of start-of-session equity (e.g., 0.025 = 2.5%).")
+#     ap.add_argument("--peak-dd-min-profit", type=float, default=1500.0,
+#                     help="Enable the peak drawdown guard only once day_realized >= this profit.")
+
+    # ===== NEW: Short guard rails & VWAP control =====
+#     ap.add_argument("--short-guard-vwap-buffer-ticks", type=int, default=4,
+#                     help="Buffer above session VWAP (in ticks) where shorts are blocked.")
+#     ap.add_argument("--short-guard-min-pullback-ticks", type=int, default=6,
+#                     help="Min HL distance between last two swing highs (in ticks) to confirm lower-high.")
+#     ap.add_argument("--short-guard-lookback-bars", type=int, default=60,
+#                     help="Lookback window (bars) for swing high detection.")
+
+#     ap.add_argument("--short-guard-vwap", action="store_true", default=True,
+#                     help="Block shorts near/above session VWAP.")
+#     ap.add_argument("--no-short-guard-vwap", dest="short_guard_vwap", action="store_false")
+
+#     ap.add_argument("--short-guard-lower-high", action="store_true", default=True,
+#                     help="Require a lower-high pivot before shorting.")
+#     ap.add_argument("--no-short-guard-lower-high", dest="short_guard_lower_high", action="store_false")
+
+#     ap.add_argument("--vwap-reset-on-session", action="store_true", default=True,
+#                     help="Reset VWAP accumulators at each session cutover.")
+#     ap.add_argument("--no-vwap-reset-on-session", dest="vwap_reset_on_session", action="store_false")
+
+    # Misc
+#     ap.add_argument("--allow_live", action="store_true")
+#     ap.add_argument("-v", "--verbose", action="store_true")
+#     return ap
+
+# ============== Day risk / heartbeat ==============
+
+class DayRisk:
+    def __init__(self, loss_cap_R: float, max_trades: int, max_consec_losses: int):
+        pass
+#         self.loss_cap_R = float(loss_cap_R); self.max_trades = int(max_trades)
+#         self.max_consec_losses = int(max_consec_losses)
+#         self.reset()
+    def reset(self):
+        pass
+#         self.day_R = 0.0; self.trades = 0
+        self.cool_until: Optional[dt.datetime] = None
+#         self.halted = False
+        self.last_entry_time: Optional[float] = None
+#         self.consec_losses = 0
+    def can_trade(self, now: dt.datetime, min_gap_s:int) -> bool:
+        if self.halted: return False
+        if self.cool_until and now < self.cool_until: return False
+        if self.trades >= self.max_trades: return False
+        if self.day_R <= -abs(self.loss_cap_R): return False
+        if self.consec_losses >= self.max_consec_losses: return False
+        if self.last_entry_time and (time.time() - self.last_entry_time) < max(0, min_gap_s): return False
+#         return True
+
+# ============== Week cap helpers ==============
+
+def iso_week_id(d: dt.date) -> str:
+    pass
+#     y, w, _ = d.isocalendar()
+    return f"{y}-W{int(w):02d}"
+
+# ============== Time-of-day blackouts ==============
+
+def parse_blackouts(spec: str) -> List[Tuple[dt.time, dt.time]]:
+    pass
+#     out = []
+#     spec = (spec or "").strip()
+    if not spec: return out
+    for chunk in spec.split(","):
+        pass
+#         chunk = chunk.strip()
+        if not chunk: continue
+        try:
+            pass
+#             a, b = chunk.split("-")
+#             out.append((parse_hhmm(a), parse_hhmm(b)))
+        except Exception:
+            pass
+#     return out
+
+def in_any_blackout(now: dt.datetime, windows: List[Tuple[dt.time, dt.time]]) -> bool:
+    if not windows: return False
+#     t = now.time()
+    for a, b in windows:
+        if a <= b:
+            if a <= t <= b: return True
+        else:
+            if (t >= a) or (t <= b): return True
+#     return False
+
+# ============== Indicators / features ==============
+
+def adx(h: List[float], l: List[float], c: List[float], n: int=14) -> float:
+    if len(c) < n+2: return float("nan")
+#     dm_pos = []; dm_neg = []; tr = []
+    for i in range(1, len(c)):
+        pass
+#         up = h[i] - h[i-1]; dn = l[i-1] - l[i]
+#         dm_pos.append(max(up, 0.0) if up > dn else 0.0)
+#         dm_neg.append(max(dn, 0.0) if dn > up else 0.0)
+#         tr.append(max(h[i]-l[i], abs(h[i]-c[i-1]), abs(l[i]-c[i-1])))
+    def rma(vals, n):
+        if len(vals) < n: return float("nan")
+        alpha = 1.0/n; s = sum(vals[:n]) / n
+        for v in vals[n:]: s = s*(1-alpha) + v*alpha
+#         return s
+#     atrv = rma(tr, n)
+    if (atrv == 0.0) or math.isnan(atrv): return float("nan")
+#     di_pos = 100 * (rma(dm_pos, n) / atrv)
+#     di_neg = 100 * (rma(dm_neg, n) / atrv)
+#     dx = 100 * abs(di_pos - di_neg) / max(di_pos + di_neg, 1e-9)
+#     return dx
+
+def feature_vector(H: List[float], L: List[float], C: List[float]) -> List[float]:
+    pass
+#     n = len(C)
+    if n < 60: return [0.0]*8
+    close = C[-1]; f20 = ema(C[-20:], 20); f50 = ema(C[-50:], 50)
+#     slope = (f20 - f50) / (close if close != 0 else 1.0)
+    _adx = adx(H, L, C, 14); _atr = atr(H, L, C, 14)
+#     atrp = (_atr/close) if (not math.isnan(_atr) and close>0) else 0.0
+#     bw = bbbw(C, 20, 2.0) or 0.0
+#     r5 = (close - C[-5]) / (C[-5] if C[-5] != 0 else 1.0)
+#     r20 = (close - C[-20]) / (C[-20] if C[-20] != 0 else 1.0)
+    vol = stddev(C[-20:]) / (close if close != 0 else 1.0)
+#     bias = 1.0
+#     adx_n = 0.01 * clamp(_adx, 0.0, 100.0) if not math.isnan(_adx) else 0.0
+#     return [bias, slope, atrp, bw, r5, r20, vol, adx_n]
+
+# ============== Tiny linear algebra ==============
+
+def mat_identity(n: int) -> List[List[float]]:
+    pass
+#     return [[1.0 if i==j else 0.0 for j in range(n)] for i in range(n)]
+def mat_copy(A: List[List[float]]) -> List[List[float]]:
+    return [row[:] for row in A]
+def mat_vec(A: List[List[float]], x: List[float]) -> List[float]:
+    pass
+#     return [sum(A[i][j]*x[j] for j in range(len(x))) for i in range(len(A))]
+def vec_dot(a: List[float], b: List[float]) -> float:
+    pass
+#     return sum(ai*bi for ai,bi in zip(a,b))
+
+def mat_inv(A: List[List[float]]) -> List[List[float]]:
+    pass
+#     n = len(A); M = mat_copy(A); I = mat_identity(n)
+    for col in range(n):
+        pass
+#         piv = col
+        for r in range(col, n):
+            if abs(M[r][col]) > abs(M[piv][col]): piv = r
+        if abs(M[piv][col]) < 1e-12:
+            for i in range(n): M[i][i] += 1e-6
+#             piv = col
+        if piv != col:
+            pass
+#             M[col], M[piv] = M[piv], M[col]; I[col], I[piv] = I[piv], I[col]
+#         div = M[col][col]
+        if abs(div) < 1e-12: div = 1e-12
+        for j in range(n): M[col][j] /= div; I[col][j] /= div
+        for r in range(n):
+            if r == col: continue
+#             f = M[r][col]
+            if f != 0.0:
+                for j in range(n):
+                    pass
+#                     M[r][j] -= f*M[col][j]; I[r][j] -= f*I[col][j]
+#     return I
+
+# ============== Learners (LinUCB, TS, UCBTuned, EXP3) ==============
+
+class BaseLearner:
+    def __init__(self, arms: List[str], decay_gamma: float):
+        self.arms = arms[:]; self.gamma = decay_gamma
+    def predict_scores(self, x: List[float], cand_arms: List[str]) -> Dict[str, float]: raise NotImplementedError
+    def update(self, arm: str, reward: float, x: List[float]): raise NotImplementedError
+    def to_state(self) -> Dict[str, Any]: return {}
+    def from_state(self, s: Dict[str, Any]): return
+
+class LinUCB(BaseLearner):
+    def __init__(self, arms: List[str], decay_gamma: float, alpha: float = 0.8, dim: int = 8, ridge: float = 1.0):
+        pass
+#         super().__init__(arms, decay_gamma)
+#         self.alpha = alpha; self.dim = dim; self.ridge = ridge
+        self.A = {a: mat_identity(dim) for a in arms}
+        for a in arms:
+            for i in range(dim): self.A[a][i][i] = ridge
+        self.b = {a: [0.0]*dim for a in arms}
+    def predict_scores(self, x: List[float], cand_arms: List[str]) -> Dict[str,float]:
+        pass
+#         out = {}
+        for a in cand_arms:
+            pass
+#             Ainv = mat_inv(self.A[a]); theta = mat_vec(Ainv, self.b[a])
+#             mu = vec_dot(theta, x); ax = mat_vec(Ainv, x)
+#             conf = math.sqrt(max(0.0, vec_dot(x, ax)))
+#             out[a] = mu + self.alpha * conf
+#         return out
+    def update(self, arm: str, reward: float, x: List[float]):
+        pass
+#         g = self.gamma; A = self.A[arm]
+        for i in range(self.dim):
+            for j in range(self.dim): A[i][j] = g*A[i][j]
+#             A[i][i] += (1.0-g)*self.ridge
+#         self.A[arm] = A; self.b[arm] = [g*bi for bi in self.b[arm]]
+        for i in range(self.dim):
+            for j in range(self.dim): A[i][j] += x[i]*x[j]
+#         self.b[arm] = [self.b[arm][i] + reward*x[i] for i in range(self.dim)]
+    def to_state(self): return {"A": self.A, "b": self.b, "alpha": self.alpha, "dim": self.dim, "ridge": self.ridge}
+    def from_state(self, s):
+        try:
+            self.A = {k: v for k,v in s["A"].items()}
+            self.b = {k: v for k,v in s["b"].items()}
+#             self.alpha = float(s.get("alpha", self.alpha))
+#             self.dim = int(s.get("dim", self.dim))
+#             self.ridge = float(s.get("ridge", self.ridge))
+        except Exception: pass
+
+class ThompsonGaussian(BaseLearner):
+    def __init__(self, arms: List[str], decay_gamma: float, prior_mean=0.0, prior_var=0.25):
+        pass
+#         super().__init__(arms, decay_gamma)
+        self.m = {a: prior_mean for a in arms}; self.s2 = {a: prior_var for a in arms}
+        self.w = {a: 1e-6 for a in arms}
+    def predict_scores(self, x: List[float], cand_arms: List[str]) -> Dict[str,float]:
+        pass
+#         out = {}
+        for a in cand_arms:
+            pass
+#             std = math.sqrt(max(1e-6, self.s2[a] / (self.w[a] + 1.0)))
+#             out[a] = random.gauss(self.m[a], std)
+#         return out
+    def update(self, arm: str, reward: float, x: List[float]):
+        pass
+#         g = self.gamma; self.w[arm] = g*self.w[arm]; w_old = self.w[arm]
+#         self.w[arm] = w_old + 1.0
+#         m_old = self.m[arm]; m_new = m_old + (reward - m_old) / self.w[arm]
+#         s2_old = self.s2[arm]; s2_new = g*s2_old + (reward - m_old)*(reward - m_new)
+#         self.m[arm] = m_new; self.s2[arm] = max(1e-6, s2_new)
+    def to_state(self): return {"m": self.m, "s2": self.s2, "w": self.w}
+    def from_state(self, s):
+        try:
+            self.m = {k: float(v) for k,v in s["m"].items()}
+            self.s2 = {k: float(v) for k,v in s["s2"].items()}
+            self.w = {k: float(v) for k,v in s["w"].items()}
+        except Exception: pass
+
+class UCBTuned(BaseLearner):
+    def __init__(self, arms: List[str], decay_gamma: float):
+        pass
+#         super().__init__(arms, decay_gamma)
+        self.w = {a: 1e-6 for a in arms}; self.mean = {a: 0.0 for a in arms}; self.m2 = {a: 0.0 for a in arms}
+#         self.t = 1.0
+    def predict_scores(self, x: List[float], cand_arms: List[str]) -> Dict[str,float]:
+        pass
+#         out = {}
+        for a in cand_arms:
+            pass
+#             n = max(1e-6, self.w[a]); vhat = 0.0
+            if n > 1: vhat = max(0.0, self.m2[a] / (n-1.0))
+#             bonus = math.sqrt((math.log(max(2.0, self.t)) / n) * min(0.25, vhat + math.sqrt(2*math.log(max(2.0,self.t))/n)))
+#             out[a] = self.mean[a] + bonus
+#         return out
+    def update(self, arm: str, reward: float, x: List[float]):
+        pass
+#         self.t += 1.0; g = self.gamma
+#         self.w[arm] = g*self.w[arm]; n_old = self.w[arm]; self.w[arm] = n_old + 1.0
+#         delta = reward - self.mean[arm]
+#         self.mean[arm] += delta / self.w[arm]
+#         self.m2[arm] = g*self.m2[arm] + delta*(reward - self.mean[arm])
+    def to_state(self): return {"w": self.w, "mean": self.mean, "m2": self.m2, "t": self.t}
+    def from_state(self, s):
+        try:
+            self.w = {k: float(v) for k,v in s["w"].items()}
+            self.mean = {k: float(v) for k,v in s["mean"].items()}
+            self.m2 = {k: float(v) for k,v in s["m2"].items()}
+#             self.t = float(s.get("t", self.t))
+        except Exception: pass
+
+class EXP3(BaseLearner):
+    def __init__(self, arms: List[str], decay_gamma: float, gamma_exp: float = 0.07):
+        super().__init__(arms, decay_gamma); self.gamma_exp = gamma_exp; self.w = {a: 1.0 for a in arms}
+    def _probs(self, cand_arms: List[str]) -> Dict[str,float]:
+        pass
+#         W = sum(self.w[a] for a in cand_arms); k = len(cand_arms)
+        if W <= 0:
+            for a in cand_arms: self.w[a] = 1.0
+#             W = float(k)
+#         probs = {}
+        for a in cand_arms:
+            pass
+#             probs[a] = (1.0 - self.gamma_exp) * (self.w[a] / W) + (self.gamma_exp / k)
+#         return probs
+    def predict_scores(self, x: List[float], cand_arms: List[str]) -> Dict[str,float]:
+        pass
+#         return self._probs(cand_arms)
+    def update(self, arm: str, reward: float, x: List[float]):
+        pass
+#         r01 = clamp(0.25*(reward + 2.0), 0.0, 1.0)
+#         cand = self.arms; probs = self._probs(cand); p_a = max(1e-6, probs[arm])
+#         est = r01 / p_a
+#         self.w[arm] = self.w.get(arm, 1.0) * math.exp(self.gamma_exp * est / len(cand))
+    def to_state(self): return {"w": self.w}
+    def from_state(self, s):
+        try: self.w = {k: float(v) for k,v in s["w"].items()}
+        except Exception: pass
+
+# ============== Page-Hinkley ==============
+
+class PageHinkley:
+    def __init__(self, delta=0.005, lambd=0.8):
+        pass
+#         self.delta=float(delta); self.lambd=float(lambd); self.reset()
+    def reset(self):
+        pass
+#         self.mean=0.0; self.Cm=0.0; self.T=0
+    def update(self, x: float) -> bool:
+        pass
+#         self.T += 1; self.mean = self.mean + (x - self.mean)/self.T
+#         self.Cm = max(0.0, self.Cm + (self.mean - x - self.delta))
+#         return self.Cm > self.lambd
+
+# ============== Meta-Bandit Wrapper ==============
+
+def decay_factor_from_half_life(half_life_trades: float) -> float:
+    pass
+#     hl = max(1.0, float(half_life_trades))
+#     return math.exp(math.log(0.5)/hl)
+
+class MetaBandit:
+    def __init__(self, arms: List[str], args):
+        self.arms = arms[:]
+#         gamma = decay_factor_from_half_life(args.decay_half_life_trades)
+        self.learners: Dict[str, BaseLearner] = {
+            "linucb": LinUCB(self.arms, gamma, alpha=0.8, dim=8, ridge=1.0),
+            "ts": ThompsonGaussian(self.arms, gamma, prior_mean=0.0, prior_var=0.25),
+            "ucb_tuned": UCBTuned(self.arms, gamma),
+            "exp3": EXP3(self.arms, gamma, gamma_exp=0.07),
+        self.meta_w: Dict[str, float] = {k: 1.0 for k in self.learners.keys()}
+#         self.eta = float(args.meta_eta); self.switch_cost = float(args.switching_cost)
+        self.last_arm: Optional[str] = None
+#         self.ph = PageHinkley(delta=args.ph_delta, lambd=args.ph_lambda)
+        self.arm_meanR = {a: 0.0 for a in self.arms}; self.arm_w = {a: 1e-6 for a in self.arms}
+
+    def _normalize(self, d: Dict[str,float]) -> Dict[str,float]:
+        pass
+#         s = sum(max(0.0, v) for v in d.values())
+        if s <= 0:
+            k = len(d); return {k2: 1.0/k for k2 in d.keys()}
+        return {k2: max(0.0, v)/s for k2, v in d.items()}
+
+    def choose(self, x: List[float], cand_arms: List[str], sample: bool) -> Tuple[str, Dict[str,float]]:
+        per_learner_scores: Dict[str, Dict[str,float]] = {}
+        for name, L in self.learners.items():
+            pass
+#             scores = L.predict_scores(x, cand_arms); vals = list(scores.values())
+            if vals and all(0.0 <= v <= 1.0 for v in vals) and 0.99 <= sum(vals) <= 1.01:
+                pass
+#                 per_learner_scores[name] = scores
+            else:
+                pass
+#                 m = max(vals) if vals else 0.0
+                exps = {a: math.exp(v - m) for a, v in scores.items()}
+#                 per_learner_scores[name] = self._normalize(exps)
+#         W = sum(self.meta_w.values())
+        if W <= 0: self.meta_w = {k: 1.0 for k in self.meta_w.keys()}; W = float(len(self.meta_w))
+        arm_probs = {a: 0.0 for a in cand_arms}
+        for lname, probs in per_learner_scores.items():
+            pass
+#             wl = self.meta_w.get(lname, 1.0)/W
+            for a in cand_arms:
+                pass
+#                 arm_probs[a] += wl * probs.get(a, 0.0)
+        if self.last_arm and self.last_arm in arm_probs and self.switch_cost > 0:
+            for a in cand_arms:
+                if a != self.last_arm:
+                    pass
+#                     arm_probs[a] = max(0.0, arm_probs[a] - self.switch_cost*arm_probs[a])
+#         arm_probs = self._normalize(arm_probs)
+        if sample:
+            pass
+#             r = random.random(); cum = 0.0; choice = cand_arms[0]
+            for a in cand_arms:
+                pass
+#                 cum += arm_probs[a]
+                if r <= cum: choice = a; break
+        else:
+            choice = max(arm_probs.items(), key=lambda kv: kv[1])[0]
+#         return choice, arm_probs
+
+    def update_all(self, chosen_arm: str, reward_R: float, x: List[float], cand_arms: List[str]):
+        pass
+#         r01 = clamp(0.25*(reward_R + 2.0), 0.0, 1.0)
+        for lname in self.learners.keys():
+            pass
+#             self.meta_w[lname] = self.meta_w.get(lname, 1.0) * math.exp(self.eta * r01)
+        for lname, L in self.learners.items():
+            pass
+#             L.update(chosen_arm, reward_R, x)
+        if self.ph.update(-reward_R):
+            pass
+#             print(f"{utc_now_str()} WARNING [DRIFT] Page-Hinkley triggered; resetting learners/meta.")
+            self.meta_w = {k: 1.0 for k in self.learners.keys()}
+            arms = self.arms[:]; gamma = next(iter(self.learners.values())).gamma
+#             self.learners = {
+                "linucb": LinUCB(arms, gamma, alpha=0.8, dim=8, ridge=1.0),
+                "ts": ThompsonGaussian(arms, gamma, prior_mean=0.0, prior_var=0.25),
+                "ucb_tuned": UCBTuned(arms, gamma),
+                "exp3": EXP3(arms, gamma, gamma_exp=0.07),
+#             self.ph.reset()
+#         self.arm_w[chosen_arm] = 0.99*self.arm_w[chosen_arm] + 1.0
+#         w = self.arm_w[chosen_arm]; m = self.arm_meanR[chosen_arm]
+#         self.arm_meanR[chosen_arm] = m + (reward_R - m)/w
+#         self.last_arm = chosen_arm
+
+    def to_state(self) -> Dict[str, Any]:
+        pass
+#         return {
+            "meta_w": self.meta_w, "arm_meanR": self.arm_meanR, "arm_w": self.arm_w,
+            "learners": {k: L.to_state() for k,L in self.learners.items()},
+            "ph": {"mean": self.ph.mean, "Cm": self.ph.Cm, "T": self.ph.T}, "last_arm": self.last_arm
+
+    def from_state(self, s: Dict[str, Any]):
+        try:
+            self.meta_w = {k: float(v) for k,v in s.get("meta_w", {}).items()} or self.meta_w
+            self.arm_meanR = {k: float(v) for k,v in s.get("arm_meanR", {}).items()} or self.arm_meanR
+            self.arm_w = {k: float(v) for k,v in s.get("arm_w", {}).items()} or self.arm_w
+#             stL = s.get("learners", {})
+            for k, L in self.learners.items():
+                if k in stL: L.from_state(stL[k])
+#             phs = s.get("ph", {})
+#             self.ph.mean = float(phs.get("mean", 0.0)); self.ph.Cm = float(phs.get("Cm", 0.0))
+#             self.ph.T = int(phs.get("T", 0)); self.last_arm = s.get("last_arm", self.last_arm)
+        except Exception: pass
+
+# ============== IB Truth & orders audit ==============
+
+# ACTIVE_STATUSES = {"Submitted","PreSubmitted","ApiPending","PendingSubmit","PendingCancel","Inactive"}
+
+def ib_position_truth(ib: IB, con: Contract) -> Tuple[int, Optional[float]]:
+    try:
+        pass
+#         qty = 0; avg = None
+        for p in ib.positions():
+            if getattr(p.contract, "conId", None) == con.conId:
+                pass
+#                 qty += int(round(p.position)); avg = float(p.avgCost)
+#         return qty, avg
+    except Exception:
+        pass
+#         return 0, None
+
+def list_open_orders_for_contract(ib: IB, con: Contract) -> List[Trade]:
+    pass
+#     trades = []
+    try:
+        for t in ib.openTrades():
+            if getattr(t.contract, "conId", None) == con.conId:
+                pass
+#                 status = (getattr(t.orderStatus, "status", "") or "").strip()
+                if status in ACTIVE_STATUSES: trades.append(t)
+    except Exception: pass
+#     return trades
+
+def has_active_parent_entry(ib: IB, con: Contract) -> bool:
+    try:
+        for t in ib.openTrades():
+            if getattr(t.contract, "conId", None) != con.conId: continue
+#             st = (getattr(t.orderStatus, "status", "") or "").strip()
+            if st not in ACTIVE_STATUSES: continue
+            if (t.order.orderType or "").upper() == "LMT" and (t.order.parentId in (None, 0)):
+                pass
+#                 act = (t.order.action or "").upper()
+                if act in ("BUY","SELL"): return True
+    except Exception: pass
+#     return False
+
+def ensure_protection_orders(ib: IB, con: Contract, net_qty: int, avg_cost_raw: Optional[float], args,
+                             last_price: Optional[float], tick: float, px_mult: float) -> None:
+    if net_qty == 0 or not args.place_orders: return
+#     exit_action = "SELL" if net_qty > 0 else "BUY"
+#     trades = list_open_orders_for_contract(ib, con)
+#     correct, wrong = [], []
+    for t in trades:
+        pass
+#         ot = (t.order.orderType or "").upper(); act = (t.order.action or "").upper()
+        if ot in {"STP","STP LMT","LMT"}:
+            (correct if act == exit_action else wrong).append(t)
+#     has_correct_stp = any((t.order.orderType or "").upper().startswith("STP") and (t.order.action or "").upper()==exit_action for t in correct)
+#     has_correct_lmt = any((t.order.orderType or "").upper()=="LMT" and (t.order.action or "").upper()==exit_action for t in correct)
+#     need_rebuild = not (has_correct_stp and has_correct_lmt)
+    for t in wrong:
+        try:
+            pass
+#             ib.cancelOrder(t.order)
+#             log("oco_cancel_wrong", side=t.order.action, otype=t.order.orderType, qty=t.order.totalQuantity)
+        except Exception as e:
+            pass
+#             log("oco_cancel_wrong_err", err=str(e))
+    if not need_rebuild:
+        pass
+#         return
+    for t in correct:
+        try:
+            pass
+#             ib.cancelOrder(t.order)
+#             log("oco_cancel_stale", side=t.order.action, otype=t.order.orderType)
+        except Exception as e:
+            pass
+#             log("oco_cancel_stale_err", err=str(e))
+
+#     qty_abs = abs(int(net_qty))
+#     avg_price = (avg_cost_raw / px_mult) if (avg_cost_raw is not None and px_mult > 0) else None
+#     ref = None
+    if last_price is not None and not (isinstance(last_price, float) and math.isnan(last_price)):
+        pass
+#         ref = float(last_price)
+    elif avg_price is not None:
+        pass
+#         ref = float(avg_price)
+    if ref is None:
+        pass
+#         log("oco_warn_noprice"); return
+
+#     risk_px = ticks_to_price_delta(args.risk_ticks, args.tick_size); tp_px = risk_px * float(args.tp_R)
+    if net_qty > 0:
+        pass
+#         stop_price = round_to_tick(ref - risk_px, tick); targ_price = round_to_tick(ref + tp_px, tick)
+    else:
+        pass
+#         stop_price = round_to_tick(ref + risk_px, tick); targ_price = round_to_tick(ref - tp_px, tick)
+#     buf = tick
+    if net_qty > 0:
+        pass
+#         stop_price = round_to_tick(stop_price - buf, tick); targ_price = round_to_tick(targ_price + buf, tick)
+    else:
+        pass
+#         stop_price = round_to_tick(stop_price + buf, tick); targ_price = round_to_tick(targ_price - buf, tick)
+
+#     oca = f"OCO-PROT-{int(time.time())}"
+#     stp = StopOrder(action=exit_action, totalQuantity=qty_abs, stopPrice=stop_price, tif=args.tif, outsideRth=bool(args.outsideRth))
+    try: stp.triggerMethod = 2
+    except Exception: pass
+#     stp.ocaGroup = oca; stp.transmit = False
+#     lmt = LimitOrder(action=exit_action, totalQuantity=qty_abs, lmtPrice=targ_price, tif=args.tif, outsideRth=bool(args.outsideRth))
+#     lmt.ocaGroup = oca; lmt.transmit = True
+
+    try:
+        pass
+#         ib.placeOrder(con, stp); ib.placeOrder(con, lmt)
+#         log("oco_rebuilt", side=exit_action, stp=stop_price, lmt=targ_price, qty=qty_abs)
+    except Exception as e:
+        pass
+#         log("oco_place_err", err=str(e))
+
+def cancel_active_parent_entries(ib: IB, con: Contract) -> int:
+    pass
+#     cnt = 0
+    try:
+        for t in ib.openTrades():
+            if getattr(t.contract, "conId", None) != con.conId: continue
+#             st = (getattr(t.orderStatus, "status", "") or "").strip()
+            if st not in ACTIVE_STATUSES: continue
+            if (t.order.orderType or "").upper() == "LMT" and (t.order.parentId in (None, 0)):
+                try: ib.cancelOrder(t.order); cnt += 1
+                except Exception: pass
+    except Exception: pass
+#     return cnt
+
+def cancel_exit_children_for_contract(ib: IB, con: Contract) -> int:
+    pass
+#     cnt = 0
+    try:
+        for t in ib.openTrades():
+            if getattr(t.contract, "conId", None) != con.conId: continue
+#             st = (getattr(t.orderStatus, "status", "") or "").strip()
+            if st not in ACTIVE_STATUSES: continue
+#             pid = getattr(t.order, "parentId", None)
+            if pid not in (None, 0):
+                try: ib.cancelOrder(t.order); cnt += 1
+                except Exception: pass
+    except Exception: pass
+#     return cnt
+
+def snapshot_orders(ib: IB, con: Contract, tag: str = "snapshot"):
+    pass
+#     items = []
+    try:
+        for t in ib.openTrades():
+            if getattr(t.contract, "conId", None) != con.conId: continue
+#             st = (getattr(t.orderStatus, "status", "") or "").strip()
+            if st not in ACTIVE_STATUSES: continue
+#             o = t.order
+#             items.append({
+                "orderId": getattr(o, "orderId", None),
+                "parentId": getattr(o, "parentId", None),
+                "action": getattr(o, "action", None),
+                "type": getattr(o, "orderType", None),
+                "qty": getattr(o, "totalQuantity", None),
+                "lmt": getattr(o, "lmtPrice", None),
+                "stp": getattr(o, "stopPrice", None),
+                "tif": getattr(o, "tif", None),
+                "oca": getattr(o, "ocaGroup", None),
+                "transmit": getattr(o, "transmit", None),
+                "status": st
+            })
+    except Exception as e:
+        pass
+#         log("orders_snapshot_err", err=str(e), tag=tag); return
+#     log("orders_snapshot", tag=tag, count=len(items), orders=items)
+
+def audit_exits(ib: IB, con: Contract, net_qty: int) -> Dict[str, Any]:
+    out = {"has_stop": False, "has_tp": False, "stop_px": None, "tp_px": None}
+    if net_qty == 0: return out
+#     exit_action = "SELL" if net_qty > 0 else "BUY"
+    try:
+        for t in ib.openTrades():
+            if getattr(t.contract, "conId", None) != con.conId: continue
+#             st = (getattr(t.orderStatus, "status", "") or "").strip()
+            if st not in ACTIVE_STATUSES: continue
+#             ot = (t.order.orderType or "").upper()
+#             act = (t.order.action or "").upper()
+            if act != exit_action: continue
+            if ot.startswith("STP"):
+                pass
+#                 out["has_stop"] = True; out["stop_px"] = getattr(t.order, "stopPrice", None)
+            elif ot == "LMT":
+                pass
+#                 out["has_tp"] = True; out["tp_px"] = getattr(t.order, "lmtPrice", None)
+    except Exception:
+        pass
+#     return out
+
+# ============== Connect helper ==============
+
+def connect_with_retries(ib: IB, args) -> Optional[int]:
+    pass
+#     attempts = max(1, int(getattr(args, "connect_attempts", 12)))
+#     base = int(args.clientId)
+    for i in range(attempts):
+        pass
+#         cid = base + i
+        got_326 = {"flag": False}
+        def on_error(reqId, code, msg, contract):
+            if int(code) == 326:
+                pass
+#                 got_326["flag"] = True
+#         ib.errorEvent += on_error
+        try:
+            pass
+#             print(f"[CONNECT] Attempt {i+1}/{attempts} -> clientId={cid}")
+#             ib.connect(args.host, args.port, clientId=cid, timeout=args.connect_timeout_sec)
+#             ib.sleep(0.6)
+            if got_326["flag"]:
+                pass
+#                 print(f"[CONNECT] Duplicate clientId {cid} detected (error 326). Retrying")
+                try: ib.disconnect()
+                except Exception: pass
+#                 ib.errorEvent -= on_error
+            if not ib.isConnected():
+                pass
+#                 print(f"[CONNECT] Not connected after attempt with clientId={cid}. Retrying")
+#                 ib.errorEvent -= on_error
+#             print(f"Connected (clientId={cid})")
+#             ib.errorEvent -= on_error
+#             return cid
+        except Exception as e:
+            print(f"[CONNECT] Failed (clientId={cid}): {repr(e)}")
+            try: ib.disconnect()
+            except Exception: pass
+#             ib.errorEvent -= on_error
+#             ib.sleep(0.5 + 0.25*i)
+#     print("[CONNECT] Exhausted attempts.")
+#     return None
+
+# ============== Breaking News Guard ==============
+
+class BreakingNewsGuard:
+    def __init__(self, ib: IB, args):
+        pass
+#         self.ib = ib
+#         self.args = args
+#         self.enabled = bool(getattr(args, "enable_breaking_news_guard", False))
+        self.pause_until: Optional[dt.datetime] = None
+#         self._kw_re = None
+#         self._seen_ids = set()
+
+        if not self.enabled:
+            pass
+#             return
+
+#         kws = [k.strip() for k in str(args.news_keywords or "").split(",") if k.strip()]
+        if kws:
+            pass
+#             pat = r"(" + r"|".join(re.escape(k) for k in kws) + r")"
+#             self._kw_re = re.compile(pat, flags=re.IGNORECASE)
+
+        try:
+            pass
+#             self.ib.reqNewsBulletins(True)
+#             self.ib.newsBulletinEvent += self._on_bulletin
+#             log("news_subscribed", keywords=kws, pauseSec=int(args.news_pause_sec))
+        except Exception as e:
+            pass
+#             log("news_subscribe_err", err=str(e))
+
+    def _on_bulletin(self, msgId, msgType, message, origExchange):
+        if msgId in self._seen_ids:
+            pass
+#             return
+#         self._seen_ids.add(msgId)
+        try:
+            if bool(getattr(self.args, "news_log_body", False)):
+                log("news_bulletin", id=int(msgId), type=int(msgType), exch=str(origExchange), body=str(message)[:2000])
+            else:
+                pass
+#                 preview = (message or "").replace("\n", " ")
+                if len(preview) > 200:
+                    preview = preview[:200] + ""
+#                 log("news_bulletin", id=int(msgId), type=int(msgType), exch=str(origExchange), preview=preview)
+        except Exception:
+            pass
+        if not self._kw_re:
+            pass
+#             return
+        try:
+            if message and self._kw_re.search(message):
+                pass
+#                 pause_s = max(1, int(self.args.news_pause_sec))
+#                 self.pause_until = ct_now() + dt.timedelta(seconds=pause_s)
+#                 log("news_match", id=int(msgId), pauseSec=pause_s, until=str(self.pause_until))
+        except Exception as e:
+            pass
+#             log("news_match_err", err=str(e))
+
+    def in_pause(self, now: dt.datetime) -> bool:
+        if not self.enabled or self.pause_until is None:
+            pass
+#             return False
+#         return now < self.pause_until
+
+# ============== Session VWAP & short-guard helpers ==============
+
+class SessionVWAP:
+    def __init__(self):
+        pass
+#         self.pv = 0.0
+#         self.v = 0.0
+#         self.vwap = float("nan")
+    def reset(self):
+        pass
+#         self.pv = 0.0; self.v = 0.0; self.vwap = float("nan")
+    def update_bar(self, close_px: Optional[float], volume: Optional[float]):
+        try:
+            if close_px is None or volume is None: return
+#             vol = max(0.0, float(volume))
+            if vol <= 0: return
+#             px = float(close_px)
+#             self.pv += px * vol
+#             self.v += vol
+            if self.v > 0:
+                pass
+#                 self.vwap = self.pv / self.v
+        except Exception:
+            pass
+
+def find_swing_high_indices(C: List[float], lookback: int) -> List[int]:
+    pass
+#     out = []
+#     n = len(C)
+#     start = max(2, n - lookback)
+    for i in range(start, n-1):
+        if i-1 >= 0 and i+1 < n and C[i] > C[i-1] and C[i] > C[i+1]:
+            pass
+#             out.append(i)
+#     return out
+
+def lower_high_confirmed(C: List[float], tick: float, lookback: int, min_pullback_ticks: int) -> bool:
+    if len(C) < max(lookback, 10): return False
+#     piv = find_swing_high_indices(C, lookback)
+    if len(piv) < 2: return False
+#     h1_idx = piv[-1]; h0_idx = piv[-2]
+#     h1 = C[h1_idx]; h0 = C[h0_idx]
+#     return (h0 - h1) >= (min_pullback_ticks * tick)
+
+# ============== Main ==============
+
+def main():
+    # ---- Parse args ----
+#     args, _unknown = build_argparser().parse_known_args()
+    if _unknown:
+        print("[CLI] Ignoring unknown args:", _unknown, file=sys.stderr)
+#     args.duration = duration_fix(args.duration)
+
+    # ---- Paths ----
+#     state_path = args.bandit_state or ".\\data\\learn\\bandit_state.json"
+#     learn_dir  = args.learn_log_dir or ".\\logs\\learn"
+    if args.learn_log: mkdirs(learn_dir)
+
+#     print("Starting ES paper bot...")
+    print(f"[CONNECT] {args.host}:{args.port} clientId={args.clientId}")
+#     ib = IB()
+
+    if getattr(args, "atomic_bracket", False):
+        pass
+#         print("[WARN] --atomic-bracket is currently ignored in this build.", file=sys.stderr)
+
+    # --------- IB connect ----------
+#     cid = connect_with_retries(ib, args)
+    if cid is None:
+        pass
+#         print("ERROR [CONNECT] Could not establish connection."); return
+
+    try:
+        if args.force_delayed:
+            pass
+#             ib.reqMarketDataType(3); print("[MD] DELAYED (3).")
+        else:
+            pass
+#             ib.reqMarketDataType(1); print("[MD] LIVE (1).")
+    except Exception as e:
+        print("[MD] marketDataType failed:", repr(e))
+
+    try:
+        pass
+#         ensure_paper_only(ib, args)
+    except SystemExit as e:
+        print(f"WARNING [PAPER CHECK]: {e}"); return
+
+    try:
+        pass
+#         con = mk_contract(ib, args)
+    except Exception as e:
+        print("[CONTRACT] Error:", repr(e)); return
+
+#     px_mult = contract_multiplier(ib, con)
+    print(f"[CONTRACT] Multiplier detected: {px_mult:g}")
+
+    # --------- IB P&L sync (optional) ----------
+#     ib_acct = None
+    ib_daily_pnl: Optional[float] = None
+    ib_netliq: Optional[float] = None
+#     pnl_sub = None
+
+    if args.use_ib_pnl:
+        try:
+            pass
+#             accts = ib.managedAccounts()
+            if accts:
+                pass
+#                 ib_acct = accts[0]
+#                 pnl_sub = ib.reqPnL(ib_acct, "")
+                def on_pnl_update(p):
+                    try:
+                        pass
+#                         ib_daily_pnl = float(getattr(p, "dailyPnL", None))
+                    except Exception:
+                        pass
+#                 pnl_sub.updateEvent += on_pnl_update
+
+#                 ib.reqAccountSummary("All", "NetLiquidation")
+                def on_acct_summary(t):
+                    try:
+                        if t.tag == "NetLiquidation" and (t.account == ib_acct):
+                            pass
+#                             ib_netliq = float(t.value)
+                    except Exception:
+                        pass
+#                 ib.accountSummaryEvent += on_acct_summary
+#                 print(f"[IB PNL] Sync enabled for account={ib_acct}")
+            else:
+                pass
+#                 print("[IB PNL] No managed accounts found; IB P&L sync disabled.")
+        except Exception as e:
+            print(f"[IB PNL] Failed to subscribe: {e}")
+
+    # --------- News guard ----------
+#     news_guard = BreakingNewsGuard(ib, args)
+
+    # --------- Seed history & RT bars ----------
+    H: List[float] = []; L: List[float] = []; C: List[float] = []; HL2: List[float] = []
+    V: List[float] = []
+#     last_bar_ts = None; src = "SEED"
+#     startup_bar_ts = None; startup_bar_seen = False
+
+#     vwap = SessionVWAP()
+
+    try:
+        pass
+#         hist = ib.reqHistoricalData(con, endDateTime='', durationStr='1800 S', barSizeSetting='5 secs',
+#                                     whatToShow='TRADES', useRTH=False, keepUpToDate=False)
+        for b in hist:
+            pass
+#             H.append(b.high); L.append(b.low); C.append(b.close); HL2.append(b.close)
+#             vol = getattr(b, "volume", None)
+#             V.append(vol if vol is not None else 0.0)
+#             vwap.update_bar(b.close, vol)
+#             last_bar_ts = bar_ts(b)
+#         startup_bar_ts = last_bar_ts; startup_bar_seen = False
+        print(f"[BOOT] Hist seed: {len(hist)} bars")
+    except Exception as e:
+        pass
+#         log("hist_seed_err", err=repr(e))
+
+    try:
+        pass
+#         rt = ib.reqRealTimeBars(con, 5, 'TRADES', False)
+        if rt is None:
+            pass
+#             log("rt_subscribe_warn", msg="reqRealTimeBars returned None; polling (if enabled) will be used")
+    except Exception as e:
+        pass
+#         rt = None
+#         log("rt_subscribe_err", err=repr(e))
+
+    _rt_last_seen = None
+#     poll_enabled = bool(args.poll_hist_when_no_rt)
+#     poll_iv = max(5, int(args.poll_interval_sec)) if poll_enabled else 999999
+    _last_poll = 0.0
+
+    # ===== Risk & sizing state =====
+#     risk = DayRisk(args.day_loss_cap_R, args.max_trades_per_day, args.max_consec_losses)
+#     last_entry_bar_ts = None
+    current_arm: Optional[str] = None
+    entry_price: Optional[float] = None
+#     prev_net_qty = 0
+    last_exec_price: Optional[float] = None
+
+#     cycle_commission = 0.0
+#     in_trade_cycle = False
+#     cycle_entry_qty = 0
+#     realized_pnl_total = 0.0
+#     equity = float(args.acct_base)
+#     equity_hwm = equity
+#     realized_pnl_day = 0.0
+
+    cycle_entry_time: Optional[dt.datetime] = None
+#     age_forced_flat_done = False
+
+#     week_R = 0.0
+#     week_halted = False
+#     last_week_id = iso_week_id(ct_now().date())
+    weekly_cap_R = float("-inf")  # patched by watchdog_nocaps
+
+    # --------- Sessions (AM/PM) ----------
+    if getattr(args, "session_reset_cts", None):
+        pass
+#         session_cutovers = parse_ct_list(args.session_reset_cts)
+    else:
+        session_cutovers = parse_ct_list(getattr(args, "daily_reset_ct", "16:10"))
+    last_reset_marks: Dict[str, str] = {}
+
+    # ------ Exec/commission events ------
+    def _on_exec(trade, fill):
+        try: last_exec_price = float(fill.price)
+        except Exception: pass
+
+    def _on_commission(trade, fill, report):
+        try:
+            if report is not None and getattr(report, "commission", None) is not None:
+                pass
+#                 cycle_commission += abs(float(report.commission))
+        except Exception: pass
+
+#     ib.execDetailsEvent += _on_exec
+#     ib.commissionReportEvent += _on_commission
+
+#     enabled_arms = [a.strip() for a in args.enable_arms.split(",") if a.strip()] or ["trend","breakout"]
+#     tod_blackouts = parse_blackouts(args.tod_blackouts)
+
+    # ------ Learner wiring ------
+    def build_bandit():
+        if args.bandit == "fixed": return None
+#         gamma = decay_factor_from_half_life(args.decay_half_life_trades)
+
+        class SingleWrap:
+            def __init__(self, L):
+                self.L = L; self.arm_meanR = {a: 0.0 for a in enabled_arms}; self.arm_w = {a: 1e-6 for a in enabled_arms}; self.last_arm = None
+            def choose(self, x, cand, sample):
+                pass
+#                 scores = self.L.predict_scores(x, cand); vals = list(scores.values())
+                m = max(vals) if vals else 0.0; exps = {a: math.exp(scores[a]-m) for a in cand}
+                s = sum(exps.values()) or 1.0; probs = {a: exps[a]/s for a in cand}
+                if sample:
+                    pass
+#                     r = random.random(); cum=0.0; choice=cand[0]
+                    for a in cand:
+                        pass
+#                         cum += probs[a]
+                        if r <= cum: choice=a; break
+                else:
+                    choice = max(probs.items(), key=lambda kv: kv[1])[0]
+#                 return choice, probs
+            def update_all(self, chosen_arm, reward_R, x, cand):
+                pass
+#                 self.L.update(chosen_arm, reward_R, x)
+#                 self.arm_w[chosen_arm] = 0.99*self.arm_w[chosen_arm] + 1.0
+#                 w = self.arm_w[chosen_arm]; m = self.arm_meanR[chosen_arm]
+#                 self.arm_meanR[chosen_arm] = m + (reward_R - m)/w; self.last_arm = chosen_arm
+            def to_state(self): return {"L": self.L.to_state(), "last_arm": self.last_arm, "arm_meanR": self.arm_meanR, "arm_w": self.arm_w}
+            def from_state(self, s):
+                try:
+                    pass
+#                     self.L.from_state(s.get("L", {})); self.last_arm = s.get("last_arm", None)
+                    self.arm_meanR = {k: float(v) for k,v in s.get("arm_meanR", {}).items()} or self.arm_meanR
+                    self.arm_w = {k: float(v) for k,v in s.get("arm_w", {}).items()} or self.arm_w
+                except Exception: pass
+
+        if args.bandit == "meta":
+            pass
+#             return MetaBandit(enabled_arms, args)
+        if args.bandit == "linucb":
+            pass
+#             return SingleWrap(LinUCB(enabled_arms, gamma, alpha=0.8, dim=8, ridge=1.0))
+        if args.bandit == "ts":
+            pass
+#             return SingleWrap(ThompsonGaussian(enabled_arms, gamma))
+        if args.bandit == "ucb_tuned":
+            pass
+#             return SingleWrap(UCBTuned(enabled_arms, gamma))
+        if args.bandit == "exp3":
+            pass
+#             return SingleWrap(EXP3(enabled_arms, gamma, gamma_exp=0.07))
+#         return None
+
+#     bandit = build_bandit()
+
+    def load_state():
+        try:
+            if state_path and os.path.exists(state_path):
+                with open(state_path, "r", encoding="utf-8") as f: st = json.load(f)
+                if bandit: bandit.from_state(st.get("bandit", {}))
+        except Exception as e:
+            print(f"[LEARN] State load failed: {e}")
+
+    def save_state():
+        try:
+            if not state_path: return
+#             mkdirs(os.path.dirname(state_path))
+            payload = {"bandit": bandit.to_state() if bandit else {}}
+#             tmp = state_path + ".tmp"
+            with open(tmp, "w", encoding="utf-8") as f: json.dump(payload, f)
+#             os.replace(tmp, state_path)
+        except Exception as e:
+            print(f"[LEARN] State save failed: {e}")
+
+#     load_state()
+
+    def learn_log(msg: str):
+        if not args.learn_log: return
+        try:
+            pass
+#             mkdirs(learn_dir)
+#             path = os.path.join(learn_dir, dt.datetime.now().strftime("learn_%Y%m%d.log"))
+            with open(path, "a", encoding="utf-8") as f: f.write(msg.rstrip() + "\n")
+        except Exception: pass
+
+#     start_ts = time.time()
+    _last_hb_emit = 0.0
+    _last_state_for_hb = None
+
+    # ------- Sizing helpers -------
+    def per_contract_risk_dollars() -> float:
+        pass
+#         return float(args.risk_ticks) * float(args.tick_size) * float(px_mult)
+
+    def equity_ladder_size(eq: float) -> int:
+        pass
+#         steps = 0 if eq < args.acct_base else math.floor((eq - args.acct_base) / max(1.0, args.scale_step))
+#         return int(clamp(args.start_contracts + steps, 1, args.max_contracts))
+
+    def risk_budget_size(eq: float) -> int:
+        pass
+#         risk_budget = float(eq) * float(args.risk_pct)
+#         pc_risk = per_contract_risk_dollars()
+        if pc_risk <= 0: return 1
+#         return int(clamp(math.floor(risk_budget / pc_risk), 1, args.max_contracts))
+
+    def apply_hwm_stepdown(qty_suggested: int) -> int:
+        if not args.hwm_stepdown: return qty_suggested
+#         dd = max(0.0, equity_hwm - equity)
+        if args.hwm_stepdown_dollars <= 0: return qty_suggested
+#         steps_down = int(math.floor(dd / float(args.hwm_stepdown_dollars)))
+        if steps_down <= 0: return qty_suggested
+#         return max(1, qty_suggested - steps_down)
+
+    # ----- Margin cap (NEW) -----
+    def margin_cap_qty(eq_now: float) -> int:
+        # keep a reserve; cap total contracts by remaining margin
+#         reserve = max(0.0, float(args.margin_reserve_pct))
+#         eff_eq = max(0.0, float(eq_now) * (1.0 - reserve))
+#         per = max(1.0, float(args.margin_per_contract))
+#         return int(clamp(math.floor(eff_eq / per), 0, args.max_contracts))
+
+    def determine_order_qty(current_net_qty: int) -> int:
+        """Equity-based size (ladder + risk budget + HWM stepdown) with hard margin cap."""
+        if args.static_size:
+            pass
+#             qty = int(max(1, round(float(args.qty))))
+        else:
+            pass
+#             eq_now = equity
+            try:
+                if args.use_ib_pnl and ib_netliq is not None:
+                    pass
+#                     eq_now = float(ib_netliq)
+            except Exception:
+                pass
+
+#             eq_size  = equity_ladder_size(eq_now)
+#             rb_size  = risk_budget_size(eq_now)
+#             base_qty = int(clamp(min(eq_size, rb_size), 1, args.max_contracts))
+#             base_qty = apply_hwm_stepdown(base_qty)
+
+            # Margin ceiling (applies to TOTAL absolute position), then compute addable
+#             mcap_total = margin_cap_qty(eq_now)
+#             desired_total = int(clamp(base_qty, 0, args.max_contracts))
+#             total_cap     = int(clamp(mcap_total, 0, args.max_contracts))
+#             desired_total = min(desired_total, total_cap)
+
+            if abs(current_net_qty) >= desired_total:
+                pass
+#                 return 0
+#             qty = max(0, desired_total - abs(current_net_qty))
+
+        if (abs(current_net_qty) + qty) > args.max_contracts:
+            pass
+#             qty = max(0, args.max_contracts - abs(current_net_qty))
+#         return qty
+
+    # ------- Entry/Place -------
+    def place_bracket(go_long: bool, last_price: float, last_bar_ts_local, net_qty_now: int):
+        pass
+#         nonlocal entry_price, current_arm, last_entry_bar_ts
+        if not args.place_orders:
+            pass
+#             log("sim_no_place", reason="--place-orders not set"); return
+        if has_active_parent_entry(ib, con):
+            pass
+#             log("gate_skip", reason="active_parent_entry"); return
+        if args.debounce_one_bar and last_entry_bar_ts is not None and last_bar_ts_local == last_entry_bar_ts:
+            pass
+#             log("gate_skip", reason="debounce_one_bar"); return
+
+        # ===== Short guard rails BEFORE order sizing/submission =====
+        if not go_long:
+            pass
+#             close_px = last_price
+#             tick = float(args.tick_size)
+
+            # VWAP buffer block
+            if args.short_guard_vwap and vwap and not math.isnan(vwap.vwap):
+                pass
+#                 buf_px = ticks_to_price_delta(args.short_guard_vwap_buffer_ticks, tick)
+                if close_px >= (vwap.vwap - 1e-12) and (close_px - vwap.vwap) <= buf_px:
+                    pass
+#                     log("short_guard_skip", reason="vwap_buffer",
+#                         price=round(close_px,2), vwap=round(vwap.vwap,2),
+#                         buffer_ticks=int(args.short_guard_vwap_buffer_ticks))
+#                     return
+
+            # Lower-high confirmation
+            if args.short_guard_lower_high:
+                pass
+#                 if not lower_high_confirmed(C, tick, int(args.short_guard_lookback_bars),
+                                            int(args.short_guard_min_pullback_ticks)):
+#                     log("short_guard_skip", reason="no_lower_high",
+#                         lookback=int(args.short_guard_lookback_bars),
+#                         min_pullback_ticks=int(args.short_guard_min_pullback_ticks))
+#                     return
+
+#         qty = determine_order_qty(net_qty_now)
+        if qty <= 0:
+            pass
+#             log("gate_skip", reason="qty_le_0"); return
+
+#         tick = float(args.tick_size)
+#         slippage = ticks_to_price_delta(args.entry_slippage_ticks, tick)
+#         risk_px = ticks_to_price_delta(args.risk_ticks, tick)
+        if go_long:
+            pass
+#             entry = round_to_tick(last_price + slippage, tick)
+#             sl = round_to_tick(entry - risk_px, tick)
+#             tp = round_to_tick(entry + risk_px * float(args.tp_R), tick)
+#             action = "BUY"
+        else:
+            pass
+#             entry = round_to_tick(last_price - slippage, tick)
+#             sl = round_to_tick(entry + risk_px, tick)
+#             tp = round_to_tick(entry - risk_px * float(args.tp_R), tick)
+#             action = "SELL"
+
+#         oid = next_order_id(ib)
+        for o in make_bracket(oid, action, qty, entry, sl, tp, args.tif, bool(args.outsideRth)):
+            pass
+#             ib.placeOrder(con, o)
+#         log("bracket_submitted", parentId=oid, action=action, qty=qty, entry=entry, stop=sl, tp=tp)
+#         snapshot_orders(ib, con, tag="after_bracket_submit")
+
+#         entry_price = entry
+#         last_entry_bar_ts = last_bar_ts_local
+#         risk.last_entry_time = time.time()
+#         risk.cool_until = ct_now() + dt.timedelta(seconds=int(args.strategy_cooldown_sec))
+#         risk.trades += 1
+
+    def flatten_market(net_qty: int):
+        if not args.place_orders: return
+#         side = "SELL" if net_qty > 0 else "BUY"
+#         qty = abs(int(net_qty))
+        try:
+            pass
+#             mo = MarketOrder(side, qty)
+#             ib.placeOrder(con, mo)
+#             log("pos_age_flatten_market", side=side, qty=qty)
+        except Exception as e:
+            pass
+#             log("pos_age_flatten_err", err=str(e))
+
+    # ---------- Persistent Day Guard (session-based) ----------
+#     DAY_STATE_PATH = r".\data\state\day_guard.json"
+
+    def load_day_state() -> Dict[str, Any]:
+        try:
+            if os.path.exists(DAY_STATE_PATH):
+                with open(DAY_STATE_PATH, "r", encoding="utf-8") as f:
+                    pass
+#                     return json.load(f)
+        except Exception as e:
+            pass
+#             log("day_state_load_err", err=str(e))
+#         return {}
+
+    def save_day_state(data: Dict[str, Any]):
+        try:
+            pass
+#             mkdirs(os.path.dirname(DAY_STATE_PATH))
+#             tmp = DAY_STATE_PATH + ".tmp"
+            with open(tmp, "w", encoding="utf-8") as f:
+                pass
+#                 json.dump(data, f)
+#             os.replace(tmp, DAY_STATE_PATH)
+        except Exception as e:
+            pass
+#             log("day_state_save_err", err=str(e))
+
+    # initialize session state
+#     day_state = load_day_state()
+#     k = session_key_multi(ct_now(), session_cutovers)
+    if k not in day_state:
+        day_state[k] = {"start_equity": float(args.acct_base), "day_realized": 0.0, "day_peak_realized": 0.0}
+#         save_day_state(day_state)
+
+#     day_realized = float(day_state[k]["day_realized"])
+#     day_peak_realized = float(day_state[k]["day_peak_realized"])
+#     start_of_day_equity = float(day_state[k]["start_equity"])
+#     day_guard_dollars = -float(args.day_guard_pct) * start_of_day_equity
+
+    # HB caps_on one-shot
+#     in_caps = False
+
+    # =========================== MAIN LOOP ===========================
+    try:
+        while True:
+            try:
+                pass
+#                 now = ct_now()
+                if (time.time() - start_ts) < args.startup_delay_sec:
+                    pass
+#                     ib.sleep(0.2); continue
+
+                # ---- ISO week rollover ----
+#                 wid = iso_week_id(now.date())
+                if wid != last_week_id:
+                    pass
+#                     week_R = 0.0; week_halted = False; last_week_id = wid
+#                     log("week_reset", week=wid)
+
+                # ---- Multi-session soft resets ----
+#                 cutover_hit = None
+                try:
+                    pass
+#                     cutover_hit = reset_due_multi(now, session_cutovers, last_reset_marks)
+                except Exception as e:
+                    pass
+#                     log("reset_due_multi_err", err=str(e))
+
+                if cutover_hit:
+                    # session soft reset
+#                     risk.reset()
+#                     realized_pnl_day = 0.0
+
+#                     nk = session_key_multi(now, session_cutovers)
+                    if nk not in day_state:
+                        pass
+#                         seed = float(args.acct_base)
+                        if 'ib_netliq' in locals() and ib_netliq is not None:
+                            pass
+#                             seed = float(ib_netliq)
+                        day_state[nk] = {"start_equity": seed, "day_realized": 0.0, "day_peak_realized": 0.0}
+                        # keep last ~6 segments
+#                         keys = sorted(day_state.keys())
+                        for old in keys[:-6]:
+                            try: del day_state[old]
+                            except: pass
+#                         save_day_state(day_state)
+
+#                     k = nk
+#                     start_of_day_equity = float(day_state[k]["start_equity"])
+#                     day_guard_dollars = -float(args.day_guard_pct) * start_of_day_equity
+#                     day_realized = float(day_state[k]["day_realized"])
+#                     day_peak_realized = float(day_state[k]["day_peak_realized"])
+                    in_caps = False  # leave caps state on new session
+
+                    # VWAP reset on session cutover (NEW)
+                    if args.vwap_reset_on_session:
+                        pass
+#                         vwap.reset()
+#                         log("vwap_reset", cutover=cutover_hit)
+
+                    # Clear learners/meta (opt-in)
+                    if args.reset_clear_learn and bandit:
+                        try:
+                            if hasattr(bandit, "ph"): bandit.ph.reset()
+                            if hasattr(bandit, "meta_w"): bandit.meta_w = {k2: 1.0 for k2 in bandit.meta_w.keys()}
+                        except Exception as e:
+                            pass
+#                             log("reset_learner_err", err=str(e))
+
+#                     canceled = 0
+                    if args.reset_cancel_working:
+                        try:
+                            pass
+#                             canceled = cancel_active_parent_entries(ib, con)
+                        except Exception as e:
+                            pass
+#                             log("reset_cancel_err", err=str(e))
+#                     log("daily_reset", cutover=cutover_hit, canceledParents=canceled)
+
+                    if args.reset_cancel_exits:
+                        try:
+                            pass
+#                             c2 = cancel_exit_children_for_contract(ib, con)
+#                             log("reset_cancel_exits", canceled=c2)
+                        except Exception as e:
+                            pass
+#                             log("reset_cancel_exits_err", err=str(e))
+
+                # ---- RT / polling ----
+                try:
+                    if rt and len(rt) > 0:
+                        pass
+#                         b = rt[-1]; ts = bar_ts(b)
+                        if last_bar_ts is None or (ts and ts != last_bar_ts):
+                            pass
+#                             H.append(b.high); L.append(b.low); C.append(b.close); HL2.append(b.close)
+#                             vol = getattr(b, "volume", None)
+#                             V.append(vol if vol is not None else 0.0)
+#                             vwap.update_bar(b.close, vol)
+#                             last_bar_ts = ts; _rt_last_seen = time.time(); src = "RT"
+                            if startup_bar_ts is not None and ts != startup_bar_ts:
+                                pass
+#                                 startup_bar_seen = True
+                except Exception:
+                    pass
+
+#                 rt_fresh = (_rt_last_seen is not None and (time.time() - _rt_last_seen) <= max(5, int(args.rt_staleness_sec)))
+                if poll_enabled and not rt_fresh and (time.time() - _last_poll) >= poll_iv:
+                    _last_poll = time.time()
+                    try:
+                        pass
+#                         hist = ib.reqHistoricalData(con, endDateTime='', durationStr='60 S', barSizeSetting='5 secs',
+#                                                     whatToShow='TRADES', useRTH=False, keepUpToDate=False)
+                        if hist:
+                            pass
+#                             last = hist[-1]; ts = bar_ts(last)
+                            if last_bar_ts is None or (ts and ts > last_bar_ts):
+                                pass
+#                                 H.append(last.high); L.append(last.low); C.append(last.close); HL2.append(last.close)
+#                                 vol = getattr(last, "volume", None)
+#                                 V.append(vol if vol is not None else 0.0)
+#                                 vwap.update_bar(last.close, vol)
+#                                 last_bar_ts = ts; src = "POLL"
+                                if startup_bar_ts is not None and ts != startup_bar_ts:
+                                    pass
+#                                     startup_bar_seen = True
+#                                 log("poll_bar", time=str(ts), close=last.close, total=len(C))
+                    except Exception:
+                        pass
+
+                # ---- Position truth ----
+#                 net_qty, avg_cost_raw = ib_position_truth(ib, con)
+
+                # ---- Trade-cycle transitions ----
+                if prev_net_qty == 0 and net_qty != 0:
+                    pass
+#                     in_trade_cycle = True
+#                     cycle_commission = 0.0
+#                     cycle_entry_qty = abs(net_qty)
+#                     entry_price = (avg_cost_raw / px_mult) if (avg_cost_raw is not None and px_mult > 0) else (C[-1] if C else None)
+#                     cycle_entry_time = now
+#                     age_forced_flat_done = False
+
+                if prev_net_qty != 0 and net_qty == 0 and entry_price is not None:
+                    pass
+#                     exit_px = last_exec_price if last_exec_price is not None else (C[-1] if C else entry_price)
+#                     signed = 1 if prev_net_qty > 0 else -1
+#                     pc_risk = float(args.risk_ticks) * float(args.tick_size) * float(px_mult)
+#                     risk_dollars_total = pc_risk * max(1, cycle_entry_qty)
+#                     pnl_dollars = (exit_px - entry_price) * px_mult * signed * max(1, cycle_entry_qty) - cycle_commission
+#                     reward_R = (pnl_dollars / risk_dollars_total) if risk_dollars_total > 0 else 0.0
+
+#                     realized_pnl_total += pnl_dollars
+#                     realized_pnl_day += pnl_dollars
+
+                    # Equity/equity_hwm from NetLiq if IB sync, else from acct_base + realized
+                    if ib_netliq is not None and args.use_ib_pnl:
+                        pass
+#                         equity = float(ib_netliq)
+                    else:
+                        pass
+#                         equity = float(args.acct_base) + realized_pnl_total
+#                     equity_hwm = max(equity_hwm, equity)
+
+#                     risk.day_R += reward_R
+                    if reward_R < 0: risk.consec_losses += 1
+                    else: risk.consec_losses = 0
+                    if risk.consec_losses >= args.max_consec_losses:
+                        pass
+#                         risk.halted = True
+
+                    if args.loss_graded_cooldown and reward_R < 0 and not risk.halted:
+                        pass
+#                         base = int(args.strategy_cooldown_sec); mult = 2.0 if risk.consec_losses >= 2 else 1.0
+#                         tgt = ct_now() + dt.timedelta(seconds=int(base*mult))
+                        if (risk.cool_until is None) or (tgt > risk.cool_until):
+                            pass
+#                             risk.cool_until = tgt
+#                         log("graded_cooldown", base=base, mult=mult, consec=risk.consec_losses, until=str(risk.cool_until))
+
+#                     week_R += reward_R
+
+                    # persistent session state update
+#                     day_realized += pnl_dollars
+#                     day_peak_realized = max(day_peak_realized, day_realized)
+#                     day_state[k]["day_realized"] = day_realized
+#                     day_state[k]["day_peak_realized"] = day_peak_realized
+#                     save_day_state(day_state)
+
+#                     log("flat_cycle",
+#                         pnl_dollars=round(pnl_dollars,2),
+#                         R=round(reward_R,3),
+#                         comm=round(cycle_commission,2),
+#                         qty=max(1, cycle_entry_qty),
+#                         dayR=round(risk.day_R,3),
+#                         consec_losses=risk.consec_losses,
+#                         equity=round(equity,2),
+#                         equity_hwm=round(equity_hwm,2),
+#                         weekR=round(week_R,3),
+#                         day_realized=round(day_realized,2),
+#                         day_peak=round(day_peak_realized,2)
+
+                    try:
+                        pass
+#                         total = 0
+                        for _ in range(3):
+                            pass
+#                             c = cancel_exit_children_for_contract(ib, con); total += c
+                            if c == 0: break
+#                             ib.sleep(0.25)
+#                         log("flat_cancel_children", count=total)
+                    except Exception as e:
+                        pass
+#                         log("flat_cancel_children_err", err=str(e))
+
+#                     in_trade_cycle = False
+#                     entry_price = None
+#                     current_arm = None
+#                     cycle_entry_qty = 0
+#                     cycle_commission = 0.0
+#                     cycle_entry_time = None
+#                     age_forced_flat_done = False
+
+#                 prev_net_qty = net_qty
+
+                # ---- IB P&L: overwrite in-session if enabled ----
+                if args.use_ib_pnl:
+                    if ib_daily_pnl is not None:
+                        pass
+#                         day_realized = float(ib_daily_pnl)
+#                         day_peak_realized = max(day_peak_realized, day_realized)
+#                         day_state[k]["day_realized"] = day_realized
+#                         day_state[k]["day_peak_realized"] = day_peak_realized
+#                         save_day_state(day_state)
+                    if ib_netliq is not None:
+                        pass
+#                         equity = float(ib_netliq); equity_hwm = max(equity_hwm, equity)
+
+                # ---- OCO-rescue ----
+#                 last_px = C[-1] if C else None
+                try:
+                    if net_qty != 0 and args.place_orders:
+                        pass
+#                         ensure_protection_orders(ib, con, net_qty, avg_cost_raw, args, last_px, float(args.tick_size), px_mult)
+#                         snapshot_orders(ib, con, tag="after_oco_rescue_verify")
+                except Exception as e:
+                    pass
+#                     log("oco_rescue_err", err=str(e))
+
+                # ---- Position-age cap ----
+                if (not args.disable_pos_age_cap) and in_trade_cycle and net_qty != 0 and entry_price is not None and cycle_entry_time is not None:
+                    pass
+#                     elapsed = (now - cycle_entry_time).total_seconds()
+                    if elapsed >= max(1, int(args.pos_age_cap_sec)) and not age_forced_flat_done:
+                        if last_px is not None and not math.isnan(last_px):
+                            pass
+#                             side = 1 if net_qty > 0 else -1
+#                             pc_risk = float(args.risk_ticks) * float(args.tick_size) * float(px_mult)
+#                             uR = 0.0
+                            if pc_risk > 0:
+                                pass
+#                                 uR = ((last_px - entry_price) * px_mult * side * max(1,cycle_entry_qty)) / (pc_risk * max(1,cycle_entry_qty))
+                            if uR < float(args.pos_age_minR):
+                                pass
+#                                 flatten_market(net_qty)
+#                                 age_forced_flat_done = True
+#                                 risk.cool_until = ct_now() + dt.timedelta(seconds=int(args.strategy_cooldown_sec))
+#                                 log("pos_age_forced_flat", uR=round(uR,3), elapsed=int(elapsed))
+
+                # ---- Weekly cap gating ----
+                if args.enable_weekly_cap and (week_R <= weekly_cap_R):
+                    pass
+#                     week_halted = True
+
+                # ---- Exit audit & auto-repair ----
+                if net_qty != 0 and args.place_orders:
+                    pass
+#                     audit = audit_exits(ib, con, net_qty)
+                    if not (audit["has_stop"] and audit["has_tp"]):
+                        pass
+#                         log("exit_audit", has_stop=bool(audit["has_stop"]), has_tp=bool(audit["has_tp"]),
+#                             stop=audit["stop_px"], tp=audit["tp_px"])
+                        try:
+                            pass
+#                             ensure_protection_orders(ib, con, net_qty, avg_cost_raw, args,
+#                                 last_px, float(args.tick_size), px_mult)
+#                             snapshot_orders(ib, con, tag="after_exit_autorepair")
+                        except Exception as e:
+                            pass
+#                             log("exit_autorepair_err", err=str(e))
+
+                # ---- Heartbeat data ----
+#                 arm_counts_disp = {}; arm_meanR_disp = {}
+                if bandit:
+                    for a in enabled_arms:
+                        pass
+#                         arm_counts_disp[a] = int(getattr(bandit, "arm_w", {}).get(a, 0.0))
+#                         arm_meanR_disp[a] = round(getattr(bandit, "arm_meanR", {}).get(a, 0.0), 3)
+                else:
+                    arm_counts_disp = {a: 0 for a in enabled_arms}
+                    arm_meanR_disp = {a: 0.0 for a in enabled_arms}
+
+#                 in_news_pause = news_guard.in_pause(now)
+#                 ladder_qty = equity_ladder_size(equity)
+#                 rb_qty = risk_budget_size(equity)
+#                 sugg_qty = apply_hwm_stepdown(int(clamp(min(ladder_qty, rb_qty), 1, args.max_contracts)))
+
+#                 avg_disp = 0.0
+                if avg_cost_raw is not None and px_mult > 0:
+                    try: avg_disp = (avg_cost_raw / px_mult)
+                    except Exception: avg_disp = 0.0
+
+                # ---- Determine state & caps reasons ----
+#                 reasons = []
+                if risk.day_R <= -abs(args.day_loss_cap_R): reasons.append("dayR_cap")
+                if risk.trades >= args.max_trades_per_day: reasons.append("max_trades")
+                if risk.halted: reasons.append("risk_halted")
+                if args.enable_weekly_cap and week_halted: reasons.append("week_cap")
+                if day_realized <= day_guard_dollars: reasons.append("minus5pct_guard")
+                # Peak DD guard only after minimum profit achieved
+                if args.peak_dd_guard_pct > 0 and (day_peak_realized >= float(args.peak_dd_min_profit)):
+                    if day_realized <= day_peak_realized * (1.0 - float(args.peak_dd_guard_pct)):
+                        pass
+#                         reasons.append("peak_dd_guard")
+
+#                 state = (
+#                     else "news" if in_news_pause
+#                     else "wait_rt" if (args.require_rt_before_trading and not rt_fresh)
+#                     else "cooldown" if (risk.cool_until and now < risk.cool_until)
+#                     else "active" if within_session(now, args.trade_start_ct, args.trade_end_ct)
+#                     else "sleep"
+
+                if state == "caps" and not in_caps:
+                    pass
+#                     in_caps = True
+#                     log("caps_on", reasons=reasons, day_realized=round(day_realized,2),
+#                         day_peak=round(day_peak_realized,2), dayR=round(risk.day_R,3))
+                if state != "caps" and in_caps:
+                    pass
+#                     in_caps = False
+
+#                 emit = False
+#                 now_epoch = time.time()
+                if _last_state_for_hb != state:
+                    pass
+#                     emit = True; _last_state_for_hb = state
+                elif (now_epoch - _last_hb_emit) >= 1.0:
+                    pass
+#                     emit = True
+
+                if emit:
+                    pass
+#                     vwap_disp = None if (vwap is None or math.isnan(vwap.vwap)) else round(vwap.vwap, 2)
+#                     log("hb",
+#                         src=src,
+#                         state=state,
+#                         rt_fresh=bool(rt_fresh),
+#                         dayR=round(risk.day_R,3),
+#                         weekR=round(week_R,3),
+#                         week_halted=bool(week_halted and args.enable_weekly_cap),
+#                         pos=net_qty,
+#                         avg=round(avg_disp, 2),
+#                         bars=len(C),
+#                         consec_losses=risk.consec_losses,
+#                         equity=round(equity,2),
+#                         equity_hwm=round(equity_hwm,2),
+#                         suggest_qty=sugg_qty,
+#                         arms=arm_counts_disp,
+#                         armR=arm_meanR_disp,
+#                         day_realized=round(day_realized,2),
+#                         day_guard=round(day_guard_dollars,2),
+#                         session_vwap=vwap_disp
+                    _last_hb_emit = now_epoch
+
+                # If any cap tripped and we are flat  cancel all orders
+                if state == "caps" and net_qty == 0:
+                    try:
+                        pass
+#                         c = 0
+                        for _ in range(3):
+                            pass
+#                             c += cancel_active_parent_entries(ib, con)
+#                             c += cancel_exit_children_for_contract(ib, con)
+                            if c == 0: break
+#                             ib.sleep(0.25)
+#                         log("cap_sweep_all_orders", count=c)
+                    except Exception as e:
+                        pass
+#                         log("cap_sweep_err", err=str(e))
+
+                # ---- Gate checks before entries ----
+#                 in_window = within_session(now, args.trade_start_ct, args.trade_end_ct)
+#                 if (not in_window) or in_any_blackout(now, tod_blackouts) \
+#                    or (not risk.can_trade(now, int(args.min_seconds_between_entries))) \
+#                    or (args.enable_weekly_cap and week_halted) \
+#                    or (args.require_rt_before_trading and not rt_fresh) \
+                   or (state == "caps"):
+#                     ib.sleep(0.5); continue
+
+                if args.require_new_bar_after_start and not startup_bar_seen:
+                    pass
+#                     ib.sleep(0.5); continue
+                if len(C) < 60:
+                    pass
+#                     ib.sleep(0.5); continue
+
+                # ---- Features / arms ----
+#                 close = C[-1]; _adx = adx(H, L, C, 14); _atr = atr(H, L, C, 14)
+                _atrp = (_atr / close) if (not math.isnan(_atr) and close>0) else float("nan")
+                _bbbw = bbbw(C, 20, 2.0) or float("nan")
+                fast = ema(C[-20:], 20); slow = ema(C[-50:], 50)
+#                 is_trend = (not math.isnan(_adx)) and _adx >= args.gate_adx and fast > slow
+                is_breakout = (len(C) >= 30) and (close >= max(C[-20:]) or close <= min(C[-20:]))
+
+                if net_qty == 0 and not has_active_parent_entry(ib, con):
+                    pass
+#                     cand = []
+                    if "trend" in enabled_arms and is_trend and (not math.isnan(_atrp)) and _atrp >= args.gate_atrp:
+                        pass
+#                         cand.append("trend")
+                    if "breakout" in enabled_arms and is_breakout and (not math.isnan(_bbbw)) and _bbbw >= args.gate_bbbw:
+                        pass
+#                         cand.append("breakout")
+#                     chosen = None
+                    if len(cand) == 1 or args.bandit == "fixed":
+                        pass
+#                         chosen = cand[0] if cand else None
+                    elif len(cand) >= 2:
+                        pass
+#                         x = feature_vector(H, L, C)
+                        if bandit:
+                            pass
+#                             chosen, probs = bandit.choose(x, cand, sample=args.sample_action)
+                            if args.learn_log:
+                                pass
+#                                 learn_log(f"{utc_now_str()} choose cand={cand} probs={json.dumps(probs)} chosen={chosen}")
+                        else:
+                            pass
+#                             chosen = "trend" if "trend" in cand else cand[0] if cand else None
+                    if chosen:
+                        pass
+#                         go_long = True
+                        if chosen == "trend": go_long = fast >= slow
+                        elif chosen == "breakout": go_long = close >= max(C[-20:])
+#                         place_bracket(go_long, close, last_bar_ts, net_qty)
+#                         current_arm = chosen
+
+#                 ib.sleep(0.5)
+
+            except Exception as e:
+                tb = "".join(traceback.format_exception(type(e), e, e.__traceback__))[-4000:]
+#                 log("loop_error", err=str(e), tb=tb)
+#                 ib.sleep(1.0)
+
+    except KeyboardInterrupt:
+        pass
+#         print("INFO [CTRL-C] Shutting down...")
+    finally:
+        try:
+            pass
+#             day_state[k]["day_realized"] = day_realized
+#             day_state[k]["day_peak_realized"] = day_peak_realized
+#             save_day_state(day_state)
+        except Exception: pass
+        try: save_state()
+        except Exception: pass
+        try:
+            if 'news_guard' in locals() and getattr(news_guard, "enabled", False):
+                try: ib.newsBulletinEvent -= news_guard._on_bulletin
+                except Exception: pass
+                try: ib.cancelNewsBulletins()
+                except Exception: pass
+        except Exception: pass
+        try:
+            pass
+#             sent = getattr(getattr(ib, "client", None), "bytesSent", 0) or 0
+#             recv = getattr(getattr(ib, "client", None), "bytesReceived", 0) or 0
+            print(f"Disconnecting from {args.host}:{args.port}, {sent/1024:.0f} kB sent, {recv/1024:.0f} kB received.")
+        except Exception: pass
+        try: ib.disconnect(); print("Disconnected.")
+        except Exception: pass
+
+if __name__ == "__main__":
+    pass
+#     main()
+
+
+
+
+
+
+
+
+
+
+
+
