@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-ES Paper Trader (IBKR + ib_insync) â€” RT-only & OCO-hardened build (with fixes baked in)
+ES Paper Trader (IBKR + ib_insync) — RT-only & OCO-hardened build
 
 Core:
 - Paper-only safety by default
@@ -14,27 +14,16 @@ Core:
 - Version-safe IB PnL subscription + NetLiq via accountValueEvent
 - 24/5 trading window by default (no TOD blackouts unless provided)
 - 1-second JSON heartbeats with explicit idle reasons & RT status/age/queue
-- Robust RTâ†’Polling fallback (5s bars via historical polling)
+- Robust RT→Polling fallback (5s bars via historical polling)
 
 NEW (this build):
 - RT-ONLY mode: --rt-only (no polling, no trading until RT is FRESH; ignores --force-delayed)
 - Safer stop/OCO: triggerMethod=2; rescue refresh is rate-limited; wrong-side child purge
 - Trade count increments when parent order actually becomes working (not merely submitted)
-- Margin rejection (201 insufficient) â†’ 60s backoff
-- Commission tracking via commissionReportEvent (clarified signature)
+- Margin rejection (201 insufficient) → 60s backoff
+- Commission tracking via commissionReportEvent (robust signature)
 - VWAP only ingests TRADES bars (RT + polled), never MIDPOINT
 - Day-state persistence (realized & peak), weekly R reset, cap guards
-
-Fixes in this release:
-- Hard lock to prevent polling in --rt-only mode (including force_no_bar_poll edge).
-- Cleaner account update subscription (benign error handling).
-- Heartbeat logs: rt_age_sec coerced to int.
-- Skip orphan sweeps during active position when RT is starved/stale to avoid racing fills.
-- OCO rescue: micro re-check to prevent flicker; rate-limited.
-- Ensure parent orderId is assigned before submitting children; fail gracefully otherwise.
-- Post-flat cleanup also cancels lingering parent LMTs.
-- First-run: ensure .\\logs and .\\data\\state directories exist.
-- Optional audible cue on caps_on (Windows only).
 """
 
 from __future__ import annotations
@@ -285,7 +274,7 @@ def ib_position_truth(ib: IB, con: Contract) -> Tuple[int, Optional[float]]:
 def has_active_parent_entry(ib: IB, con: Contract) -> bool:
     try:
         ib.reqOpenOrders()
-        ib.sleep(0.20)
+        ib.sleep(0.10)
         for t in ib.openTrades():
             if getattr(t.contract, "conId", None) != con.conId:
                 continue
@@ -407,7 +396,7 @@ def reconcile_orphans(ib: IB, account: str, con: Contract):
         log("orphan_sweep_err", err=str(e))
 
 def post_flat_cleanup(ib: IB, con: Contract, note: str = "[post_flat_sweep]"):
-    """Cancel any non-filled orders for this contract right after we're FLAT, including lingering parents."""
+    """Cancel any non-filled orders for this contract right after we're FLAT."""
     try:
         try:
             ib.reqOpenOrders()
@@ -420,7 +409,6 @@ def post_flat_cleanup(ib: IB, con: Contract, note: str = "[post_flat_sweep]"):
             return
 
         cancelled = 0
-        # Children
         for t in list(ib.openTrades()):
             if getattr(t.contract, "conId", None) != con.conId: continue
             st = (getattr(t.orderStatus, "status", "") or "").strip()
@@ -432,15 +420,6 @@ def post_flat_cleanup(ib: IB, con: Contract, note: str = "[post_flat_sweep]"):
             st = (getattr(t.orderStatus, "status", "") or "").strip()
             if st not in ("Filled", "Cancelled"):
                 safe_cancel(ib, t, note=note); cancelled += 1
-
-        # Parents (extra safety)
-        for t in list(ib.openTrades()):
-            if getattr(t.contract, "conId", None) != con.conId: continue
-            st = (getattr(t.orderStatus, "status", "") or "").strip()
-            if st not in ("Filled", "Cancelled"):
-                is_parent = (getattr(t.order, "parentId", 0) in (None, 0)) and not bool((t.order.ocaGroup or "").strip())
-                if is_parent:
-                    safe_cancel(ib, t, note=note); cancelled += 1
 
         if cancelled:
             log("post_flat_sweep_done", count=cancelled)
@@ -560,8 +539,8 @@ Examples:
     ap.add_argument("--acct-base", type=float, default=30000.0)
     ap.add_argument("--risk-pct", type=float, default=0.01)
     ap.add_argument("--scale-step", type=float, default=10000.0)
-    ap.add_argument("--start-contracts", type=int, default=2)
-    ap.add_argument("--max-contracts", type=int, default=6)
+    ap.add_argument("--start-contracts", type=int, default=1)
+    ap.add_argument("--max-contracts", type=int, default=1)
     ap.add_argument("--static-size", action="store_true")
     ap.add_argument("--qty", type=float, default=2.0)
     ap.add_argument("--risk-ticks", type=int, default=12)
@@ -571,6 +550,15 @@ Examples:
     # Margin awareness
     ap.add_argument("--margin-per-contract", type=float, default=13200.0)
     ap.add_argument("--margin-reserve-pct", type=float, default=0.10)
+    ap.add_argument("--preflight-whatif", action="store_true",
+                    help="Probe IB what-if margin before placing parent order.")
+    ap.add_argument("--preflight-selftest", action="store_true",
+                    help=(
+                        "Run a one-shot IB what-if margin self-test after connect; "
+                        "log and continue on success, exit(1) on failure (no exit on success)."
+                    ))
+    ap.add_argument("--margin-buffer-pct", type=float, default=0.10,
+                    help="Extra margin headroom multiplier for preflight sizing (e.g., 0.10 = +10%).")
 
     # Strategy gates
     ap.add_argument("--enable-arms", default="trend,breakout")
@@ -662,10 +650,6 @@ Examples:
 def main():
     args = build_argparser().parse_args()
 
-    # Ensure folders exist for first run
-    os.makedirs(".\\logs", exist_ok=True)
-    os.makedirs(".\\data\\state", exist_ok=True)
-
     # Enforce RT-only semantics up front
     if args.rt_only:
         args.poll_hist_when_no_rt = False
@@ -734,11 +718,14 @@ def main():
     gamma = decay_factor_from_half_life_local(args.decay_half_life_trades)
     learner = ThompsonGaussian(arms_enabled, gamma)
 
-    # Robust commission handler (clarified signature)
-    def _on_commission(report):
+    # Robust commission handler
+    def _on_commission(*a):
         nonlocal cycle_commission
         try:
-            cycle_commission += float(getattr(report, "commission", 0.0) or 0.0)
+            if len(a) == 3: cr = a[2]
+            elif len(a) == 1: cr = a[0]
+            else: return
+            cycle_commission += float(getattr(cr, "commission", 0.0) or 0.0)
         except Exception:
             pass
     ib.commissionReportEvent += _on_commission
@@ -833,6 +820,14 @@ def main():
     px_mult = contract_multiplier(ib, con)
     print(f"[CONTRACT] Multiplier detected: {px_mult:g}")
 
+    # Optional: one-shot preflight self-test that only exits on failure.
+    if args.preflight_selftest:
+        ok = run_preflight_selftest(ib, con, args)
+        if not ok:
+            log("preflight_failed")
+            sys.exit(1)  # fail fast on error only
+        log("preflight_ok")  # success -> continue running normally
+
     # ---- Warm up L1 quotes (guarded cancel) ----
     try:
         tkr = ib.reqMktData(con, genericTickList="", snapshot=False, regulatorySnapshot=False)
@@ -853,6 +848,7 @@ def main():
     ib_acct = None
     ib_daily_pnl: Optional[float] = None
     ib_netliq: Optional[float] = None
+    ib_available: Optional[float] = None
 
     if args.use_ib_pnl:
         try:
@@ -868,19 +864,21 @@ def main():
                 ib.reqPnL(ib_acct, "")
 
                 def _on_account_value(v):
-                    nonlocal ib_netliq
+                    nonlocal ib_netliq, ib_available
                     try:
-                        if v.tag == "NetLiquidation" and (not ib_acct or v.account == ib_acct):
-                            ib_netliq = float(v.value)
+                        if (not ib_acct or v.account == ib_acct):
+                            if v.tag == "NetLiquidation":
+                                ib_netliq = float(v.value)
+                            elif v.tag == "AvailableFunds":
+                                ib_available = float(v.value)
                     except Exception: pass
                 ib.accountValueEvent += _on_account_value
 
-                # Subscribe account updates (tolerate benign errors)
+                # Subscribe account updates
                 try:
-                    if ib_acct:
-                        ib.client.reqAccountUpdates(True, ib_acct)
-                except Exception as e:
-                    log("acct_updates_warn", err=str(e))
+                    ib.client.reqAccountUpdates(True, ib_acct or "")
+                except Exception:
+                    pass
 
                 print(f"[IB PNL] Sync enabled for account={ib_acct}")
             else:
@@ -1009,7 +1007,7 @@ def main():
     week_R = 0.0
     week_halted = False
     last_week_id = iso_week_id(ct_now().date())
-    weekly_cap_R = float("-inf")  # patched by watchdog_nocaps
+    weekly_cap_R = -min(5.0, 2.0 * abs(args.day_loss_cap_R))
 
     # OCO rescue rate limit
     last_oco_rescue_ts = 0.0
@@ -1070,6 +1068,83 @@ def main():
     def per_contract_risk_dollars() -> float:
         return float(args.risk_ticks) * float(args.tick_size) * float(px_mult)
 
+    def account_available_funds(ib: IB) -> float:
+        try:
+            if ib_available is None:
+                return float('nan')
+            return float(ib_available)
+        except Exception:
+            return float('nan')
+
+    def margin_for_qty(ib: IB, con: Contract, side: str, qty: int) -> float:
+        """Return estimated initial margin change for placing a parent at size qty.
+        Uses IB what-if when enabled; returns NaN on failure."""
+        try:
+            if not args.preflight_whatif:
+                return float('nan')
+            order = LimitOrder(action=str(side).upper(), totalQuantity=int(qty), lmtPrice=0.0, tif=args.tif)
+            try:
+                setattr(order, 'whatIf', True)
+            except Exception:
+                pass
+            st = ib.whatIfOrder(con, order)
+            for fld in ('initMarginChange', 'initialMarginChange', 'maintMarginChange'):
+                try:
+                    val = getattr(st, fld, None)
+                    if val is not None:
+                        return float(val)
+                except Exception:
+                    pass
+            return float('nan')
+        except Exception:
+            return float('nan')
+
+    def preflight_margin_or_downsize(ib: IB, con: Contract, side: str, qty: int, buffer_pct: float) -> int:
+        """
+        Try to fit the desired qty within available funds after a margin buffer.
+        Iteratively downsizes (qty-1) until it fits or returns 0 (blocked).
+        Returns the approved qty (>=1) or 0 if insufficient.
+        """
+        try:
+            avail = account_available_funds(ib)
+        except Exception:
+            return int(qty)
+
+    def run_preflight_selftest(ib: IB, con: Contract, args) -> bool:
+        """
+        One-shot margin probe for the initial parent order size. Succeeds if
+        AvailableFunds covers the what-if initial margin * (1 + margin_buffer_pct).
+        Returns True on pass; False on fail (caller may exit(1) on False).
+        """
+        try:
+            funds = account_available_funds(ib)  # float (NaN allowed)
+            qty   = max(1, int(getattr(args, "start_contracts", 1)))
+            m     = margin_for_qty(ib, con, "BUY", qty)  # float or NaN
+            buf   = float(m) * (1.0 + float(getattr(args, "margin_buffer_pct", 0.0)))
+            ok    = (funds == funds) and (m == m) and (float(funds) >= float(buf))
+            log("preflight_selftest", qty=int(qty), whatif_margin=float(m) if (m == m) else None,
+                buffer=float(buf) if (m == m) else None, avail_funds=float(funds) if (funds == funds) else None,
+                ok=bool(ok))
+            return bool(ok)
+        except Exception as e:
+            log("preflight_selftest_error", err=str(e))
+            return False
+        try:
+            if not isinstance(avail, (int, float)) or not math.isfinite(avail):
+                return int(qty)
+            target = max(0.0, float(avail) * (1.0 - float(buffer_pct)))
+            q = int(max(0, int(qty)))
+            while q >= 1:
+                delta = margin_for_qty(ib, con, side, q)
+                if not isinstance(delta, (int, float)) or not math.isfinite(delta):
+                    return int(q)
+                if float(delta) <= float(target):
+                    return int(q)
+                q -= 1
+            return 0
+        except Exception:
+            return int(qty)
+
     def equity_ladder_size(eq: float) -> int:
         steps = 0 if eq < args.acct_base else math.floor((eq - args.acct_base) / max(1.0, args.scale_step))
         return int(clamp(args.start_contracts + steps, 1, args.max_contracts))
@@ -1116,6 +1191,62 @@ def main():
             final_qty = max(0, args.max_contracts - abs(current_net_qty))
         return int(final_qty)
 
+    def audit_children_tif(ib: IB, pid: int, desired_tif: str, con: Contract) -> None:
+        """
+        Audit child OCO legs (stop/tp) under the given parent orderId `pid` and
+        log any TIF mismatches vs `desired_tif`. We only log by default because
+        some TWS builds enforce presets and block API TIF changes.
+        """
+        try:
+            for tr in ib.trades():
+                o = tr.order
+                if getattr(o, "parentId", 0) != pid:
+                    continue
+                have = (getattr(o, "tif", "") or "").upper()
+                want = (desired_tif or "").upper()
+                if have and want and have != want:
+                    log("tif_mismatch", orderId=o.orderId, parentId=pid, have=have, want=want)
+        except Exception as e:
+            log("tif_audit_error", pid=pid, err=str(e))
+
+    def rebuild_children_with_tif(
+        ib: IB, con: Contract, pid: int, qty: int, side: str,
+        stop: float, tp: float, desired_tif: str
+    ) -> None:
+        """
+        Cancels existing children under parent `pid` and re-creates them with the desired TIF.
+        The last child transmits=True to arm the OCO.
+        """
+        try:
+            for tr in ib.trades():
+                o = tr.order
+                if getattr(o, "parentId", 0) == pid and getattr(o, "orderType", "") in ("STP", "STP LMT", "LMT"):
+                    try:
+                        ib.cancelOrder(o)
+                    except Exception as ce:
+                        log("child_cancel_error", parentId=pid, orderId=getattr(o, "orderId", None), err=str(ce))
+
+            oca = f"OCO-{int(time.time())}"
+            exit_action = "SELL" if str(side).upper() == "BUY" else "BUY"
+
+            stp = StopOrder(exit_action, int(qty), float(stop), tif=str(desired_tif), outsideRth=bool(getattr(args, "outsideRth", False)))
+            try: stp.triggerMethod = 2
+            except Exception: pass
+            stp.parentId = int(pid); stp.ocaGroup = oca; stp.transmit = False
+            try: stp.ocaType = 1
+            except Exception: pass
+            ib.placeOrder(con, stp)
+
+            lmt = LimitOrder(exit_action, int(qty), float(tp), tif=str(desired_tif), outsideRth=bool(getattr(args, "outsideRth", False)))
+            lmt.parentId = int(pid); lmt.ocaGroup = oca; lmt.transmit = True
+            try: lmt.ocaType = 1
+            except Exception: pass
+            ib.placeOrder(con, lmt)
+
+            log("oco_rebuilt_tif", parentId=int(pid), tif=str(desired_tif), stop=float(stop), target=float(tp), qty=int(qty))
+        except Exception as e:
+            log("oco_rebuild_error", parentId=int(pid), err=str(e))
+
     # ---- Order placement ----
     def place_bracket(go_long: bool, last_price: float, last_bar_ts_local, net_qty_now: int):
         nonlocal entry_price, last_entry_bar_ts, margin_reject_until, risk, pending_parent_ids
@@ -1146,18 +1277,21 @@ def main():
             tp = round_to_tick(entry - risk_px * float(args.tp_R), tick)
             action = "SELL"
 
+        # Optional margin preflight with downsize
+        if args.preflight_whatif:
+            checked_qty = preflight_margin_or_downsize(ib, con, action, int(qty), float(args.margin_buffer_pct))
+            if checked_qty <= 0:
+                log("preflight_blocked", desired=int(qty), reason="insufficient_available_funds")
+                return
+            if int(checked_qty) != int(qty):
+                log("preflight_downsize", from_qty=int(qty), to_qty=int(checked_qty), buffer_pct=float(args.margin_buffer_pct))
+                qty = int(checked_qty)
+
         parent = LimitOrder(action=action, totalQuantity=qty, lmtPrice=entry, tif=args.tif, outsideRth=bool(args.outsideRth))
         parent.transmit = False
         parent_trade = ib.placeOrder(con, parent)
-        parent_id = getattr(getattr(parent_trade, "order", None), "orderId", None)
-        ib.sleep(0.12)
-
-        # Ensure parent orderId is assigned before children
-        if not parent_id:
-            ib.sleep(0.20)
-            parent_id = getattr(getattr(parent_trade, "order", None), "orderId", None)
-            if not parent_id:
-                log("bracket_err", err="parent orderId not assigned"); return
+        parent_id = parent_trade.order.orderId
+        ib.sleep(0.02)
 
         exit_action = "SELL" if action == "BUY" else "BUY"
         oca = f"OCO-{int(time.time())}"
@@ -1184,6 +1318,26 @@ def main():
             log("bracket_submitted", side=action, qty=qty, entry=entry, stop=sl, tp=tp)
         except Exception as e:
             log("bracket_err", err=str(e)); return
+
+        # TIF sanity check + optional auto-fix: some TWS builds override via presets (e.g., code 10349).
+        try:
+            desired_tif = str(args.tif or "").upper()
+            if desired_tif:
+                mismatched = False
+                for tr in ib.trades():
+                    o = tr.order
+                    if getattr(o, "parentId", 0) != parent_id:
+                        continue
+                    have = (getattr(o, "tif", "") or "").upper()
+                    if have and have != desired_tif:
+                        mismatched = True
+                        break
+                if mismatched:
+                    rebuild_children_with_tif(ib, con, parent_id, qty, action, sl, tp, desired_tif)
+                else:
+                    audit_children_tif(ib, parent_id, desired_tif, con)
+        except Exception as e:
+            log("tif_audit_or_fix_error", parent_id=parent_id, err=str(e))
 
         entry_price = entry
         last_entry_bar_ts = last_bar_ts_local
@@ -1280,7 +1434,7 @@ def main():
                 else: status = "booting"
             hb_update(rt_enabled=(rt is not None),
                       rt_status=status,
-                      rt_age_sec=(int(rt_seen_age) if (_rt_last_seen and rt_seen_age is not None) else None),
+                      rt_age_sec=(rt_seen_age if _rt_last_seen else None),
                       rt_queue_len=(len(rt) if rt else 0))
 
             # Polling fallback
@@ -1447,7 +1601,7 @@ def main():
                 if ib_netliq is not None:
                     equity = float(ib_netliq); equity_hwm = max(equity_hwm, equity)
 
-            # OCO rescue (rate-limited + micro re-check to avoid flicker)
+            # OCO rescue (rate-limited)
             last_px = C[-1] if C else None
             try:
                 if net_qty != 0 and args.place_orders:
@@ -1457,44 +1611,38 @@ def main():
                     has_tp   = any((t.order.orderType or "").upper()=="LMT" and (t.order.action or "").upper()==exit_action for t in trades)
                     need_rescue = (not has_stop) or (not has_tp)
                     if need_rescue and (time.time() - last_oco_rescue_ts >= OCO_RESCUE_MIN_GAP_S):
-                        ib.sleep(0.05)  # micro re-check window for incoming fills
-                        trades = list_open_orders_for_contract(ib, con)
-                        has_stop = any((t.order.orderType or "").upper().startswith("STP") and (t.order.action or "").upper()==exit_action for t in trades)
-                        has_tp   = any((t.order.orderType or "").upper()=="LMT" and (t.order.action or "").upper()==exit_action for t in trades)
-                        need_rescue = (not has_stop) or (not has_tp)
-                        if need_rescue:
-                            # purge wrong side + refresh stale same-side children
-                            for t in trades:
-                                ot = (t.order.orderType or "").upper(); act = (t.order.action or "").upper()
-                                if ot in {"LMT","STP","STP LMT"} and act != exit_action:
-                                    safe_cancel(ib, t, note="[prot wrong-side]")
-                                elif ot in {"LMT","STP","STP LMT"} and act == exit_action:
-                                    safe_cancel(ib, t, note="[prot refresh]")
-                            if last_px is not None and not math.isnan(last_px):
-                                qty_abs = abs(int(net_qty))
-                                tick = float(args.tick_size)
-                                risk_px = ticks_to_price_delta(args.risk_ticks, tick)
-                                tp_px = risk_px * float(args.tp_R)
-                                if net_qty > 0:
-                                    stop_price = round_to_tick(last_px - risk_px - tick, tick)
-                                    targ_price = round_to_tick(last_px + tp_px + tick, tick)
-                                else:
-                                    stop_price = round_to_tick(last_px + risk_px + tick, tick)
-                                    targ_price = round_to_tick(last_px - tp_px - tick, tick)
-                                oca = f"OCO-PROT-{int(time.time())}"
-                                stp = StopOrder(action=exit_action, totalQuantity=qty_abs, stopPrice=stop_price, tif=args.tif, outsideRth=bool(args.outsideRth))
-                                try: stp.triggerMethod = 2
-                                except Exception: pass
-                                stp.ocaGroup = oca; stp.transmit = False
-                                try: stp.ocaType = 1
-                                except Exception: pass
-                                lmt = LimitOrder(action=exit_action, totalQuantity=qty_abs, lmtPrice=targ_price, tif=args.tif, outsideRth=bool(args.outsideRth))
-                                lmt.ocaGroup = oca; lmt.transmit = True
-                                try: lmt.ocaType = 1
-                                except Exception: pass
-                                ib.placeOrder(con, stp); ib.placeOrder(con, lmt)
-                                last_oco_rescue_ts = time.time()
-                                log("oco_rebuilt", side=exit_action, stp=stop_price, lmt=targ_price, qty=qty_abs)
+                        # purge wrong side + refresh stale same-side children
+                        for t in trades:
+                            ot = (t.order.orderType or "").upper(); act = (t.order.action or "").upper()
+                            if ot in {"LMT","STP","STP LMT"} and act != exit_action:
+                                safe_cancel(ib, t, note="[prot wrong-side]")
+                            elif ot in {"LMT","STP","STP LMT"} and act == exit_action:
+                                safe_cancel(ib, t, note="[prot refresh]")
+                        if last_px is not None and not math.isnan(last_px):
+                            qty_abs = abs(int(net_qty))
+                            tick = float(args.tick_size)
+                            risk_px = ticks_to_price_delta(args.risk_ticks, tick)
+                            tp_px = risk_px * float(args.tp_R)
+                            if net_qty > 0:
+                                stop_price = round_to_tick(last_px - risk_px - tick, tick)
+                                targ_price = round_to_tick(last_px + tp_px + tick, tick)
+                            else:
+                                stop_price = round_to_tick(last_px + risk_px + tick, tick)
+                                targ_price = round_to_tick(last_px - tp_px - tick, tick)
+                            oca = f"OCO-PROT-{int(time.time())}"
+                            stp = StopOrder(action=exit_action, totalQuantity=qty_abs, stopPrice=stop_price, tif=args.tif, outsideRth=bool(args.outsideRth))
+                            try: stp.triggerMethod = 2
+                            except Exception: pass
+                            stp.ocaGroup = oca; stp.transmit = False
+                            try: stp.ocaType = 1
+                            except Exception: pass
+                            lmt = LimitOrder(action=exit_action, totalQuantity=qty_abs, lmtPrice=targ_price, tif=args.tif, outsideRth=bool(args.outsideRth))
+                            lmt.ocaGroup = oca; lmt.transmit = True
+                            try: lmt.ocaType = 1
+                            except Exception: pass
+                            ib.placeOrder(con, stp); ib.placeOrder(con, lmt)
+                            last_oco_rescue_ts = time.time()
+                            log("oco_rebuilt", side=exit_action, stp=stop_price, lmt=targ_price, qty=qty_abs)
             except Exception as e:
                 log("oco_rescue_err", err=str(e))
 
@@ -1523,8 +1671,7 @@ def main():
             if risk.day_R <= -abs(args.day_loss_cap_R): caps_reasons.append("dayR_cap")
             if risk.trades >= args.max_trades_per_day: caps_reasons.append("max_trades")
             if risk.halted: caps_reasons.append("risk_halted")
-            if float(args.day_guard_pct) > 0 and day_realized <= day_guard_dollars:
-                caps_reasons.append("minus_pct_guard")
+            if day_realized <= day_guard_dollars: caps_reasons.append("minus_pct_guard")
             if args.peak_dd_guard_pct > 0 and (day_peak_realized >= float(args.peak_dd_min_profit)):
                 if day_realized <= day_peak_realized * (1.0 - float(args.peak_dd_guard_pct)):
                     caps_reasons.append("peak_dd_guard")
@@ -1550,13 +1697,6 @@ def main():
                         day_realized=round(day_realized, 2),
                         day_peak=round(day_peak_realized, 2),
                         dayR=round(risk.day_R, 3))
-                    # Optional audible cue on caps_on
-                    try:
-                        if winsound:
-                            winsound.Beep(440, 180)
-                            winsound.Beep(392, 180)
-                    except Exception:
-                        pass
                 # When capped and flat: sweep all
                 if net_qty == 0:
                     try:
@@ -1653,9 +1793,8 @@ def main():
                         place_bracket(go_long, close, last_bar_ts, net_qty)
                         learner.last_arm = chosen  # remember selection
 
-            # Skip orphan sweep while in position & RT unstable to avoid racing fills
-            if not (net_qty != 0 and status in {"starved", "stale"}):
-                reconcile_orphans(ib, ib_acct or "", con)
+            # Sweep orphans regularly
+            reconcile_orphans(ib, ib_acct or "", con)
 
             ib.sleep(1.0)
 
@@ -1681,5 +1820,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-

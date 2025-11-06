@@ -1,0 +1,63 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Time-of-Day PnL Logger
+- Reads the latest ES Paper Trader heartbeat JSONs
+- Groups realized PnL by hour
+- Outputs rolling CSV 'tod_pnl_log.csv'
+"""
+
+import json, time, csv
+from pathlib import Path
+from datetime import datetime
+
+LOG_PATH = Path(r".\logs\paper_trader.log")  # or wherever your bot writes
+OUT_PATH = Path(r".\logs\tod_pnl_log.csv")
+
+def main():
+    seen = set()
+    buckets = {}
+
+    OUT_PATH.parent.mkdir(parents=True, exist_ok=True)
+    print(f"[TOD LOGGER] Watching {LOG_PATH}")
+
+    while True:
+        if not LOG_PATH.exists():
+            time.sleep(5)
+            continue
+        with LOG_PATH.open("r", encoding="utf-8") as f:
+            for line in f:
+                if line in seen:
+                    continue
+                seen.add(line)
+                try:
+                    obj = json.loads(line)
+                except Exception:
+                    continue
+                if obj.get("evt") != "hb":
+                    continue
+                if "dayR" not in obj:
+                    continue
+
+                ts = obj.get("ts")
+                pnl = obj.get("dayR", 0.0)
+                try:
+                    hour = datetime.strptime(ts, "%Y-%m-%d %H:%M:%S").hour
+                except Exception:
+                    continue
+
+                buckets.setdefault(hour, []).append(pnl)
+
+        # write rolling averages
+        with OUT_PATH.open("w", newline="", encoding="utf-8") as csvf:
+            w = csv.writer(csvf)
+            w.writerow(["hour", "samples", "avg_dayR"])
+            for h in sorted(buckets):
+                vals = buckets[h]
+                avg = sum(vals) / len(vals)
+                w.writerow([h, len(vals), round(avg, 4)])
+
+        time.sleep(15)  # update every 15s
+
+if __name__ == "__main__":
+    main()

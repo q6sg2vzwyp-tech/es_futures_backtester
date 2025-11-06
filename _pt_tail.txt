@@ -1,0 +1,250 @@
+                    post_flat_cleanup(ib, con, note="[flat_cycle]")
+                except Exception as e:
+                    log("flat_cycle_cleanup_err", err=str(e))
+
+                in_trade_cycle = False
+                entry_price = None
+                cycle_entry_qty = 0
+                cycle_entry_time = None
+                age_forced_flat_done = False
+                es.last_exec_price = None
+
+            prev_net_qty = net_qty
+
+            # IB PnL overwrite
+            if args.use_ib_pnl:
+                if ib_daily_pnl is not None:
+                    day_realized = float(ib_daily_pnl)
+                    day_peak_realized = max(day_peak_realized, day_realized)
+                    day_state[k]["day_realized"] = day_realized
+                    day_state[k]["day_peak_realized"] = day_peak_realized
+                    save_day_state(day_state)
+                if ib_netliq is not None:
+                    equity = float(ib_netliq); equity_hwm = max(equity_hwm, equity)
+
+            # OCO rescue (rate-limited)
+            last_px = C[-1] if C else None
+            try:
+                if net_qty != 0 and args.place_orders:
+                    trades = list_open_orders_for_contract(ib, con)
+                    exit_action = "SELL" if net_qty > 0 else "BUY"
+                    has_stop = any((t.order.orderType or "").upper().startswith("STP") and (t.order.action or "").upper()==exit_action for t in trades)
+                    has_tp   = any((t.order.orderType or "").upper()=="LMT" and (t.order.action or "").upper()==exit_action for t in trades)
+                    need_rescue = (not has_stop) or (not has_tp)
+                    if need_rescue and (time.time() - last_oco_rescue_ts >= OCO_RESCUE_MIN_GAP_S):
+                        # purge wrong side + refresh stale same-side children
+                        for t in trades:
+                            ot = (t.order.orderType or "").upper(); act = (t.order.action or "").upper()
+                            if ot in {"LMT","STP","STP LMT"} and act != exit_action:
+                                safe_cancel(ib, t, note="[prot wrong-side]")
+                            elif ot in {"LMT","STP","STP LMT"} and act == exit_action:
+                                safe_cancel(ib, t, note="[prot refresh]")
+                        if last_px is not None and not math.isnan(last_px):
+                            qty_abs = abs(int(net_qty))
+                            tick = float(args.tick_size)
+                            risk_px = ticks_to_price_delta(args.risk_ticks, tick)
+                            tp_px = risk_px * float(args.tp_R)
+                            if net_qty > 0:
+                                stop_price = round_to_tick(last_px - risk_px - tick, tick)
+                                targ_price = round_to_tick(last_px + tp_px + tick, tick)
+                            else:
+                                stop_price = round_to_tick(last_px + risk_px + tick, tick)
+                                targ_price = round_to_tick(last_px - tp_px - tick, tick)
+                            oca = f"OCO-PROT-{int(time.time())}"
+                            stp = StopOrder(action=exit_action, totalQuantity=qty_abs, stopPrice=stop_price, tif=args.tif, outsideRth=bool(args.outsideRth))
+                            try: stp.triggerMethod = 2
+                            except Exception: pass
+                            stp.ocaGroup = oca; stp.transmit = False
+                            try: stp.ocaType = 1
+                            except Exception: pass
+                            lmt = LimitOrder(action=exit_action, totalQuantity=qty_abs, lmtPrice=targ_price, tif=args.tif, outsideRth=bool(args.outsideRth))
+                            lmt.ocaGroup = oca; lmt.transmit = True
+                            try: lmt.ocaType = 1
+                            except Exception: pass
+                            ib.placeOrder(con, stp); ib.placeOrder(con, lmt)
+                            last_oco_rescue_ts = time.time()
+                            log("oco_rebuilt", side=exit_action, stp=stop_price, lmt=targ_price, qty=qty_abs)
+            except Exception as e:
+                log("oco_rescue_err", err=str(e))
+
+            # Position-age cap (honor disable flags and zero values)
+            if (not getattr(args, 'no_pos_age_cap', False)) and (int(getattr(args, 'pos_age_cap_sec', 0) or 0) > 0) \
+               and (net_qty != 0) and (entry_price is not None) and (cycle_entry_time is not None) and (not args.pos_age_minR is None):
+                elapsed = (now - cycle_entry_time).total_seconds()
+                if elapsed >= max(1, int(args.pos_age_cap_sec)) and not age_forced_flat_done:
+                    if last_px is not None and not math.isnan(last_px):
+                        side = 1 if net_qty > 0 else -1
+                        pc_risk = float(args.risk_ticks) * float(args.tick_size) * float(px_mult)
+                        uR = 0.0
+                        if pc_risk > 0:
+                            uR = ((last_px - entry_price) * px_mult * side * max(1,cycle_entry_qty)) / (pc_risk * max(1,cycle_entry_qty))
+                        if uR < float(args.pos_age_minR):
+                            flatten_market(net_qty)
+                            age_forced_flat_done = True
+                            if not getattr(args, 'no_cooldown', False):
+                                risk.cool_until = ct_now() + dt.timedelta(seconds=int(args.strategy_cooldown_sec))
+                            log("pos_age_forced_flat", uR=round(uR,3), elapsed=int(elapsed))
+
+            # Weekly cap gating (respect no-loss-cap and numeric>0)
+            if ((not getattr(args, 'no_loss_cap', False)) and (float(getattr(args, 'day_loss_cap_R', 0) or 0) > 0)
+                and (week_R <= weekly_cap_R)):
+                week_halted = True
+
+            # Peak DD guard + caps (flag-aware)
+            caps_reasons = []
+            if (not getattr(args, 'no_loss_cap', False)) and (float(getattr(args, 'day_loss_cap_R', 0) or 0) > 0):
+                if risk.day_R <= -abs(args.day_loss_cap_R): caps_reasons.append("dayR_cap")
+            if (not getattr(args, 'no_max_trades', False)) and (int(getattr(args, 'max_trades_per_day', 0) or 0) > 0):
+                if risk.trades >= args.max_trades_per_day: caps_reasons.append("max_trades")
+            if (not getattr(args, 'no_day_guard', False)) and risk.halted:
+                caps_reasons.append("risk_halted")
+            if (not getattr(args, 'no_day_guard', False)) and (float(getattr(args, 'day_guard_pct', 0) or 0) > 0):
+                if day_realized <= day_guard_dollars: caps_reasons.append("minus_pct_guard")
+            if args.peak_dd_guard_pct > 0 and (day_peak_realized >= float(args.peak_dd_min_profit)):
+                if day_realized <= day_peak_realized * (1.0 - float(args.peak_dd_guard_pct)):
+                    caps_reasons.append("peak_dd_guard")
+            if week_halted: caps_reasons.append("weekly_cap_R")
+
+            # Determine state
+            rt_ok_for_trading = (status == "ok")
+            if caps_reasons:
+                state = "caps"
+            elif (args.require_rt_before_trading and not rt_ok_for_trading):
+                state = "wait_rt"
+            else:
+                state = "active" if within_session(now, args.trade_start_ct, args.trade_end_ct) else "sleep"
+            if in_tod_blackout(now, tod_blackouts):
+                state = "sleep"
+
+            # Handle caps transitions
+            if state == "caps":
+                if not in_caps:
+                    in_caps = True
+                    log("caps_on",
+                        reasons=caps_reasons,
+                        day_realized=round(day_realized, 2),
+                        day_peak=round(day_peak_realized, 2),
+                        dayR=round(risk.day_R, 3))
+                # When capped and flat: sweep all
+                if net_qty == 0:
+                    try:
+                        c = 0
+                        for t in ib.openTrades():
+                            st = (getattr(t.orderStatus, "status", "") or "").strip()
+                            if st in ACTIVE_STATUSES:
+                                safe_cancel(ib, t, note="[cap_sweep]"); c += 1
+                        if c: log("cap_sweep_all_orders", count=c)
+                    except Exception as e:
+                        log("cap_sweep_err", err=str(e))
+                    try:
+                        sweep_all_for_contract(ib, con, note="[cap_sweep]")
+                    except Exception as e:
+                        log("cap_sweep_err", err=str(e))
+            else:
+                if in_caps:
+                    in_caps = False
+                    log("caps_off")
+
+            # Idle reason for HB
+            if state == "caps":
+                idle_reason = "capped:" + ",".join(caps_reasons)
+            elif state == "wait_rt":
+                idle_reason = "waiting_for_rt_fresh"
+            elif state == "sleep":
+                idle_reason = "outside_trade_window"
+            else:
+                if has_active_parent_entry(ib, con):
+                    idle_reason = "parent_entry_working"
+                elif not risk.can_trade(now, int(args.min_seconds_between_entries)):
+                    if (not getattr(args, 'no_cooldown', False)) and risk.cool_until and now < risk.cool_until:
+                        idle_reason = "gated:cooldown"
+                    elif (not getattr(args, 'no_max_trades', False)) and (int(getattr(args,'max_trades_per_day',0) or 0) > 0) and (risk.trades >= args.max_trades_per_day):
+                        idle_reason = "gated:max_trades"
+                    elif (not getattr(args, 'no_loss_cap', False)) and (float(getattr(args,'day_loss_cap_R',0) or 0) > 0) and (risk.day_R <= -abs(args.day_loss_cap_R)):
+                        idle_reason = "gated:dayR_cap"
+                    elif (not getattr(args, 'no_max_trades', False)) and (int(getattr(args,'max_consec_losses',0) or 0) > 0) and (risk.consec_losses >= args.max_consec_losses):
+                        idle_reason = "gated:consec_losses"
+                    else:
+                        idle_reason = "gated:min_gap_between_entries"
+                elif args.require_new_bar_after_start and not startup_bar_seen:
+                    idle_reason = "waiting_for_first_new_bar"
+                elif len(C) < 60:
+                    idle_reason = "waiting_for_bars"
+                else:
+                    idle_reason = "active_waiting"
+
+            hb_update(state=state,
+                      idle_reason=idle_reason,
+                      in_session_window=within_session(now, args.trade_start_ct, args.trade_end_ct),
+                      caps=caps_reasons,
+                      dayR=round(risk.day_R, 3),
+                      trades_today=int(risk.trades),
+                      cool_until=(risk.cool_until if risk.cool_until else None))
+
+            # ENTRY LOGIC (simple demo)
+            if state == "active" and len(C) >= 60 and not has_active_parent_entry(ib, con) and net_qty == 0:
+                close = C[-1]
+                _atrv = atr(H, L, C, 14)
+                _atrp = (_atrv / close) if (not math.isnan(_atrv) and close > 0) else float("nan")
+                fast = ema(C[-20:], 20); slow = ema(C[-50:], 50)
+                is_trend = (fast > slow) and (not math.isnan(_atrp)) and _atrp >= args.gate_atrp
+                is_breakout = (len(C) >= 30) and (close >= max(C[-20:]) or close <= min(C[-20:]))
+
+                # Optional BBBW gate
+                bbbw_ok = True
+                if args.gate_bbbw > 0:
+                    win = C[-20:]
+                    m = sum(win) / 20.0
+                    var = sum((x - m)*(x - m) for x in win) / 20.0
+                    sd = math.sqrt(max(0.0, var))
+                    if m > 0:
+                        bbbw = (2*2.0*sd) / m
+                        bbbw_ok = bbbw >= float(args.gate_bbbw)
+                    else:
+                        bbbw_ok = False
+                    if not bbbw_ok:
+                        hb_update(idle_reason="gated:bbbw_low")
+
+                cand = []
+                if "trend" in (args.enable_arms or "trend,breakout") and is_trend and bbbw_ok: cand.append("trend")
+                if "breakout" in (args.enable_arms or "trend,breakout") and is_breakout and bbbw_ok: cand.append("breakout")
+                if cand:
+                    if len(cand) == 1:
+                        chosen = cand[0]
+                    else:
+                        chosen, probs = learner.choose(cand, sample=(args.learn_mode!="shadow"))
+                        if args.learn_mode in ("shadow","advisory"):
+                            log("learn_decision", cand=cand, probs={k: round(v,3) for k,v in probs.items()}, chosen=chosen)
+
+                    go_long = True if (chosen == "trend" and fast >= slow) else (close >= max(C[-20:]))
+                    if args.learn_mode != "shadow":
+                        place_bracket(go_long, close, last_bar_ts, net_qty)
+                        learner.last_arm = chosen  # remember selection
+
+            # Sweep orphans regularly
+            reconcile_orphans(ib, ib_acct or "", con)
+
+            ib.sleep(1.0)
+
+    except KeyboardInterrupt:
+        print("INFO [CTRL-C] Shutting down...")
+    finally:
+        try:
+            day_state[k]["day_realized"] = day_realized
+            day_state[k]["day_peak_realized"] = day_peak_realized
+            save_day_state(day_state)
+        except Exception:
+            pass
+        try:
+            sent = getattr(getattr(ib, "client", None), "bytesSent", 0) or 0
+            recv = getattr(getattr(ib, "client", None), "bytesReceived", 0) or 0
+            print(f"Disconnecting from {args.host}:{args.port}, {sent/1024:.0f} kB sent, {recv/1024:.0f} kB received.")
+        except Exception:
+            pass
+        try:
+            ib.disconnect(); print("Disconnected.")
+        except Exception:
+            pass
+
+if __name__ == "__main__":
+    main()

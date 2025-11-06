@@ -1,0 +1,160 @@
+﻿def audit_children_tif(ib: IB, pid: int, desired_tif: str, con: Contract):
+        """Ensure stop/TP TIF matches desired; if not, rebuild that child.
+        Uses live_brackets[pid] context. Safe no-op if info missing.
+        """
+        try:
+            info = live_brackets.get(int(pid))
+        except Exception:
+            info = None
+        if not info:
+            return
+        try:
+            desired_tif_u = str(desired_tif or "GTC").upper()
+        except Exception:
+            desired_tif_u = "GTC"
+
+        # Pull open orders for this parent
+        open_by_id = {}
+        try:
+            for t in ib.openTrades():
+                try:
+                    oid = getattr(getattr(t, "order", None), "orderId", None)
+                    if oid is None:
+                        continue
+                    open_by_id[int(oid)] = t
+                except Exception:
+                    pass
+        except Exception:
+            pass
+
+        def _rebuild_child(kind: str, price: float, qty: int):
+            try:
+                action_parent = "BUY" if str(info.get("side", "BUY")).upper() == "BUY" else "SELL"
+                action_child = "SELL" if action_parent == "BUY" else "BUY"
+                oca = str(info.get("oca", "") or "")
+                q = int(qty)
+                if kind == "stop":
+                    stp = StopOrder(action_child, q, float(price), tif=desired_tif_u, outsideRth=bool(getattr(args, 'outsideRth', False)))
+                    stp.parentId = int(pid); stp.ocaGroup = oca; stp.ocaType = 1; stp.transmit = False
+                    tr = ib.placeOrder(con, stp)
+                    try: info["stopId"] = getattr(getattr(tr, 'order', None), 'orderId', info.get('stopId'))
+                    except Exception: pass
+                    log("child_replaced", which="stop", tif=desired_tif_u, price=float(price), qty=q)
+                else:
+                    lmt = LimitOrder(action_child, q, float(price), tif=desired_tif_u, outsideRth=bool(getattr(args, 'outsideRth', False)))
+                    lmt.parentId = int(pid); lmt.ocaGroup = oca; lmt.ocaType = 1; lmt.transmit = True
+                    tr = ib.placeOrder(con, lmt)
+                    try: info["tpId"] = getattr(getattr(tr, 'order', None), 'orderId', info.get('tpId'))
+                    except Exception: pass
+                    log("child_replaced", which="tp", tif=desired_tif_u, price=float(price), qty=q)
+            except Exception as e:
+                try: log("child_rebuild_err", which=kind, err=str(e))
+                except Exception: pass
+
+        # Check stop
+        try:
+            sid = info.get("stopId")
+            if sid and int(sid) in open_by_id:
+                try:
+                    cur_tif = str(getattr(open_by_id[int(sid)].order, 'tif', '') or '').upper()
+                except Exception:
+                    cur_tif = ""
+                if cur_tif != desired_tif_u:
+                    try:
+                        ib.cancelOrder(open_by_id[int(sid)].order)
+                    except Exception:
+                        pass
+                    _rebuild_child("stop", float(info.get("stop", 0.0) or 0.0), int(info.get("qty", 1) or 1))
+        except Exception:
+            pass
+
+        # Check TP
+        try:
+            tid = info.get("tpId")
+            if tid and int(tid) in open_by_id:
+                try:
+                    cur_tif = str(getattr(open_by_id[int(tid)].order, 'tif', '') or '').upper()
+                except Exception:
+                    cur_tif = ""
+                if cur_tif != desired_tif_u:
+                    try:
+                        ib.cancelOrder(open_by_id[int(tid)].order)
+                    except Exception:
+                        pass
+                    _rebuild_child("tp", float(info.get("tp", 0.0) or 0.0), int(info.get("qty", 1) or 1))
+        except Exception:
+            pass
+
+    def audit_children_tif(ib: IB, pid: int, desired_tif: str, con: Contract):
+        try:
+            info = live_brackets.get(int(pid))
+        except Exception:
+            info = None
+        if not info:
+            return
+        try:
+            desired_tif_u = str(desired_tif or "GTC").upper()
+        except Exception:
+            desired_tif_u = "GTC"
+        by_id = {}
+        try:
+            for t in ib.openTrades():
+                try:
+                    oid = getattr(getattr(t,'order',None),'orderId',None)
+                    if oid is None: continue
+                    by_id[int(oid)] = t
+                except Exception:
+                    pass
+        except Exception:
+            pass
+        def _rebuild(kind: str, price: float, qty: int):
+            try:
+                side_parent = "BUY" if str(info.get('side','BUY')).upper()=="BUY" else "SELL"
+                side_child  = "SELL" if side_parent=="BUY" else "BUY"
+                oca = str(info.get('oca','') or '')
+                q = int(max(1,int(qty)))
+                if kind=='stop':
+                    stp = StopOrder(side_child, q, float(price), tif=desired_tif_u, outsideRth=bool(getattr(args,'outsideRth',False)))
+                    stp.parentId = int(pid); stp.ocaGroup = oca; stp.ocaType = 1; stp.transmit = False
+                    tr = ib.placeOrder(con, stp)
+                    try: info['stopId'] = getattr(getattr(tr,'order',None),'orderId', info.get('stopId'))
+                    except Exception: pass
+                    log('child_replaced', which='stop', tif=desired_tif_u, price=float(price), qty=q)
+                else:
+                    lmt = LimitOrder(side_child, q, float(price), tif=desired_tif_u, outsideRth=bool(getattr(args,'outsideRth',False)))
+                    lmt.parentId = int(pid); lmt.ocaGroup = oca; lmt.ocaType = 1; lmt.transmit = True
+                    tr = ib.placeOrder(con, lmt)
+                    try: info['tpId'] = getattr(getattr(tr,'order',None),'orderId', info.get('tpId'))
+                    except Exception: pass
+                    log('child_replaced', which='tp', tif=desired_tif_u, price=float(price), qty=q)
+            except Exception as e:
+                try: log('child_rebuild_err', which=kind, err=str(e))
+                except Exception: pass
+        try:
+            sid = info.get('stopId')
+            if sid and int(sid) in by_id:
+                try:
+                    cur = str(getattr(by_id[int(sid)].order,'tif','') or '').upper()
+                except Exception:
+                    cur=''
+                if cur != desired_tif_u:
+                    try: ib.cancelOrder(by_id[int(sid)].order)
+                    except Exception: pass
+                    _rebuild('stop', float(info.get('stop',0.0) or 0.0), int(info.get('qty',1) or 1))
+        except Exception:
+            pass
+        try:
+            tid = info.get('tpId')
+            if tid and int(tid) in by_id:
+                try:
+                    cur = str(getattr(by_id[int(tid)].order,'tif','') or '').upper()
+                except Exception:
+                    cur=''
+                if cur != desired_tif_u:
+                    try: ib.cancelOrder(by_id[int(tid)].order)
+                    except Exception: pass
+                    _rebuild('tp', float(info.get('tp',0.0) or 0.0), int(info.get('qty',1) or 1))
+        except Exception:
+            pass
+
+

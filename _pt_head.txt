@@ -1,0 +1,250 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+"""
+ES Paper Trader (IBKR + ib_insync) — RT-only & OCO-hardened build
+
+Core:
+- Paper-only safety by default
+- Thompson Sampling learner (shadow/advisory/control)
+- Risk profiles: balanced/aggressive/conservative
+- OCO protection builder & audit (orphan sweeps, sibling cancel, refresh if missing)
+- VWAP session + optional short guards (VWAP buffer + lower-high)
+- Session cutovers (multi) + persistent day guard
+- Version-safe IB PnL subscription + NetLiq via accountValueEvent
+- 24/5 trading window by default (no TOD blackouts unless provided)
+- 1-second JSON heartbeats with explicit idle reasons & RT status/age/queue
+- Robust RT→Polling fallback (5s bars via historical polling)
+
+NEW (this build):
+- RT-ONLY mode: --rt-only (no polling, no trading until RT is FRESH; ignores --force-delayed)
+- Safer stop/OCO: triggerMethod=2; rescue refresh is rate-limited; wrong-side child purge
+- Trade count increments when parent order actually becomes working (not merely submitted)
+- Margin rejection (201 insufficient) → 60s backoff
+- Commission tracking via commissionReportEvent (robust signature)
+- VWAP only ingests TRADES bars (RT + polled), never MIDPOINT
+- Day-state persistence (realized & peak), weekly R reset, cap guards
+"""
+
+from __future__ import annotations
+
+import sys, os, time, json, math, random, argparse, datetime as dt, traceback, threading, platform
+from typing import Optional, List, Dict, Any, Tuple
+from types import SimpleNamespace
+
+try:
+    import winsound  # Windows beep (optional)
+except Exception:
+    winsound = None
+
+from ib_insync import IB, Future, Contract, LimitOrder, StopOrder, MarketOrder, Trade
+
+# ---------- Utilities ----------
+def utc_now_str() -> str:
+    return dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+
+def ct_now() -> dt.datetime:
+    return dt.datetime.now()
+
+def parse_hhmm(s: str) -> dt.time:
+    h, m = s.split(":")
+    return dt.time(int(h), int(m))
+
+def clamp(x, lo, hi): return max(lo, min(hi, x))
+def ticks_to_price_delta(ticks: int, tick_size: float) -> float: return float(ticks) * float(tick_size)
+def round_to_tick(p: float, tick: float) -> float: return round(p / tick) * tick if tick > 0 else p
+
+def to_iso_utc_local_naive(d: dt.datetime) -> str:
+    try:
+        return dt.datetime.fromtimestamp(d.timestamp(), tz=dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    except Exception:
+        try:
+            return d.isoformat()
+        except Exception:
+            return str(d)
+
+def log(evt: str, **fields):
+    payload = {"ts": utc_now_str(), "evt": evt}
+    payload.update(fields)
+    print(json.dumps(payload, ensure_ascii=False), flush=True)
+
+# ---------- Math / indicators ----------
+def ema(vals: List[float], span: int) -> float:
+    if not vals: return float("nan")
+    k = 2 / (span + 1)
+    s = vals[0]
+    for v in vals[1:]:
+        s = v * k + s * (1 - k)
+    return s
+
+def atr(H: List[float], L: List[float], C: List[float], n: int = 14) -> float:
+    if len(C) < n + 1: return float("nan")
+    trs = []
+    for i in range(1, len(C)):
+        hl = H[i] - L[i]
+        hc = abs(H[i] - C[i - 1])
+        lc = abs(L[i] - C[i - 1])
+        trs.append(max(hl, hc, lc))
+    if len(trs) < n: return float("nan")
+    k = 2 / (n + 1)
+    s = trs[-n]
+    for v in trs[-n + 1:]:
+        s = v * k + s * (1 - k)
+    return s
+
+# ---------- Session helpers ----------
+def parse_ct_list(spec: str) -> List[dt.time]:
+    spec = (spec or "").strip()
+    if not spec:
+        return [parse_hhmm("16:10")]
+    out = []
+    for chunk in spec.split(","):
+        chunk = chunk.strip()
+        if not chunk:
+            continue
+        try:
+            out.append(parse_hhmm(chunk))
+        except Exception:
+            pass
+    out = sorted(list({t for t in out}))
+    return out or [parse_hhmm("16:10")]
+
+def within_session(now: dt.datetime, start_ct: str, end_ct: str) -> bool:
+    t = now.time()
+    a = parse_hhmm(start_ct)
+    b = parse_hhmm(end_ct)
+    if a <= b:
+        return a <= t <= b
+    return (t >= a) or (t <= b)
+
+def parse_blackouts(spec: str) -> List[Tuple[dt.time, dt.time]]:
+    out = []
+    spec = (spec or "").strip()
+    if not spec: return out
+    for chunk in spec.split(","):
+        chunk = chunk.strip()
+        if not chunk: continue
+        try:
+            a, b = chunk.split("-")
+            out.append((parse_hhmm(a), parse_hhmm(b)))
+        except Exception:
+            pass
+    return out
+
+def in_tod_blackout(now: dt.datetime, blackouts: List[Tuple[dt.time, dt.time]]) -> bool:
+    if not blackouts: return False
+    t = now.time()
+    for a, b in blackouts:
+        if a <= b:
+            if a <= t <= b: return True
+        else:  # crosses midnight
+            if (t >= a) or (t <= b): return True
+    return False
+
+def session_key_multi(now: dt.datetime, reset_times: List[dt.time]) -> str:
+    t = now.time()
+    idx_today = -1
+    for i, ct_ in enumerate(reset_times):
+        if t >= ct_:
+            idx_today = i
+        else:
+            break
+    if idx_today >= 0:
+        base_date = now.date()
+        seg = idx_today
+    else:
+        base_date = (now - dt.timedelta(days=1)).date()
+        seg = len(reset_times) - 1
+    return f"{base_date.strftime('%Y-%m-%d')}-S{seg}"
+
+def reset_due_multi(now: dt.datetime, reset_times: List[dt.time], last_reset_marks: Dict[str, str]) -> Optional[str]:
+    today = now.date().strftime("%Y-%m-%d")
+    for ct_ in reset_times:
+        label = ct_.strftime("%H:%M")
+        if last_reset_marks.get(label) == today:
+            continue
+        if now.time() >= ct_:
+            last_reset_marks[label] = today
+            return f"{today}#{label}"
+    return None
+
+# ---------- Heartbeat (thread) ----------
+_hb_lock = threading.Lock()
+_hb_state: Dict[str, Any] = {
+    "state": "-",
+    "idle_reason": "starting_or_quiet",
+    "net_qty": 0,
+    "bars": 0,
+    "rt_enabled": False,
+    "rt_status": "disabled",
+    "rt_age_sec": None,
+    "rt_queue_len": 0,
+    "in_session_window": False,
+    "caps": [],
+    "news_kill": False,
+    "dayR": 0.0,
+    "trades_today": 0,
+    "cool_until": None,
+    "orders_disabled_paper_safety": False,
+}
+
+def hb_update(**kv):
+    try:
+        if "cool_until" in kv and isinstance(kv["cool_until"], dt.datetime):
+            kv["cool_until"] = to_iso_utc_local_naive(kv["cool_until"])
+    except Exception:
+        pass
+    with _hb_lock:
+        _hb_state.update(kv)
+
+def _hb_loop():
+    while True:
+        with _hb_lock:
+            payload = dict(_hb_state)
+        log("hb", **payload)
+        time.sleep(1.0)
+
+def start_heartbeat_thread():
+    t = threading.Thread(target=_hb_loop, daemon=True)
+    t.start()
+
+# ---------- IB helpers ----------
+ACTIVE_STATUSES = {"Submitted", "PreSubmitted", "ApiPending", "PendingSubmit", "PendingCancel", "Inactive"}
+CANCELLABLE_STATUSES = {"Submitted", "PreSubmitted", "ApiPending", "PendingSubmit"}
+
+def _parse_ib_date(s: str) -> Optional[dt.date]:
+    try:
+        return dt.datetime.strptime(s, "%Y%m%d").date()
+    except Exception:
+        try:
+            return dt.datetime.strptime(s, "%Y%m%d%H:%M:%S").date()
+        except Exception:
+            return None
+
+def qualify_local_symbol(ib: IB, local_symbol: str, exchange="CME"):
+    cds = ib.reqContractDetails(Future(localSymbol=local_symbol, exchange=exchange))
+    if not cds:
+        raise RuntimeError(f"Local symbol {local_symbol} not found on {exchange}")
+    con = cds[0].contract
+    ib.qualifyContracts(con)
+    return con
+
+def mk_contract(ib: IB, args) -> Contract:
+    if getattr(args, "local_symbol", None):
+        con = qualify_local_symbol(ib, args.local_symbol, "CME")
+        print(f"[CONTRACT] Using {con.localSymbol} conId={con.conId} exp={con.lastTradeDateOrContractMonth}")
+        return con
+    cds = ib.reqContractDetails(Future(symbol=args.symbol, exchange="CME", currency="USD"))
+    if not cds:
+        raise RuntimeError(f"Symbol {args.symbol} not found on CME; supply --local-symbol")
+    best, best_date = None, None
+    for cd in cds:
+        d = _parse_ib_date(cd.contract.lastTradeDateOrContractMonth)
+        if not d:
+            continue
+        if best is None or d < best_date:
+            best, best_date = cd.contract, d
+    if best is None:
+        raise RuntimeError("Could not resolve front contract; supply --local-symbol")
+    ib.qualifyContracts(best)
+    print(f"[CONTRACT] Using {best.localSymbol} conId={best.conId} exp={best.lastTradeDateOrContractMonth}")

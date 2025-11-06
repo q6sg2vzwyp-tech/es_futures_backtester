@@ -1,0 +1,101 @@
+﻿#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+import argparse, datetime as dt, os, shlex, subprocess, sys, time
+
+LOG_DIR = os.path.join(".", "logs")
+os.makedirs(LOG_DIR, exist_ok=True)
+
+def log(msg, **kw):
+    ts = dt.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    parts = [f'[{ts}] {msg}']
+    if kw:
+        parts.append(" " + " ".join(f"{k}={v}" for k, v in kw.items()))
+    line = "".join(parts)
+    print(line, flush=True)
+    return line
+
+def read_args_file(path: str):
+    # Strip UTF-8 BOM if present and split shell-style
+    with open(path, "r", encoding="utf-8-sig") as f:
+        txt = f.read()
+    return shlex.split(txt)
+
+def build_parser():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--args-file", type=str, help="File containing child args (one line or multi-line).")
+    ap.add_argument("--success-exits", action="store_true",
+                    help="If set, restart even when child exits rc=0.")
+    ap.add_argument("--min-backoff", type=float, default=2.0)
+    ap.add_argument("--max-backoff", type=float, default=60.0)
+    # IMPORTANT: we do *not* define the bot flags here; they are passed through.
+    return ap
+
+def main():
+    # Parse only watchdog flags; everything else is passthrough
+    args, remainder = build_parser().parse_known_args()
+
+    # Support `--` separator (PowerShell style): watchdog flags ... -- <child flags...>
+    if remainder and remainder[0] == "--":
+        remainder = remainder[1:]
+
+    # Derive child args
+    if args.args_file:
+        child_args = read_args_file(args.args_file)
+    else:
+        child_args = remainder[:]  # passthrough from CLI
+
+    # Fallback: no child args given
+    if not child_args:
+        child_args = []
+
+    # Build command
+    py = sys.executable  # your venv python if launched from venv
+    cmd = [py, "-u", ".\\paper_trader.py", *child_args]
+
+    # Prepare logfile
+    stamp = dt.datetime.now().strftime("%Y%m%d_%H%M%S")
+    logfile = os.path.join(LOG_DIR, f"watchdog_{stamp}.log")
+    latest_link = os.path.join(LOG_DIR, "watchdog_latest.log")
+
+    backoff = args.min_backoff
+    attempt = 0
+
+    def write_log(line):
+        with open(logfile, "a", encoding="utf-8") as f:
+            f.write(line + "\n")
+
+    write_log(log(f"[watchdog] Logging to: {logfile}"))
+    write_log(log(f"[watchdog] Launching: {cmd}"))
+
+    while True:
+        # Run child and stream minimal status to console+file
+        rc = subprocess.call(cmd)
+        write_log(log(f"[watchdog] Child exited rc={rc}"))
+
+        # On clean exit
+        if rc == 0:
+            if args.success_exits:
+                write_log(log("[watchdog] rc=0 but --success-exits set → restarting."))
+            else:
+                write_log(log("[watchdog] rc=0 (clean). Exiting watchdog."))
+                # update latest symlink/alias
+                try:
+                    if os.path.exists(latest_link):
+                        os.remove(latest_link)
+                    # best-effort copy as “latest”
+                    with open(logfile, "r", encoding="utf-8") as src, open(latest_link, "w", encoding="utf-8") as dst:
+                        dst.write(src.read())
+                except Exception:
+                    pass
+                return 0
+        else:
+            attempt += 1
+            write_log(log(f"[watchdog] Non-zero rc. attempt={attempt} backoff={backoff:.1f}s"))
+            time.sleep(backoff)
+            backoff = min(args.max_backoff, max(args.min_backoff, backoff * 2))
+            write_log(log(f"[watchdog] Relaunching after backoff={backoff:.1f}s"))
+            write_log(log(f"[watchdog] Launching: {cmd}"))
+
+if __name__ == "__main__":
+    sys.exit(main() or 0)

@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-ES Paper Trader (IBKR + ib_insync) â€” RT-only & OCO-hardened build (with fixes baked in)
+ES Paper Trader (IBKR + ib_insync) â€” RT-only & OCO-hardened build
 
 Core:
 - Paper-only safety by default
@@ -21,20 +21,9 @@ NEW (this build):
 - Safer stop/OCO: triggerMethod=2; rescue refresh is rate-limited; wrong-side child purge
 - Trade count increments when parent order actually becomes working (not merely submitted)
 - Margin rejection (201 insufficient) â†’ 60s backoff
-- Commission tracking via commissionReportEvent (clarified signature)
+- Commission tracking via commissionReportEvent (robust signature)
 - VWAP only ingests TRADES bars (RT + polled), never MIDPOINT
 - Day-state persistence (realized & peak), weekly R reset, cap guards
-
-Fixes in this release:
-- Hard lock to prevent polling in --rt-only mode (including force_no_bar_poll edge).
-- Cleaner account update subscription (benign error handling).
-- Heartbeat logs: rt_age_sec coerced to int.
-- Skip orphan sweeps during active position when RT is starved/stale to avoid racing fills.
-- OCO rescue: micro re-check to prevent flicker; rate-limited.
-- Ensure parent orderId is assigned before submitting children; fail gracefully otherwise.
-- Post-flat cleanup also cancels lingering parent LMTs.
-- First-run: ensure .\\logs and .\\data\\state directories exist.
-- Optional audible cue on caps_on (Windows only).
 """
 
 from __future__ import annotations
@@ -285,7 +274,7 @@ def ib_position_truth(ib: IB, con: Contract) -> Tuple[int, Optional[float]]:
 def has_active_parent_entry(ib: IB, con: Contract) -> bool:
     try:
         ib.reqOpenOrders()
-        ib.sleep(0.20)
+        ib.sleep(0.10)
         for t in ib.openTrades():
             if getattr(t.contract, "conId", None) != con.conId:
                 continue
@@ -407,7 +396,7 @@ def reconcile_orphans(ib: IB, account: str, con: Contract):
         log("orphan_sweep_err", err=str(e))
 
 def post_flat_cleanup(ib: IB, con: Contract, note: str = "[post_flat_sweep]"):
-    """Cancel any non-filled orders for this contract right after we're FLAT, including lingering parents."""
+    """Cancel any non-filled orders for this contract right after we're FLAT."""
     try:
         try:
             ib.reqOpenOrders()
@@ -420,7 +409,6 @@ def post_flat_cleanup(ib: IB, con: Contract, note: str = "[post_flat_sweep]"):
             return
 
         cancelled = 0
-        # Children
         for t in list(ib.openTrades()):
             if getattr(t.contract, "conId", None) != con.conId: continue
             st = (getattr(t.orderStatus, "status", "") or "").strip()
@@ -432,15 +420,6 @@ def post_flat_cleanup(ib: IB, con: Contract, note: str = "[post_flat_sweep]"):
             st = (getattr(t.orderStatus, "status", "") or "").strip()
             if st not in ("Filled", "Cancelled"):
                 safe_cancel(ib, t, note=note); cancelled += 1
-
-        # Parents (extra safety)
-        for t in list(ib.openTrades()):
-            if getattr(t.contract, "conId", None) != con.conId: continue
-            st = (getattr(t.orderStatus, "status", "") or "").strip()
-            if st not in ("Filled", "Cancelled"):
-                is_parent = (getattr(t.order, "parentId", 0) in (None, 0)) and not bool((t.order.ocaGroup or "").strip())
-                if is_parent:
-                    safe_cancel(ib, t, note=note); cancelled += 1
 
         if cancelled:
             log("post_flat_sweep_done", count=cancelled)
@@ -662,10 +641,6 @@ Examples:
 def main():
     args = build_argparser().parse_args()
 
-    # Ensure folders exist for first run
-    os.makedirs(".\\logs", exist_ok=True)
-    os.makedirs(".\\data\\state", exist_ok=True)
-
     # Enforce RT-only semantics up front
     if args.rt_only:
         args.poll_hist_when_no_rt = False
@@ -734,11 +709,14 @@ def main():
     gamma = decay_factor_from_half_life_local(args.decay_half_life_trades)
     learner = ThompsonGaussian(arms_enabled, gamma)
 
-    # Robust commission handler (clarified signature)
-    def _on_commission(report):
+    # Robust commission handler
+    def _on_commission(*a):
         nonlocal cycle_commission
         try:
-            cycle_commission += float(getattr(report, "commission", 0.0) or 0.0)
+            if len(a) == 3: cr = a[2]
+            elif len(a) == 1: cr = a[0]
+            else: return
+            cycle_commission += float(getattr(cr, "commission", 0.0) or 0.0)
         except Exception:
             pass
     ib.commissionReportEvent += _on_commission
@@ -875,12 +853,11 @@ def main():
                     except Exception: pass
                 ib.accountValueEvent += _on_account_value
 
-                # Subscribe account updates (tolerate benign errors)
+                # Subscribe account updates
                 try:
-                    if ib_acct:
-                        ib.client.reqAccountUpdates(True, ib_acct)
-                except Exception as e:
-                    log("acct_updates_warn", err=str(e))
+                    ib.client.reqAccountUpdates(True, ib_acct or "")
+                except Exception:
+                    pass
 
                 print(f"[IB PNL] Sync enabled for account={ib_acct}")
             else:
@@ -1009,10 +986,10 @@ def main():
     week_R = 0.0
     week_halted = False
     last_week_id = iso_week_id(ct_now().date())
-    weekly_cap_R = float("-inf")  # patched by watchdog_nocaps
+weekly_cap_R = float("-inf")  # patched by watchdog_nocaps
 
     # OCO rescue rate limit
-    last_oco_rescue_ts = 0.0
+last_oco_rescue_ts = 0.0
     OCO_RESCUE_MIN_GAP_S = 3.0
 
     # ---- Event handlers ----
@@ -1149,15 +1126,8 @@ def main():
         parent = LimitOrder(action=action, totalQuantity=qty, lmtPrice=entry, tif=args.tif, outsideRth=bool(args.outsideRth))
         parent.transmit = False
         parent_trade = ib.placeOrder(con, parent)
-        parent_id = getattr(getattr(parent_trade, "order", None), "orderId", None)
-        ib.sleep(0.12)
-
-        # Ensure parent orderId is assigned before children
-        if not parent_id:
-            ib.sleep(0.20)
-            parent_id = getattr(getattr(parent_trade, "order", None), "orderId", None)
-            if not parent_id:
-                log("bracket_err", err="parent orderId not assigned"); return
+        parent_id = parent_trade.order.orderId
+        ib.sleep(0.02)
 
         exit_action = "SELL" if action == "BUY" else "BUY"
         oca = f"OCO-{int(time.time())}"
@@ -1280,7 +1250,7 @@ def main():
                 else: status = "booting"
             hb_update(rt_enabled=(rt is not None),
                       rt_status=status,
-                      rt_age_sec=(int(rt_seen_age) if (_rt_last_seen and rt_seen_age is not None) else None),
+                      rt_age_sec=(rt_seen_age if _rt_last_seen else None),
                       rt_queue_len=(len(rt) if rt else 0))
 
             # Polling fallback
@@ -1447,7 +1417,7 @@ def main():
                 if ib_netliq is not None:
                     equity = float(ib_netliq); equity_hwm = max(equity_hwm, equity)
 
-            # OCO rescue (rate-limited + micro re-check to avoid flicker)
+            # OCO rescue (rate-limited)
             last_px = C[-1] if C else None
             try:
                 if net_qty != 0 and args.place_orders:
@@ -1457,44 +1427,38 @@ def main():
                     has_tp   = any((t.order.orderType or "").upper()=="LMT" and (t.order.action or "").upper()==exit_action for t in trades)
                     need_rescue = (not has_stop) or (not has_tp)
                     if need_rescue and (time.time() - last_oco_rescue_ts >= OCO_RESCUE_MIN_GAP_S):
-                        ib.sleep(0.05)  # micro re-check window for incoming fills
-                        trades = list_open_orders_for_contract(ib, con)
-                        has_stop = any((t.order.orderType or "").upper().startswith("STP") and (t.order.action or "").upper()==exit_action for t in trades)
-                        has_tp   = any((t.order.orderType or "").upper()=="LMT" and (t.order.action or "").upper()==exit_action for t in trades)
-                        need_rescue = (not has_stop) or (not has_tp)
-                        if need_rescue:
-                            # purge wrong side + refresh stale same-side children
-                            for t in trades:
-                                ot = (t.order.orderType or "").upper(); act = (t.order.action or "").upper()
-                                if ot in {"LMT","STP","STP LMT"} and act != exit_action:
-                                    safe_cancel(ib, t, note="[prot wrong-side]")
-                                elif ot in {"LMT","STP","STP LMT"} and act == exit_action:
-                                    safe_cancel(ib, t, note="[prot refresh]")
-                            if last_px is not None and not math.isnan(last_px):
-                                qty_abs = abs(int(net_qty))
-                                tick = float(args.tick_size)
-                                risk_px = ticks_to_price_delta(args.risk_ticks, tick)
-                                tp_px = risk_px * float(args.tp_R)
-                                if net_qty > 0:
-                                    stop_price = round_to_tick(last_px - risk_px - tick, tick)
-                                    targ_price = round_to_tick(last_px + tp_px + tick, tick)
-                                else:
-                                    stop_price = round_to_tick(last_px + risk_px + tick, tick)
-                                    targ_price = round_to_tick(last_px - tp_px - tick, tick)
-                                oca = f"OCO-PROT-{int(time.time())}"
-                                stp = StopOrder(action=exit_action, totalQuantity=qty_abs, stopPrice=stop_price, tif=args.tif, outsideRth=bool(args.outsideRth))
-                                try: stp.triggerMethod = 2
-                                except Exception: pass
-                                stp.ocaGroup = oca; stp.transmit = False
-                                try: stp.ocaType = 1
-                                except Exception: pass
-                                lmt = LimitOrder(action=exit_action, totalQuantity=qty_abs, lmtPrice=targ_price, tif=args.tif, outsideRth=bool(args.outsideRth))
-                                lmt.ocaGroup = oca; lmt.transmit = True
-                                try: lmt.ocaType = 1
-                                except Exception: pass
-                                ib.placeOrder(con, stp); ib.placeOrder(con, lmt)
-                                last_oco_rescue_ts = time.time()
-                                log("oco_rebuilt", side=exit_action, stp=stop_price, lmt=targ_price, qty=qty_abs)
+                        # purge wrong side + refresh stale same-side children
+                        for t in trades:
+                            ot = (t.order.orderType or "").upper(); act = (t.order.action or "").upper()
+                            if ot in {"LMT","STP","STP LMT"} and act != exit_action:
+                                safe_cancel(ib, t, note="[prot wrong-side]")
+                            elif ot in {"LMT","STP","STP LMT"} and act == exit_action:
+                                safe_cancel(ib, t, note="[prot refresh]")
+                        if last_px is not None and not math.isnan(last_px):
+                            qty_abs = abs(int(net_qty))
+                            tick = float(args.tick_size)
+                            risk_px = ticks_to_price_delta(args.risk_ticks, tick)
+                            tp_px = risk_px * float(args.tp_R)
+                            if net_qty > 0:
+                                stop_price = round_to_tick(last_px - risk_px - tick, tick)
+                                targ_price = round_to_tick(last_px + tp_px + tick, tick)
+                            else:
+                                stop_price = round_to_tick(last_px + risk_px + tick, tick)
+                                targ_price = round_to_tick(last_px - tp_px - tick, tick)
+                            oca = f"OCO-PROT-{int(time.time())}"
+                            stp = StopOrder(action=exit_action, totalQuantity=qty_abs, stopPrice=stop_price, tif=args.tif, outsideRth=bool(args.outsideRth))
+                            try: stp.triggerMethod = 2
+                            except Exception: pass
+                            stp.ocaGroup = oca; stp.transmit = False
+                            try: stp.ocaType = 1
+                            except Exception: pass
+                            lmt = LimitOrder(action=exit_action, totalQuantity=qty_abs, lmtPrice=targ_price, tif=args.tif, outsideRth=bool(args.outsideRth))
+                            lmt.ocaGroup = oca; lmt.transmit = True
+                            try: lmt.ocaType = 1
+                            except Exception: pass
+                            ib.placeOrder(con, stp); ib.placeOrder(con, lmt)
+                            last_oco_rescue_ts = time.time()
+                            log("oco_rebuilt", side=exit_action, stp=stop_price, lmt=targ_price, qty=qty_abs)
             except Exception as e:
                 log("oco_rescue_err", err=str(e))
 
@@ -1523,8 +1487,7 @@ def main():
             if risk.day_R <= -abs(args.day_loss_cap_R): caps_reasons.append("dayR_cap")
             if risk.trades >= args.max_trades_per_day: caps_reasons.append("max_trades")
             if risk.halted: caps_reasons.append("risk_halted")
-            if float(args.day_guard_pct) > 0 and day_realized <= day_guard_dollars:
-                caps_reasons.append("minus_pct_guard")
+            if day_realized <= day_guard_dollars: caps_reasons.append("minus_pct_guard")
             if args.peak_dd_guard_pct > 0 and (day_peak_realized >= float(args.peak_dd_min_profit)):
                 if day_realized <= day_peak_realized * (1.0 - float(args.peak_dd_guard_pct)):
                     caps_reasons.append("peak_dd_guard")
@@ -1550,13 +1513,6 @@ def main():
                         day_realized=round(day_realized, 2),
                         day_peak=round(day_peak_realized, 2),
                         dayR=round(risk.day_R, 3))
-                    # Optional audible cue on caps_on
-                    try:
-                        if winsound:
-                            winsound.Beep(440, 180)
-                            winsound.Beep(392, 180)
-                    except Exception:
-                        pass
                 # When capped and flat: sweep all
                 if net_qty == 0:
                     try:
@@ -1653,9 +1609,8 @@ def main():
                         place_bracket(go_long, close, last_bar_ts, net_qty)
                         learner.last_arm = chosen  # remember selection
 
-            # Skip orphan sweep while in position & RT unstable to avoid racing fills
-            if not (net_qty != 0 and status in {"starved", "stale"}):
-                reconcile_orphans(ib, ib_acct or "", con)
+            # Sweep orphans regularly
+            reconcile_orphans(ib, ib_acct or "", con)
 
             ib.sleep(1.0)
 
@@ -1681,5 +1636,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
