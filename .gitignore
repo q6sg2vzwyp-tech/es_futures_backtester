@@ -1,7 +1,6 @@
-﻿.venv/
-__pycache__/
-*.pyc
+﻿backups/
 logs/
-data/state/
-*.log
-.DS_Store
+data/
+*.tmp
+__pycache__/
+.venv/
