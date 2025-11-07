@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 """
@@ -13,9 +13,9 @@ ES Paper Trader (IBKR + ib_insync)
 - 24/5 trading window by default (no TOD blackouts unless provided)
 - News kill switch: file flag + optional TOD windows + IBKR news bulletins
 - 1-second JSON heartbeats with explicit idle reasons & RT status/age/queue
-- Robust RT→Polling fallback (5s bars via historical polling)
+- Robust RTâ†’Polling fallback (5s bars via historical polling)
 - **NEW**:
-  - Error logging, market-data warmup, RT-starved⇒poll fallback, MIDPOINT auto-resubscribe
+  - Error logging, market-data warmup, RT-starvedâ‡’poll fallback, MIDPOINT auto-resubscribe
   - Parameter meta-learning (Thompson) over per-trade parameter sets
   - Persistent save/load of learners to JSON (auto-save after each flat)
   - Auto self-backup of this script into .\backups\ on startup
@@ -535,6 +535,8 @@ def build_argparser():
     ap.add_argument("--force-delayed", action="store_true")
     ap.add_argument("--poll-hist-when-no-rt", action="store_true")
     ap.add_argument("--poll-interval-sec", type=int, default=10)
+ap.add_argument("--no-poll-fallback", action="store_true",
+                help="Disable historical polling fallback when RT is starved/stale")
     ap.add_argument("--require-rt-before-trading", action="store_true")
     ap.add_argument("--rt-staleness-sec", type=int, default=45)
 
@@ -1486,3 +1488,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
