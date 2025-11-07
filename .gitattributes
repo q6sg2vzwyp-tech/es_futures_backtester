@@ -1,0 +1,11 @@
+﻿# Python: LF
+*.py   text eol=lf
+
+# Batch/PowerShell: CRLF
+*.bat  text eol=crlf
+*.cmd  text eol=crlf
+*.ps1  text eol=crlf
+
+# Text files normalized
+*.txt  text
+*.md   text
