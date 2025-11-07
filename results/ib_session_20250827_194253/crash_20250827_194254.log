@@ -1,8 +1,0 @@
-Traceback (most recent call last):
-  File "C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py", line 706, in main
-    run_trader(args, session_dir)
-    ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
-  File "C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py", line 470, in run_trader
-    ib.tradesEvent += on_trade_update
-    ^^^^^^^^^^^^^^
-AttributeError: 'IB' object has no attribute 'tradesEvent'

@@ -1,4 +1,0 @@
-@echo off
-cd /d C:\Users\owner\Desktop\es_futures_backtester
-"C:\Users\owner\AppData\Local\Programs\Python\Python313\python.exe" run_ppt_trader_supervisor.py
-pause
