@@ -1,0 +1,31 @@
+C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py:21: SyntaxWarning: invalid escape sequence '\d'
+  --bandit-state .\data\learn\bandit_state.json
+Traceback (most recent call last):
+  File "C:\Users\owner\AppData\Local\Programs\Python\Python313\Lib\site-packages\ib_insync\util.py", line 341, in run
+    result = loop.run_until_complete(task)
+  File "C:\Users\owner\AppData\Local\Programs\Python\Python313\Lib\asyncio\base_events.py", line 725, in run_until_complete
+    return future.result()
+           ~~~~~~~~~~~~~^^
+  File "C:\Users\owner\AppData\Local\Programs\Python\Python313\Lib\asyncio\tasks.py", line 718, in sleep
+    return await future
+           ^^^^^^^^^^^^
+asyncio.exceptions.CancelledError
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py", line 1224, in <module>
+    main()
+    ~~~~^^
+  File "C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py", line 1221, in main
+    run_bot(cfg)
+    ~~~~~~~^^^^^
+  File "C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py", line 925, in run_bot
+    ib.sleep(cfg.loop_sec); continue
+    ~~~~~~~~^^^^^^^^^^^^^^
+  File "C:\Users\owner\AppData\Local\Programs\Python\Python313\Lib\site-packages\ib_insync\util.py", line 386, in sleep
+    run(asyncio.sleep(secs))
+    ~~~^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\owner\AppData\Local\Programs\Python\Python313\Lib\site-packages\ib_insync\util.py", line 343, in run
+    raise globalErrorEvent.value() or e
+ConnectionError: Socket disconnect

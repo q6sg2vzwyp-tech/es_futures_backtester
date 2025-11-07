@@ -1,0 +1,61 @@
+[2025-10-14 20:31:06] Starting: 'C:\Users\owner\AppData\Local\Programs\Python\Python313\python.exe' -u 'C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py' --host 127.0.0.1 --port 7497 --clientId 111 --place-orders --cancel-exits-on-flat --require-rt-before-trading --enable-breaking-news-guard --reset-cancel-working
+[2025-10-14 21:00:25] Starting: 'C:\Users\owner\AppData\Local\Programs\Python\Python313\python.exe' -u 'C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py' --host 127.0.0.1 --port 7497 --clientId 111 --place-orders --cancel-exits-on-flat --require-rt-before-trading --enable-breaking-news-guard --reset-cancel-working
+[2025-10-15 00:06:20] Starting: 'C:\Users\owner\AppData\Local\Programs\Python\Python313\python.exe' -u 'C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py' --host 127.0.0.1 --port 7497 --clientId 111 --place-orders --cancel-exits-on-flat --require-rt-before-trading --enable-breaking-news-guard --reset-cancel-working
+[2025-10-20 01:15:18] FATAL: target script not found: C:\Users\owner\Desktop\es_futures_backtester\ppr_trader.py
+[2025-10-20 01:24:09] INFO : starting: C:\Users\owner\Desktop\es_futures_backtester\.venv\Scripts\python.exe C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py --place-orders --use-ib-pnl
+
+----- 2025-10-20 01:24:09 START -----
+----- 2025-10-20 01:24:09 EXIT rc=1 -----
+[2025-10-20 01:24:09] FATAL: child exited with code 1. See C:\Users\owner\Desktop\es_futures_backtester\watchdog.stderr.log
+[2025-10-20 01:25:27] INFO : starting: C:\Users\owner\Desktop\es_futures_backtester\.venv\Scripts\python.exe C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py --place-orders --use-ib-pnl
+
+----- 2025-10-20 01:25:27 START -----
+----- 2025-10-20 01:25:27 EXIT rc=1 -----
+[2025-10-20 01:25:27] FATAL: child exited with code 1. See C:\Users\owner\Desktop\es_futures_backtester\watchdog.stderr.log
+[2025-10-20 06:49:05] INFO : starting: .venv\Scripts\python.exe C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py --place-orders --use-ib-pnl --bandit thompson --learn-mode advisory --risk-profile balanced
+[2025-10-20 06:49:10] INFO : starting: .venv\Scripts\python.exe C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py --place-orders --use-ib-pnl --bandit thompson --learn-mode advisory --risk-profile balanced
+[2025-10-20 06:49:15] INFO : starting: .venv\Scripts\python.exe C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py --place-orders --use-ib-pnl --bandit thompson --learn-mode advisory --risk-profile balanced
+[2025-10-20 06:49:20] INFO : starting: .venv\Scripts\python.exe C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py --place-orders --use-ib-pnl --bandit thompson --learn-mode advisory --risk-profile balanced
+[2025-10-20 06:49:26] INFO : starting: .venv\Scripts\python.exe C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py --place-orders --use-ib-pnl --bandit thompson --learn-mode advisory --risk-profile balanced
+[2025-10-20 06:49:31] INFO : starting: .venv\Scripts\python.exe C:\Users\owner\Desktop\es_futures_backtester\paper_trader.py --place-orders --use-ib-pnl --bandit thompson --learn-mode advisory --risk-profile balanced
+Starting ES paper bot...
+[CONNECT] Attempt 1/10 -> clientId=111
+Connected (clientId=111)
+[MD] LIVE (1).
+[CONTRACT] Using  conId=0 exp=
+[CONTRACT] Multiplier detected: 50
+[IB PNL] Failed to subscribe: 'PnL' object has no attribute 'updateEvent'
+[BOOT] Hist seed: 0 bars
+{"ts": "2025-10-20 13:51:30", "evt": "daily_reset", "cutover": "2025-10-20#08:30"}
+Starting ES paper bot...
+[CONNECT] Attempt 1/10 -> clientId=111
+Connected (clientId=111)
+[MD] LIVE (1).
+[CONTRACT] Using  conId=0 exp=
+[CONTRACT] Multiplier detected: 50
+[BOOT] Hist seed: 0 bars
+{"ts": "2025-10-20 14:43:31", "evt": "daily_reset", "cutover": "2025-10-20#08:30"}
+Starting ES paper bot...
+[CONNECT] Attempt 1/10 -> clientId=111
+Connected (clientId=111)
+[MD] LIVE (1).
+[CONTRACT] Using  conId=0 exp=
+[CONTRACT] Multiplier detected: 50
+[BOOT] Hist seed: 0 bars
+{"ts": "2025-10-20 14:56:54", "evt": "daily_reset", "cutover": "2025-10-20#08:30"}
+Starting ES paper bot...
+[CONNECT] Attempt 1/10 -> clientId=111
+Connected (clientId=111)
+[MD] LIVE (1).
+[CONTRACT] Using  conId=0 exp=
+[CONTRACT] Multiplier detected: 50
+[BOOT] Hist seed: 0 bars
+{"ts": "2025-10-20 15:07:09", "evt": "daily_reset", "cutover": "2025-10-20#08:30"}
+Starting ES paper bot...
+[CONNECT] Attempt 1/10 -> clientId=111
+Connected (clientId=111)
+[MD] LIVE (1).
+[CONTRACT] Using  conId=0 exp=
+[CONTRACT] Multiplier detected: 50
+[BOOT] Hist seed: 0 bars
+{"ts": "2025-10-20 16:39:34", "evt": "daily_reset", "cutover": "2025-10-20#08:30"}
