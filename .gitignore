@@ -1,6 +1,23 @@
-﻿backups/
-logs/
-data/
-*.tmp
-__pycache__/
+﻿# === Python / env ===
 .venv/
+__pycache__/
+*.tmp
+*.bak
+
+# === Generic logs ===
+*.log
+latest_run.log
+watchdog.log
+watchdog.stderr.log
+logging
+
+# === Run artifacts & archives (keep locally, ignore in git) ===
+.learnlogs/
+archive/
+results/
+backups/
+data/
+
+# === Logs directory: ignore everything except the trade CSV we care about
+logs/**
+!logs/trades_segmented.csv
