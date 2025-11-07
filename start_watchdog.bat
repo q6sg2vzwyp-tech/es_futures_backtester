@@ -1,72 +1,73 @@
 @echo off
-setlocal ENABLEDELAYEDEXPANSION
-REM --- Move to repo root ---
-cd /d "%~dp0"
+setlocal EnableExtensions EnableDelayedExpansion
 
-REM --- Resolve Python (prefer venv) ---
-set "VENV_PY=.venv\Scripts\python.exe"
-set "PYTHON_EXE="
-if exist "%VENV_PY%" set "PYTHON_EXE=%VENV_PY%"
-if not defined PYTHON_EXE (
-  for %%P in (python.exe py.exe) do (
-    where %%P >nul 2>nul && (set "PYTHON_EXE=%%P" & goto :foundpy)
-  )
-  echo [ERROR] Python not found (.venv or system).
-  pause
-  exit /b 1
-)
-:foundpy
-
-REM --- Require watchdog_single.py ---
-if not exist "watchdog_single.py" (
-  echo [ERROR] watchdog_single.py not found next to this BAT.
-  pause
-  exit /b 1
-)
-
-REM --- Bot target ---
-set "TARGET=paper_trader.py"
-
-REM --- Runtime args (NO --success-exits anywhere) ---
-set "ARGS=^
-  --place-orders ^
-  --use-ib-pnl ^
-  --local-symbol ESZ5 ^
-  --force-delayed ^
-  --force-midpoint-rt ^
-  --poll-hist-when-no-rt ^
-  --rt-starve-sec 2 ^
-  --trade-start-ct 00:00 ^
-  --trade-end-ct 23:59 ^
-  --host 127.0.0.1 --port 7497 --clientId 360 ^
-  --risk-profile balanced ^
-  --start-contracts 1 ^
-  --max-contracts 1 ^
-  --risk-pct 0.01 ^
-  --risk-ticks 12 ^
-  --tp-R 1.0 ^
-  --tif GTC ^
-  --outsideRth ^
-  --preflight-whatif ^
-  --margin-buffer-pct 0.10 ^
-  --orphan-sweep-delay-sec 8 ^
-  --max-trades-per-day 999 ^
-  --no-day-guard ^
-  --no-loss-cap ^
-  --peak-dd-guard-pct 0"
-
-echo [INFO] Launching watchdog_single.py with %PYTHON_EXE%
-REM --- Log + keep window open ---
-set "LOGDIR=logs"
+REM ====== Paths ======
+set ROOT=%~dp0
+cd /d "%ROOT%"
+set LOGDIR=%ROOT%logs
 if not exist "%LOGDIR%" mkdir "%LOGDIR%"
-for /f "tokens=1-4 delims=/ " %%a in ("%date%") do set "D=%%d%%b%%c"
-for /f "tokens=1-2 delims=:." %%a in ("%time%") do set "T=%%a%%b"
-set "LOG=%LOGDIR%\watchdog_%D%_%T%.log"
-echo [INFO] Logging to %LOG%
-powershell -NoProfile -Command ^
-  "$p = Start-Process -FilePath '%PYTHON_EXE%' -ArgumentList @('watchdog_single.py','--python','%PYTHON_EXE%','--bot','%cd%\%TARGET%','--',%ARGS%) -NoNewWindow -PassThru; " ^
-  "Wait-Process -InputObject $p; " ^
-  "Write-Host '--- process ended ---'; " ^
-  "Read-Host 'Press Enter to close'"
-pause
-endlocal
+
+REM ====== Python (venv if present) ======
+if exist ".venv\Scripts\python.exe" (
+  set "PY=.venv\Scripts\python.exe"
+) else (
+  set "PY=python"
+)
+
+REM ====== Common args (edit these) ======
+REM You can tweak these in one place. Keep it on one line or use ^ for new lines.
+set "ARGS= --local-symbol ESZ5 --place-orders --use-ib-pnl --learn-mode advisory --enable-arms trend,breakout --param-arms "A:risk_ticks=10,tp_R=1.0,entry_slippage_ticks=1;B:risk_ticks=12,tp_R=1.2,entry_slippage_ticks=2;C:risk_ticks=8,tp_R=0.8,entry_slippage_ticks=1" --trade-start-ct 00:00 --trade-end-ct 23:59 --poll-hist-when-no-rt --poll-interval-sec 10 --rt-staleness-sec 45 --session-reset-cts 08:30,16:00,17:00 --vwap-reset-on-session --short-guard-vwap --short-guard-lower-high --pos-age-cap-sec 1200 --pos-age-minR 0.5 --day-loss-cap-R 3 --max-trades-per-day 12 --max-consec-losses 3 --hwm-stepdown --hwm-stepdown-dollars 5000 --news-bulletin-listen --news-kill-minutes 15 --segment-trade-csv ".\logs\trades_segmented.csv""
+
+REM ====== Optional: paper-only safety (default). Remove to allow live (NOT RECOMMENDED).
+REM set "ARGS=%ARGS% --allow_live"
+
+REM ====== Restart/backoff settings ======
+set MIN_BACKOFF=5
+set MAX_BACKOFF=60
+set BACKOFF=%MIN_BACKOFF%
+
+:LOOP
+for /f "tokens=1-3 delims=/: " %%a in ("%date% %time%") do (
+  set DTS=%%c-%%a-%%b_!time:~0,2!!time:~3,2!!time:~6,2!
+)
+set LOG=%LOGDIR%\run_!DTS!.log
+
+echo.
+echo [START] %DATE% %TIME%  -> logging to "%LOG%"
+echo ----------------------------------------------------- >> "%LOG%"
+echo [ENV] PY=%PY% >> "%LOG%"
+echo [ENV] ROOT=%ROOT% >> "%LOG%"
+echo [ENV] LOGDIR=%LOGDIR% >> "%LOG%"
+echo [CMD] %PY% paper_trader.py %ARGS% >> "%LOG%"
+echo ----------------------------------------------------- >> "%LOG%"
+
+REM === Launch trader and tee console into log ===
+"%PY%" paper_trader.py %ARGS% 1>>"%LOG%" 2>&1
+
+set EXITCODE=%ERRORLEVEL%
+echo [EXIT] code=%EXITCODE% at %DATE% %TIME% >> "%LOG%"
+
+REM === Self-backups happen inside the script, but make a dated copy as extra belt & suspenders ===
+if exist ".\backups" (
+  for /f "tokens=1-3 delims=/: " %%a in ("%date% %time%") do (
+    set BKTS=%%c%%a%%b_!time:~0,2!!time:~3,2!!time:~6,2!
+  )
+  copy /y ".\paper_trader.py" ".\backups\paper_trader_!BKTS!.py" >nul 2>&1
+)
+
+REM === Backoff & restart ===
+if %EXITCODE% EQU 0 (
+  echo [INFO] Clean exit; restarting in %MIN_BACKOFF%s...
+  set BACKOFF=%MIN_BACKOFF%
+) else (
+  echo [WARN] Crash/err exit %EXITCODE%; backoff %BACKOFF%s...
+  REM Exponential-ish backoff
+  if %BACKOFF% LSS %MAX_BACKOFF% (
+    set /a BACKOFF=BACKOFF*2
+    if %BACKOFF% GTR %MAX_BACKOFF% set BACKOFF=%MAX_BACKOFF%
+  )
+)
+
+REM Sleep BACKOFF seconds
+powershell -NoProfile -Command "Start-Sleep -Seconds %BACKOFF%"
+goto :LOOP
