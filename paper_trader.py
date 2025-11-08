@@ -482,14 +482,14 @@ Examples:
     ap.add_argument("--timeout-sec", type=int, default=60)
     ap.add_argument("--connect-attempts", type=int, default=10)
     ap.add_argument("--force-delayed", action="store_true")
+    ap.add_argument("--force-midpoint-rt", action="store_true",
+                    help="Subscribe to MIDPOINT real-time bars instead of the default TRADES stream")
     ap.add_argument("--poll-hist-when-no-rt", action="store_true")
     ap.add_argument("--poll-interval-sec", type=int, default=10)
     ap.add_argument("--require-rt-before-trading", action="store_true")
     ap.add_argument("--rt-staleness-sec", type=int, default=45)
 
     # Optional QoL
-    ap.add_argument("--force-midpoint-rt", action="store_true",
-                    help="Start RT subscription on MIDPOINT instead of TRADES")
     ap.add_argument("--rt-starve-sec", type=float, default=3.0,
                     help="Seconds with 0 RT bars before declaring 'starved'")
 
