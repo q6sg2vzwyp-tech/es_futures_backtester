@@ -1,182 +1,300 @@
-﻿#!/usr/bin/env python3
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 """
-watchdog_single.py — simple restart watchdog for paper_trader.py
+Simple ES paper trader watchdog v2
 
-Features
-- Pass-through args to the bot (anything after `--` goes straight through)
-- Optional --args-file <path> to load one line of flags from a text file
-- Optional --nocaps to append "no risk caps" runtime flags (no code edits)
-- Optional --patch-weekly-cap to safely neutralize weekly cap logic in paper_trader.py
-- Exponential backoff restart on non-zero exit
+- Uses the same Python interpreter that runs this script (sys.executable)
+- Always runs paper_trader.py in the same directory as this file
+- Optionally appends args from a text file (single.cmdline.txt by default)
+- Restarts child on crash/unexpected exit with exponential backoff
+- Monitors child's stdout for JSON lines with {"evt":"hb"} heartbeats
+  and restarts if no heartbeat within --hb-timeout-sec
+- Logs to:
+    ./logs/watchdog/YYYYMMDD_watchdog.log
+    ./logs/child/YYYYMMDD_child.log
 """
 
-import argparse, os, sys, time, subprocess, shlex, re
-from pathlib import Path
+from __future__ import annotations
+import sys
+import os
+import time
+import json
+import argparse
+import subprocess
+import threading
+import queue
+import datetime as dt
+import shlex
+from typing import Optional  # <-- for Python 3.9-safe Optional[float]
 
-# ---------------------------
-# Helpers
-# ---------------------------
+# ---------- Paths / logs ----------
 
-def read_args_file(path: Path) -> list[str]:
-    """
-    Reads a single line of CLI flags from a text file and splits them shell-style.
-    Empty / missing file returns [].
-    """
-    try:
-        txt = path.read_text(encoding="utf-8", errors="ignore")
-        # use first non-empty line
-        for line in txt.splitlines():
-            line = line.strip()
-            if line:
-                return shlex.split(line)
-    except Exception:
-        pass
-    return []
+def mkdirs(p: str) -> None:
+    if p:
+        os.makedirs(p, exist_ok=True)
 
-def make_nocaps_flags() -> list[str]:
-    """
-    Very large limits that effectively disable runtime caps without any code modifications.
-    """
-    HUGE = "1000000000"
-    YEAR_SEC = str(365 * 24 * 60 * 60)
-    return [
-        "--day-loss-cap-R", HUGE,
-        "--max-trades-per-day", "999999",
-        "--max-consec-losses", "999999",
-        "--day-guard-pct", "0",
-        "--peak-dd-guard-pct", "0",
-        "--pos-age-cap-sec", YEAR_SEC,
-        "--pos-age-minR", "-" + HUGE,
-    ]
+def ts() -> str:
+    return dt.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-def patch_weekly_cap(paper_trader_path: Path) -> bool:
-    """
-    Idempotent text patch: finds the weekly-cap gating line and neutralizes it.
+def log_paths():
+    base = os.path.abspath(os.path.dirname(__file__) or ".")
+    wdir = os.path.join(base, "logs", "watchdog")
+    cdir = os.path.join(base, "logs", "child")
+    mkdirs(wdir)
+    mkdirs(cdir)
+    stamp = dt.datetime.now().strftime("%Y%m%d")
+    wlog = os.path.join(wdir, f"{stamp}_watchdog.log")
+    clog = os.path.join(cdir, f"{stamp}_child.log")
+    return wlog, clog
 
-    Looks for:  if week_R <= weekly_cap_R:
-    Rewrites to: if False and (week_R <= weekly_cap_R):
-    """
-    try:
-        src = paper_trader_path.read_text(encoding="utf-8", errors="ignore")
-    except Exception as e:
-        print(f"[watchdog] WARN: could not read {paper_trader_path}: {e}")
-        return False
+def log_write(path: str, line: str) -> None:
+    with open(path, "a", encoding="utf-8") as f:
+        f.write(line.rstrip("\n") + "\n")
 
-    # If already patched, do nothing
-    if re.search(r"if\s+False\s+and\s*\(\s*week_R\s*<=\s*weekly_cap_R\s*\)\s*:", src):
-        print("[watchdog] Weekly cap already neutralized.")
-        return True
+# ---------- Arg parsing ----------
 
-    # Conservative replace (keep original indentation)
-    pattern = r"(^[ \t]*)if\s+week_R\s*<=\s*weekly_cap_R\s*:\s*$"
-    repl    = r"\1if False and (week_R <= weekly_cap_R):"
-    new_src, n = re.subn(pattern, repl, src, flags=re.MULTILINE)
-    if n == 0:
-        print("[watchdog] WARN: could not find weekly-cap line to patch; no change made.")
-        return False
+def build_parser():
+    ap = argparse.ArgumentParser(
+        description="Resilient watchdog for paper_trader.py (ES bot)"
+    )
+    ap.add_argument(
+        "--args-file",
+        default="single.cmdline.txt",
+        help="Text file with args for paper_trader.py (relative to this script or absolute).",
+    )
+    ap.add_argument(
+        "--env-file",
+        help="Optional KEY=VALUE lines added to child environment.",
+    )
+    ap.add_argument(
+        "--min-backoff",
+        type=float,
+        default=2.0,
+        help="Min restart backoff seconds.",
+    )
+    ap.add_argument(
+        "--max-backoff",
+        type=float,
+        default=60.0,
+        help="Max restart backoff seconds.",
+    )
+    ap.add_argument(
+        "--hb-timeout-sec",
+        type=int,
+        default=90,
+        help="If no heartbeats in this window, restart.",
+    )
+    ap.add_argument(
+        "--print-child",
+        action="store_true",
+        help="Also print child output to console.",
+    )
+    return ap
 
-    try:
-        backup = paper_trader_path.with_suffix(paper_trader_path.suffix + ".bak_from_watchdog")
-        if not backup.exists():
-            backup.write_text(src, encoding="utf-8")
-        paper_trader_path.write_text(new_src, encoding="utf-8")
-        print("[watchdog] Weekly cap disabled via code patch.")
-        return True
-    except Exception as e:
-        print(f"[watchdog] ERROR: failed to write patched file: {e}")
-        return False
+# ---------- Utilities ----------
 
-def build_bot_cmd(py, bot, user_inline: list[str], user_file: list[str], nocaps: bool) -> list[str]:
-    cmd = [str(py), str(bot)]
-    if user_file:
-        cmd.extend(user_file)
-    if user_inline:
-        cmd.extend(user_inline)
-    if nocaps:
-        cmd.extend(make_nocaps_flags())
-    return cmd
+def load_args_file(path: str) -> list[str]:
+    if not path:
+        return []
+    if not os.path.isabs(path):
+        base = os.path.abspath(os.path.dirname(__file__) or ".")
+        path = os.path.join(base, path)
+    if not os.path.exists(path):
+        return []
+    with open(path, "r", encoding="utf-8") as f:
+        content = " ".join(line.strip() for line in f if line.strip())
+    return shlex.split(content)
 
-# ---------------------------
-# CLI
-# ---------------------------
+def load_env_file(path: str) -> dict:
+    env: dict[str, str] = {}
+    if not path:
+        return env
+    if not os.path.isabs(path):
+        base = os.path.abspath(os.path.dirname(__file__) or ".")
+        path = os.path.join(base, path)
+    if not os.path.exists(path):
+        return env
+    with open(path, "r", encoding="utf-8") as f:
+        for raw in f:
+            s = raw.strip()
+            if not s or s.startswith("#") or "=" not in s:
+                continue
+            k, v = s.split("=", 1)
+            env[k.strip()] = v.strip()
+    return env
 
-def parse_cli():
-    ap = argparse.ArgumentParser(description="Restart watchdog for paper_trader.py")
-    ap.add_argument("--python", default=str(Path(".venv") / "Scripts" / "python.exe"),
-                    help="Python executable to use (default: .venv\\Scripts\\python.exe on Windows)")
-    ap.add_argument("--bot", default="paper_trader.py",
-                    help="Bot script to run (default: paper_trader.py)")
-    ap.add_argument("--args-file", default="",
-                    help="Optional text file containing a single line of flags for the bot")
-    ap.add_argument("--nocaps", action="store_true",
-                    help="Append very large limits to effectively disable runtime caps")
-    ap.add_argument("--patch-weekly-cap", action="store_true",
-                    help="Try to neutralize weekly cap inside paper_trader.py source (idempotent)")
-    ap.add_argument("--success-exits", action="store_true",
-                    help="Exit watchdog if child exits with code 0")
-    ap.add_argument("--min-backoff", type=float, default=2.0, help="Minimum restart backoff seconds")
-    ap.add_argument("--max-backoff", type=float, default=60.0, help="Maximum restart backoff seconds")
-    ap.add_argument("--", dest="sep", action="store_true", help=argparse.SUPPRESS)  # separator marker
-    # Everything after `--` is pass-through; argparse won't parse it. We pull from sys.argv manually.
-    known, unknown = ap.parse_known_args()
-    # Reconstruct pass-through from the first `--` occurrence
-    passthrough = []
-    if "--" in sys.argv:
-        idx = sys.argv.index("--")
-        passthrough = sys.argv[idx+1:]
-    else:
-        # If user didn't use `--`, treat 'unknown' as pass-through
-        passthrough = unknown
-    return known, passthrough
+# ---------- Child IO reader ----------
 
-# ---------------------------
-# Main
-# ---------------------------
+class StreamReader(threading.Thread):
+    def __init__(self, pipe, q: queue.Queue, also_print: bool,
+                 child_log_path: str, is_err: bool):
+        super().__init__(daemon=True)
+        self.pipe = pipe
+        self.q = q
+        self.also_print = also_print
+        self.child_log_path = child_log_path
+        self.is_err = is_err
+
+    def run(self):
+        try:
+            for raw in iter(self.pipe.readline, b""):
+                try:
+                    line = raw.decode("utf-8", errors="replace").rstrip("\n")
+                except Exception:
+                    line = raw.decode("latin-1", errors="replace").rstrip("\n")
+                prefix = "ERR" if self.is_err else "OUT"
+                log_write(self.child_log_path, f"[{ts()}] {prefix} {line}")
+                if self.also_print:
+                    print(line)
+                self.q.put(line)
+        finally:
+            try:
+                self.pipe.close()
+            except Exception:
+                pass
+
+# ---------- Main watchdog loop ----------
 
 def main():
-    cfg, inline_flags = parse_cli()
+    wlog, clog = log_paths()
+    ap = build_parser()
+    args = ap.parse_args()
 
-    py = Path(cfg.python)
-    bot = Path(cfg.bot).resolve()
-    if not bot.exists():
-        print(f"[watchdog] ERROR: bot not found: {bot}")
-        sys.exit(2)
+    script_dir = os.path.abspath(os.path.dirname(__file__) or ".")
+    trader = os.path.join(script_dir, "paper_trader.py")
 
-    # Optional args-file
-    file_flags = []
-    if cfg.args_file:
-        file_flags = read_args_file(Path(cfg.args_file))
+    print("[WD] simple watchdog v2 starting...")
+    print(f"[WD] script_dir: {script_dir}")
+    print(f"[WD] trader    : {trader}")
 
-    # Optional source patch for weekly cap
-    if cfg.patch_weekly_cap:
-        print("[watchdog] Patching weekly cap…")
-        patch_weekly_cap(bot)
+    if not os.path.exists(trader):
+        msg = f"[ERROR] paper_trader.py not found at: {trader}"
+        print(msg)
+        log_write(wlog, f"[{ts()}] {msg}")
+        sys.exit(1)
 
-    backoff = float(cfg.min_backoff)
-    max_backoff = float(cfg.max_backoff)
+    child_python = sys.executable  # same interpreter that runs this script
 
-    while True:
-        cmd = build_bot_cmd(py, bot, inline_flags, file_flags, cfg.nocaps)
-        print(f"[watchdog] Launching: {cmd}")
-        try:
-            proc = subprocess.Popen(cmd)
-            rc = proc.wait()
-        except KeyboardInterrupt:
-            print("\n[watchdog] Ctrl-C received. Exiting.")
-            break
-        except Exception as e:
-            print(f"[watchdog] ERROR: failed to launch child: {e}")
-            rc = 1
+    trader_args = load_args_file(args.args_file)
+    env = os.environ.copy()
+    env.update(load_env_file(args.env_file))
 
-        if rc == 0 and cfg.success_exits:
-            print("[watchdog] Child exited 0 (success). Stopping per --success-exits.")
-            break
+    min_backoff = max(0.5, float(args.min_backoff))
+    max_backoff = max(min_backoff, float(args.max_backoff))
+    backoff = min_backoff
 
-        print(f"[watchdog] Child exited rc={rc}; restarting in {backoff:.1f}s")
-        time.sleep(backoff)
-        backoff = min(max_backoff, max(backoff * 1.6, cfg.min_backoff))
+    hb_timeout = int(args.hb_timeout_sec)
+    last_hb: Optional[float] = None  # <-- 3.9-safe union
+
+    child_cwd = script_dir
+
+    print(f"[WD] logging to: {wlog}")
+    print(f"[WD] child log : {clog}")
+    print(f"[WD] child cmd : {child_python} {trader} {' '.join(trader_args)}")
+    log_write(
+        wlog,
+        f"[{ts()}] WATCHDOG START python={child_python} trader={trader} args={' '.join(trader_args)} cwd={child_cwd}",
+    )
+
+    try:
+        while True:
+            try:
+                target_cmd = [child_python, trader] + trader_args
+                log_write(
+                    wlog,
+                    f"[{ts()}] LAUNCH backoff={backoff:.1f}s cmd={' '.join(target_cmd)}",
+                )
+
+                qlines: queue.Queue = queue.Queue()
+                proc = subprocess.Popen(
+                    target_cmd,
+                    cwd=child_cwd,
+                    env=env,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    bufsize=1,
+                )
+
+                t_out = StreamReader(proc.stdout, qlines, args.print_child, clog, is_err=False)
+                t_err = StreamReader(proc.stderr, qlines, args.print_child, clog, is_err=True)
+                t_out.start()
+                t_err.start()
+
+                last_hb = time.time()
+                start_t = time.time()
+
+                while True:
+                    # drain lines + detect heartbeats
+                    try:
+                        while True:
+                            line = qlines.get_nowait()
+                            s = line.strip()
+                            jstart = s.find("{")
+                            if jstart >= 0 and s.endswith("}"):
+                                try:
+                                    obj = json.loads(s[jstart:])
+                                    if obj.get("evt") == "hb":
+                                        last_hb = time.time()
+                                except Exception:
+                                    pass
+                    except queue.Empty:
+                        pass
+
+                    # heartbeat timeout
+                    if hb_timeout > 0 and last_hb is not None:
+                        if (time.time() - last_hb) > hb_timeout:
+                            msg = f"HB_TIMEOUT after {hb_timeout}s — killing child PID={proc.pid}"
+                            log_write(wlog, f"[{ts()}] {msg}")
+                            print("[WD]", msg)
+                            try:
+                                proc.terminate()
+                            except Exception:
+                                pass
+                            try:
+                                proc.wait(timeout=5)
+                            except subprocess.TimeoutExpired:
+                                try:
+                                    proc.kill()
+                                except Exception:
+                                    pass
+                            break  # out of inner loop → restart
+
+                    rc = proc.poll()
+                    if rc is not None:
+                        runtime = time.time() - start_t
+                        log_write(
+                            wlog,
+                            f"[{ts()}] EXIT rc={rc} runtime={runtime:.1f}s",
+                        )
+                        # adjust backoff
+                        if runtime < 10:
+                            backoff = min(max_backoff, backoff * 2.0)
+                        else:
+                            backoff = max(min_backoff, backoff * 0.8)
+                        break
+
+                    time.sleep(0.5)
+
+            except FileNotFoundError as e:
+                msg = f"ERROR: executable or script not found. Details: {e!r}"
+                print(msg)
+                log_write(wlog, f"[{ts()}] {msg}")
+                time.sleep(3)
+            except Exception as e:
+                msg = f"EXC: {e!r}"
+                print("[WD]", msg)
+                log_write(wlog, f"[{ts()}] {msg}")
+                time.sleep(3)
+
+            log_write(wlog, f"[{ts()}] RESTART in {backoff:.1f}s")
+            print(f"[WD] Restarting in {backoff:.1f}s ...")
+            time.sleep(backoff)
+
+    except KeyboardInterrupt:
+        log_write(wlog, f"[{ts()}] WATCHDOG STOP (Ctrl+C)")
+        print("[WD] Stopping…")
+
 
 if __name__ == "__main__":
     main()

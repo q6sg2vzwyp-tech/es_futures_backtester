@@ -1,23 +1,42 @@
-﻿--local-symbol ESZ5
+--local-symbol ESZ5
 --place-orders
 --use-ib-pnl
 --learn-mode advisory
---enable-arms trend,breakout
---param-arms "A:risk_ticks=10,tp_R=1.0,entry_slippage_ticks=1;B:risk_ticks=12,tp_R=1.2,entry_slippage_ticks=2;C:risk_ticks=8,tp_R=0.8,entry_slippage_ticks=1"
+--risk-profile balanced
+
+--trade-start-ct 00:00
+--trade-end-ct 23:59
 --session-reset-cts 08:30,16:00,17:00
 --vwap-reset-on-session
---short-guard-vwap
---short-guard-lower-high
---pos-age-cap-sec 1200
+
+--min-seconds-between-entries 12
+--strategy-cooldown-sec 12
+--parent-to-mkt-sec 12
+
+--poll-hist-when-no-rt
+--poll-interval-sec 10
+--rt-staleness-sec 45
+--startup-delay-sec 0
+
+--start-contracts 2
+--max-contracts 6
+--risk-pct 0.015
+--risk-ticks 12
+--tp-R 1.0
+--tick-size 0.25
+
+--pos-age-cap-sec 900
 --pos-age-minR 0.5
---day-loss-cap-R 3
---max-trades-per-day 12
---max-consec-losses 3
+
 --hwm-stepdown
 --hwm-stepdown-dollars 5000
---news-bulletin-listen
---news-kill-minutes 15
---segment-trade-csv .\logs\trades_segmented.csv
---require-rt-before-trading
---rt-staleness-sec 30
---no-poll-fallback
+
+--day-guard-pct 0.00
+--max-trades-per-day 20
+--max-consec-losses 6
+--day-loss-cap-R 5.0
+--weekly-cap-mult 4.0
+
+--learn-while-capped
+--learn-log
+--learn-log-dir .\logs\learn
