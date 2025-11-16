@@ -1747,6 +1747,9 @@ def main():
         args.max_consec_losses,
         args.post_flat_cooldown_sec,
     )
+    risk.day_R = float(restored_day_R)
+    risk.trades = int(restored_trades)
+    risk.consec_losses = int(restored_consec_losses)
     last_entry_bar_ts = None
     current_arm: Optional[str] = None
     entry_price: Optional[float] = None
@@ -1763,10 +1766,34 @@ def main():
     realized_pnl_day = 0.0
     cycle_entry_time: Optional[dt.datetime] = None
     age_forced_flat_done = False
-    week_R = 0.0
+    week_R = float(restored_week_R)
     week_halted = False
-    last_week_id = iso_week_id(ct_now().date())
+    last_week_id = restored_week_id or iso_week_id(ct_now().date())
     weekly_cap_R = -float(args.weekly_cap_mult) * abs(args.day_loss_cap_R)
+
+    log(
+        "risk_state_restored",
+        day_R=round(risk.day_R, 3),
+        trades=int(risk.trades),
+        consec_losses=int(risk.consec_losses),
+        week_R=round(week_R, 3),
+        week_id=last_week_id,
+        source="disk" if day_state_file_exists else "default",
+    )
+
+    def persist_day_state_snapshot():
+        try:
+            entry_local = ensure_day_state_entry(k)
+            entry_local["day_realized"] = float(day_realized)
+            entry_local["day_peak_realized"] = float(day_peak_realized)
+            entry_local["day_R"] = float(risk.day_R)
+            entry_local["trades"] = int(risk.trades)
+            entry_local["consec_losses"] = int(risk.consec_losses)
+            entry_local["week_R"] = float(week_R)
+            entry_local["last_week_id"] = last_week_id
+            save_day_state(day_state)
+        except Exception as e:
+            log("day_state_snapshot_err", err=str(e))
 
     # Adaptive cadence scaler (backs off under stress, relaxes when calm)
     cadence_scale = 1.0
@@ -1951,6 +1978,7 @@ def main():
 
     # Day guard persistence
     DAY_STATE_PATH = r".\data\state\day_guard.json"
+    day_state_file_exists = os.path.exists(DAY_STATE_PATH)
 
     def load_day_state() -> Dict[str, Any]:
         try:
@@ -1971,18 +1999,49 @@ def main():
         except Exception as e:
             log("day_state_save_err", err=str(e))
 
-    day_state = load_day_state()
-    k = session_key_multi(ct_now(), session_cutovers)
-    if k not in day_state:
+    def _seed_start_equity() -> float:
         seed = float(args.acct_base)
         if args.use_ib_pnl and (ib_netliq is not None):
             seed = float(ib_netliq)
-        day_state[k] = {"start_equity": seed, "day_realized": 0.0, "day_peak_realized": 0.0}
-        save_day_state(day_state)
+        return seed
 
-    day_realized = float(day_state[k]["day_realized"])
-    day_peak_realized = float(day_state[k]["day_peak_realized"])
-    start_of_day_equity = float(day_state[k]["start_equity"])
+    def _default_day_state_payload(seed: Optional[float] = None) -> Dict[str, Any]:
+        if seed is None:
+            seed = _seed_start_equity()
+        week_id = iso_week_id(ct_now().date())
+        return {
+            "start_equity": float(seed),
+            "day_realized": 0.0,
+            "day_peak_realized": 0.0,
+            "day_R": 0.0,
+            "trades": 0,
+            "consec_losses": 0,
+            "week_R": 0.0,
+            "last_week_id": week_id,
+        }
+
+    def ensure_day_state_entry(key: str, seed: Optional[float] = None) -> Dict[str, Any]:
+        if key not in day_state:
+            day_state[key] = _default_day_state_payload(seed)
+            save_day_state(day_state)
+        payload = day_state[key]
+        defaults = _default_day_state_payload(payload.get("start_equity", seed))
+        for fld, default_val in defaults.items():
+            payload.setdefault(fld, default_val)
+        return payload
+
+    day_state = load_day_state()
+    k = session_key_multi(ct_now(), session_cutovers)
+    entry = ensure_day_state_entry(k)
+
+    day_realized = float(entry["day_realized"])
+    day_peak_realized = float(entry["day_peak_realized"])
+    start_of_day_equity = float(entry["start_equity"])
+    restored_day_R = float(entry.get("day_R", 0.0))
+    restored_trades = int(entry.get("trades", 0))
+    restored_consec_losses = int(entry.get("consec_losses", 0))
+    restored_week_R = float(entry.get("week_R", 0.0))
+    restored_week_id = str(entry.get("last_week_id", iso_week_id(ct_now().date())))
     day_guard_dollars = -float(args.day_guard_pct) * start_of_day_equity
 
     # Sizing helpers
@@ -2312,6 +2371,7 @@ def main():
         risk.cool_until = ct_now() + dt.timedelta(seconds=eff_cool)
         risk.trades += 1
         cycle_risk_ticks = risk_ticks_local  # NEW: remember ticks for this cycle
+        persist_day_state_snapshot()
 
     def flatten_market(net_qty: int):
         if not args.place_orders:
@@ -2349,6 +2409,7 @@ def main():
                 last_week_id = cur_week_id
                 weekly_cap_R = -float(args.weekly_cap_mult) * abs(args.day_loss_cap_R)
                 log("weekly_reset", week_id=cur_week_id)
+                persist_day_state_snapshot()
 
             # Adaptive cadence relaxation: after 5+ minutes calm, drift back toward 1.0
             try:
@@ -2378,14 +2439,7 @@ def main():
                 risk.reset()
                 realized_pnl_day = 0.0
                 nk = session_key_multi(now, session_cutovers)
-                day_state.setdefault(
-                    nk,
-                    {
-                        "start_equity": float(ib_netliq or args.acct_base),
-                        "day_realized": 0.0,
-                        "day_peak_realized": 0.0,
-                    },
-                )
+                ensure_day_state_entry(nk, seed=float(ib_netliq or args.acct_base))
                 # keep last few segments
                 keys = sorted(day_state.keys())
                 for old in keys[:-8]:
@@ -2405,6 +2459,7 @@ def main():
                     vwap.reset()
                 log("daily_reset", cutover=cutover_hit)
                 k = k_local  # switch active key
+                persist_day_state_snapshot()
 
             # ---- News kill checks ----
             file_on, file_until = read_news_file_flag(args.news_file_kill)
@@ -2811,9 +2866,7 @@ def main():
                 week_R += reward_R
                 day_realized += pnl_dollars
                 day_peak_realized = max(day_peak_realized, day_realized)
-                day_state[k]["day_realized"] = day_realized
-                day_state[k]["day_peak_realized"] = day_peak_realized
-                save_day_state(day_state)
+                persist_day_state_snapshot()
 
                 try:
                     if args.learn_mode in ("advisory", "control"):
@@ -2897,9 +2950,7 @@ def main():
                 if ib_daily_pnl is not None:
                     day_realized = float(ib_daily_pnl)
                     day_peak_realized = max(day_peak_realized, day_realized)
-                    day_state[k]["day_realized"] = day_realized
-                    day_state[k]["day_peak_realized"] = day_peak_realized
-                    save_day_state(day_state)
+                    persist_day_state_snapshot()
                 if ib_netliq is not None:
                     equity = float(ib_netliq)
                     equity_hwm = max(equity_hwm, equity)
@@ -3508,9 +3559,7 @@ def main():
         print("INFO [CTRL-C] Shutting down...")
     finally:
         try:
-            day_state[k]["day_realized"] = day_realized
-            day_state[k]["day_peak_realized"] = day_peak_realized
-            save_day_state(day_state)
+            persist_day_state_snapshot()
         except Exception:
             pass
         # Final learner save
