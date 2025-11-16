@@ -651,20 +651,58 @@ def list_open_orders_for_contract(ib: IB, con: Contract) -> List[Trade]:
     return out
 
 
+def _classify_order_leg(order) -> str:
+    try:
+        ot = (getattr(order, "orderType", "") or "").upper()
+        parent_id = getattr(order, "parentId", None)
+        if parent_id in (None, 0):
+            return "parent"
+        if ot.startswith("STP"):
+            return "stop"
+        if ot == "LMT":
+            return "take_profit"
+    except Exception:
+        pass
+    return "child"
+
+
+def _order_log_fields(order) -> Dict[str, Any]:
+    return {
+        "order_type": (getattr(order, "orderType", "") or "").upper() or None,
+        "side": (getattr(order, "action", "") or "").upper() or None,
+        "qty": float(getattr(order, "totalQuantity", 0) or 0),
+        "parent_id": getattr(order, "parentId", None),
+        "oca_group": (getattr(order, "ocaGroup", "") or "").strip() or None,
+        "transmit": getattr(order, "transmit", None),
+        "order_ref": getattr(order, "orderRef", None),
+        "perm_id": getattr(order, "permId", None),
+        "client_id": getattr(order, "clientId", None),
+        "leg": _classify_order_leg(order),
+    }
+
+
 def safe_cancel(ib: IB, trade: Trade, note: str = ""):
     """
     Cancel a single trade's order, logging any errors.
     Only cancels if the order is in an active/cancellable state.
     """
+    meta = {}
     try:
+        order = trade.order
+        meta = {
+            "orderId": getattr(order, "orderId", None),
+            **_order_log_fields(order),
+            "reason": note,
+        }
         st = (trade.orderStatus.status or "").strip()
         if st in CANCELLABLE_STATUSES:
-            ib.cancelOrder(trade.order)
-            log("order_cancel", orderId=trade.order.orderId, status=st, note=note)
+            ib.cancelOrder(order)
+            log("order_cancel", status=st, **meta)
         else:
-            log("order_cancel_skip", orderId=trade.order.orderId, status=st, note=note)
+            log("order_cancel_skip", status=st, **meta)
     except Exception as e:
-        log("order_cancel_err", err=str(e), note=note)
+        meta.setdefault("reason", note)
+        log("order_cancel_err", err=str(e), **meta)
 
 
 def _parse_ib_date(s: str) -> Optional[dt.date]:
@@ -1068,6 +1106,13 @@ def cancel_siblings_for_trade(ib: IB, trade: Trade, con: Contract):
                 continue
             if (t.order.ocaGroup or "").strip() == ocag:
                 if t.order.orderId != trade.order.orderId:
+                    meta = _order_log_fields(t.order)
+                    log(
+                        "sibling_cancel_request",
+                        orderId=getattr(t.order, "orderId", None),
+                        reason=f"[sibling OCA={ocag}]",
+                        **meta,
+                    )
                     safe_cancel(ib, t, note=f"[sibling OCA={ocag}]")
     except Exception as e:
         log("sibling_cancel_err", err=str(e))
@@ -1760,10 +1805,12 @@ def main():
     last_orphan_sweep_time = 0.0  # NEW: throttle unconditional orphan sweeps
 
     def _on_exec(trade, fill):
-        nonlocal last_exec_price, sibling_cancel_needed, orphan_sweep_needed
+        nonlocal last_exec_price, sibling_cancel_needed, orphan_sweep_needed, parent_entry_id
+        if not is_our_order_or_trade(trade):
+            return
+        if getattr(trade.contract, "conId", None) != con.conId:
+            return
         try:
-            if not is_our_order_or_trade(trade):
-                return
             last_exec_price = float(fill.price)
         except Exception:
             pass
@@ -1771,28 +1818,81 @@ def main():
             st = (trade.orderStatus.status or "").strip()
             ocag = (trade.order.ocaGroup or "").strip()
             if st in ("Filled", "PartiallyFilled"):
-                # Only need sibling cancel if this is an OCO child (has OCA group)
                 if ocag:
                     sibling_cancel_needed = True
                 orphan_sweep_needed = True
         except Exception:
             pass
+        try:
+            order = getattr(trade, "order", None)
+            if order is None:
+                return
+            meta = {"orderId": getattr(order, "orderId", None), **_order_log_fields(order)}
+            fill_qty = getattr(fill, "shares", None)
+            matches_tracked = bool(
+                parent_entry_id
+                and (
+                    meta.get("orderId") == parent_entry_id
+                    or meta.get("parent_id") == parent_entry_id
+                )
+            )
+            log(
+                "ib_status",
+                event="execDetails",
+                status=(trade.orderStatus.status or "").strip(),
+                fill_price=getattr(fill, "price", None),
+                fill_qty=float(fill_qty) if fill_qty is not None else None,
+                cum_qty=getattr(fill, "cumQty", None),
+                avg_price=getattr(fill, "avgPrice", None),
+                tracked_parent=parent_entry_id,
+                matches_tracked=matches_tracked,
+                **meta,
+            )
+        except Exception as e:
+            log("ib_status_log_err", err=str(e))
 
     ib.execDetailsEvent += _on_exec
 
     def _on_status(trade):
-        nonlocal sibling_cancel_needed, orphan_sweep_needed
+        nonlocal sibling_cancel_needed, orphan_sweep_needed, parent_entry_id
+        if not is_our_order_or_trade(trade):
+            return
+        if getattr(trade.contract, "conId", None) != con.conId:
+            return
         try:
-            if not is_our_order_or_trade(trade):
-                return
             st = (trade.orderStatus.status or "").strip()
             ocag = (trade.order.ocaGroup or "").strip()
             if st == "Filled":
                 if ocag:
                     sibling_cancel_needed = True
                 orphan_sweep_needed = True
-        except Exception:
-            pass
+            order = getattr(trade, "order", None)
+            if order is None:
+                return
+            meta = {"orderId": getattr(order, "orderId", None), **_order_log_fields(order)}
+            matches_tracked = bool(
+                parent_entry_id
+                and (
+                    meta.get("orderId") == parent_entry_id
+                    or meta.get("parent_id") == parent_entry_id
+                )
+            )
+            os_obj = trade.orderStatus
+            log(
+                "ib_status",
+                event="orderStatus",
+                status=st,
+                filled=getattr(os_obj, "filled", None),
+                remaining=getattr(os_obj, "remaining", None),
+                avgFillPrice=getattr(os_obj, "avgFillPrice", None),
+                lastFillPrice=getattr(os_obj, "lastFillPrice", None),
+                whyHeld=getattr(os_obj, "whyHeld", None),
+                tracked_parent=parent_entry_id,
+                matches_tracked=matches_tracked,
+                **meta,
+            )
+        except Exception as e:
+            log("ib_status_log_err", err=str(e))
 
     ib.orderStatusEvent += _on_status
 
@@ -1891,31 +1991,48 @@ def main():
         return int(final_qty)
 
     # Entry / place
-    def place_bracket(go_long: bool, last_price: float, last_bar_ts_local, net_qty_now: int):
+    def place_bracket(
+        go_long: bool,
+        last_price: float,
+        last_bar_ts_local,
+        net_qty_now: int,
+        signal_name: Optional[str] = None,
+    ):
         nonlocal entry_price, last_entry_bar_ts, current_param_arm, cycle_risk_ticks
         nonlocal parent_entry_id, parent_entry_time, last_attempt_ts  # NEW
 
         # ---- hard anti-burst guard (attempt spacing) ----
         now_ts = time.time()
         eff_min_gap = int(max(1, args.min_seconds_between_entries * cadence_scale))
+        entry_signal = signal_name or current_arm or ("long" if go_long else "short")
+
+        def _entry_log(event: str, **fields):
+            base = {
+                "signal": entry_signal,
+                "cadence_scale": round(cadence_scale, 3),
+                "throttle_min_gap": eff_min_gap,
+                "last_attempt_ts": last_attempt_ts,
+            }
+            base.update(fields)
+            log(event, **base)
+
         if last_attempt_ts is not None and (now_ts - last_attempt_ts) < eff_min_gap:
-            log(
+            _entry_log(
                 "gate_skip",
                 reason="attempt_gap",
                 since_last=round(now_ts - last_attempt_ts, 3),
-                min_gap=eff_min_gap,
             )
             return
         last_attempt_ts = now_ts
 
         if not args.place_orders:
-            log("sim_no_place", reason="--place-orders not set")
+            _entry_log("sim_no_place", reason="--place-orders not set")
             return
 
         # ---- trust IB position truth: only open if truly flat ----
         qty_truth, _ = ib_position_truth(ib, con)
         if qty_truth != 0:
-            log(
+            _entry_log(
                 "gate_skip",
                 reason="non_flat_ib_truth",
                 qty_truth=int(qty_truth),
@@ -1924,14 +2041,14 @@ def main():
             return
 
         if has_active_parent_entry(ib, con):
-            log("gate_skip", reason="active_parent_entry")
+            _entry_log("gate_skip", reason="active_parent_entry")
             return
         if (
             args.debounce_one_bar
             and last_entry_bar_ts is not None
             and last_bar_ts_local == last_entry_bar_ts
         ):
-            log("gate_skip", reason="debounce_one_bar")
+            _entry_log("gate_skip", reason="debounce_one_bar")
             return
 
 
@@ -1952,7 +2069,7 @@ def main():
 
         qty = determine_order_qty(net_qty_now, risk_ticks_local)
         if qty <= 0:
-            log("gate_skip", reason="qty_le_0")
+            _entry_log("gate_skip", reason="qty_le_0", suggested_qty=qty)
             return
 
         tick = float(args.tick_size)
@@ -1981,10 +2098,19 @@ def main():
         parent.transmit = False
 
         try:
-            parent_trade = ib.placeOrder(con, parent)
+            ib.placeOrder(con, parent)
             parent_id = parent.orderId
+            _entry_log(
+                "entry_parent_order",
+                order_id=parent_id,
+                side=action,
+                qty=qty,
+                price=entry,
+                transmit=parent.transmit,
+                tif=args.tif,
+            )
         except Exception as e:
-            log("bracket_parent_error", error=str(e))
+            _entry_log("bracket_parent_error", error=str(e), side=action, qty=qty, price=entry)
             return
 
         ib.sleep(0.02)  # let TWS register the parent
@@ -2029,23 +2155,71 @@ def main():
             pass
 
         # Place children
+        stop_order_id = None
         try:
             ib.placeOrder(con, stop_loss)
-            ib.placeOrder(con, take_profit)
-            log(
-                "bracket_submitted",
-                side=action,
-                qty=qty,
-                entry=entry,
-                stop=sl,
-                tp=tp,
-                param_arm=current_param_arm,
-                params=chosen_params or None,
+            stop_order_id = stop_loss.orderId
+            _entry_log(
+                "entry_child_order",
+                child="stop",
+                order_id=stop_order_id,
                 parent_id=parent_id,
+                price=sl,
+                qty=qty,
+                transmit=stop_loss.transmit,
+                oca_group=oca,
             )
         except Exception as e:
-            log("bracket_children_error", error=str(e))
+            _entry_log(
+                "bracket_children_error",
+                child="stop",
+                error=str(e),
+                parent_id=parent_id,
+                price=sl,
+                qty=qty,
+            )
             return
+
+        tp_order_id = None
+        try:
+            ib.placeOrder(con, take_profit)
+            tp_order_id = take_profit.orderId
+            _entry_log(
+                "entry_child_order",
+                child="take_profit",
+                order_id=tp_order_id,
+                parent_id=parent_id,
+                price=tp,
+                qty=qty,
+                transmit=take_profit.transmit,
+                oca_group=oca,
+            )
+        except Exception as e:
+            _entry_log(
+                "bracket_children_error",
+                child="take_profit",
+                error=str(e),
+                parent_id=parent_id,
+                price=tp,
+                qty=qty,
+                stop_order_id=stop_order_id,
+            )
+            return
+
+        _entry_log(
+            "bracket_submitted",
+            side=action,
+            qty=qty,
+            entry=entry,
+            stop=sl,
+            tp=tp,
+            param_arm=current_param_arm,
+            params=chosen_params or None,
+            parent_id=parent_id,
+            stop_order_id=stop_order_id,
+            tp_order_id=tp_order_id,
+            oca_group=oca,
+        )
 
         # track this parent LIMIT entry for possible limitâ†’market promotion
         parent_entry_id = parent_id
@@ -2585,8 +2759,22 @@ def main():
                             ot = (t.order.orderType or "").upper()
                             act = (t.order.action or "").upper()
                             if ot in {"LMT", "STP", "STP LMT"} and act != exit_action:
+                                meta = _order_log_fields(t.order)
+                                log(
+                                    "oco_rescue_cancel",
+                                    reason="wrong_side",
+                                    orderId=getattr(t.order, "orderId", None),
+                                    **meta,
+                                )
                                 safe_cancel(ib, t, note="[prot wrong-side]")
                             elif ot in {"LMT", "STP", "STP LMT"} and act == exit_action:
+                                meta = _order_log_fields(t.order)
+                                log(
+                                    "oco_rescue_cancel",
+                                    reason="refresh",
+                                    orderId=getattr(t.order, "orderId", None),
+                                    **meta,
+                                )
                                 safe_cancel(ib, t, note="[prot refresh]")
                         if last_px is not None and not math.isnan(last_px):
                             qty_abs = abs(int(net_qty))
@@ -2631,14 +2819,66 @@ def main():
                                 lmt.ocaType = 1
                             except Exception:
                                 pass
-                            ib.placeOrder(con, stp)
-                            ib.placeOrder(con, lmt)
+                            stp_id = None
+                            try:
+                                ib.placeOrder(con, stp)
+                                stp_id = getattr(stp, "orderId", None)
+                                log(
+                                    "oco_rebuild_child",
+                                    leg="stop",
+                                    orderId=stp_id,
+                                    oca_group=oca,
+                                    side=exit_action,
+                                    price=stop_price,
+                                    qty=qty_abs,
+                                )
+                            except Exception as e:
+                                log(
+                                    "oco_rebuild_err",
+                                    leg="stop",
+                                    err=str(e),
+                                    oca_group=oca,
+                                    side=exit_action,
+                                    price=stop_price,
+                                    qty=qty_abs,
+                                )
+                                continue
+
+                            tp_id = None
+                            try:
+                                ib.placeOrder(con, lmt)
+                                tp_id = getattr(lmt, "orderId", None)
+                                log(
+                                    "oco_rebuild_child",
+                                    leg="take_profit",
+                                    orderId=tp_id,
+                                    oca_group=oca,
+                                    side=exit_action,
+                                    price=targ_price,
+                                    qty=qty_abs,
+                                )
+                            except Exception as e:
+                                log(
+                                    "oco_rebuild_err",
+                                    leg="take_profit",
+                                    err=str(e),
+                                    oca_group=oca,
+                                    side=exit_action,
+                                    price=targ_price,
+                                    qty=qty_abs,
+                                    stop_order_id=stp_id,
+                                )
+                                continue
+
                             log(
                                 "oco_rebuilt",
                                 side=exit_action,
                                 stp=stop_price,
                                 lmt=targ_price,
                                 qty=qty_abs,
+                                oca_group=oca,
+                                stop_order_id=stp_id,
+                                tp_order_id=tp_id,
                             )
             except Exception as e:
                 log("oco_rescue_err", err=str(e))
@@ -3058,7 +3298,7 @@ def main():
                                 else (close >= max(C[-20:]))
                             )
                             if args.learn_mode != "shadow":
-                                place_bracket(go_long, close, last_bar_ts, net_qty)
+                                place_bracket(go_long, close, last_bar_ts, net_qty, signal_name=chosen)
                                 current_arm = chosen
 
 
