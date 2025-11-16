@@ -685,10 +685,14 @@ def _order_log_fields(order) -> Dict[str, Any]:
     }
 
 
-def safe_cancel(ib: IB, trade: Trade, note: str = ""):
+def safe_cancel(ib: IB, trade: Trade, note: str = "") -> bool:
     """
     Cancel a single trade's order, logging any errors.
     Only cancels if the order is in an active/cancellable state.
+
+    Returns True if the order was already inactive or if a cancel request was
+    submitted to IB.  Returns False if the order is still active and no cancel
+    request could be issued.
     """
     meta = {}
     try:
@@ -702,11 +706,16 @@ def safe_cancel(ib: IB, trade: Trade, note: str = ""):
         if st in CANCELLABLE_STATUSES:
             ib.cancelOrder(order)
             log("order_cancel", status=st, **meta)
-        else:
-            log("order_cancel_skip", status=st, **meta)
+            return True
+        # Treat already-done orders as a success so callers can clear tracking.
+        if st not in ACTIVE_STATUSES:
+            log("order_cancel_skip", status=st, already_done=True, **meta)
+            return True
+        log("order_cancel_skip", status=st, already_done=False, **meta)
     except Exception as e:
         meta.setdefault("reason", note)
         log("order_cancel_err", err=str(e), **meta)
+    return False
 
 
 def _parse_ib_date(s: str) -> Optional[dt.date]:
@@ -2655,8 +2664,7 @@ def main():
 
                     if age >= limit_sec:
                         found_working = False
-                        confirmed_done = False
-                        promoted = False
+                        should_reset_parent = False
                         for t in ib.openTrades():
                             if not is_our_order_or_trade(t):
                                 continue
@@ -2665,7 +2673,7 @@ def main():
 
                             st = (t.orderStatus.status or "").strip()
                             if st not in ACTIVE_STATUSES:
-                                confirmed_done = True
+                                should_reset_parent = True
                                 log(
                                     "parent_to_market_inactive",
                                     orderId=parent_entry_id,
@@ -2700,7 +2708,7 @@ def main():
                                     side=o.action,
                                     ib_status=ib_status,
                                 )
-                                promoted = True
+                                should_reset_parent = True
                             except Exception as e:
                                 log(
                                     "parent_to_market_modify_err",
@@ -2740,7 +2748,43 @@ def main():
                                         qty=qty,
                                         ib_status=fb_status,
                                     )
-                                    promoted = True
+                                    parent_cancelled = False
+                                    parent_status = (
+                                        getattr(t.orderStatus, "status", "") or ""
+                                    ).strip()
+                                    try:
+                                        if parent_status not in ACTIVE_STATUSES:
+                                            parent_cancelled = True
+                                            log(
+                                                "parent_to_market_fallback_parent_inactive",
+                                                orderId=o.orderId,
+                                                status=parent_status,
+                                            )
+                                        else:
+                                            parent_cancelled = safe_cancel(
+                                                ib, t, note="[parent_to_market_fallback]"
+                                            )
+                                            if parent_cancelled:
+                                                log(
+                                                    "parent_to_market_fallback_parent_cancelled",
+                                                    orderId=o.orderId,
+                                                    status=parent_status,
+                                                )
+                                    except Exception as cancel_err:
+                                        log(
+                                            "parent_to_market_fallback_parent_cancel_err",
+                                            orderId=o.orderId,
+                                            err=str(cancel_err),
+                                            status=parent_status,
+                                        )
+                                    if parent_cancelled:
+                                        should_reset_parent = True
+                                    else:
+                                        log(
+                                            "parent_to_market_fallback_parent_manual_cleanup",
+                                            orderId=o.orderId,
+                                            status=parent_status,
+                                        )
                                 except Exception as inner:
                                     log(
                                         "parent_to_market_fallback_err",
@@ -2748,13 +2792,11 @@ def main():
                                         side=o.action,
                                         qty=qty,
                                     )
-                                finally:
-                                    confirmed_done = True
                                 break
 
                             break
 
-                        if promoted or confirmed_done:
+                        if should_reset_parent:
                             reset_parent_tracking()
                         elif not found_working:
                             now_ts = time.time()
