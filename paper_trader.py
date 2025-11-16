@@ -1141,10 +1141,17 @@ def reconcile_orphans(ib: IB, account: str, con: Contract):
 
 # ---------- Risk & sizing ----------
 class DayRisk:
-    def __init__(self, loss_cap_R: float, max_trades: int, max_consec_losses: int):
+    def __init__(
+        self,
+        loss_cap_R: float,
+        max_trades: int,
+        max_consec_losses: int,
+        post_flat_cooldown_sec: int,
+    ):
         self.loss_cap_R = float(loss_cap_R)
         self.max_trades = int(max_trades)
         self.max_consec_losses = int(max_consec_losses)
+        self.post_flat_cooldown_sec = int(max(0, post_flat_cooldown_sec))
         self.reset()
 
     def reset(self):
@@ -1154,21 +1161,37 @@ class DayRisk:
         self.halted = False
         self.last_entry_time: Optional[float] = None
         self.consec_losses = 0
+        self.last_flat_fill_ts: Optional[float] = None
+
+    def post_flat_cooldown_remaining(self) -> Optional[float]:
+        if not self.last_flat_fill_ts or self.post_flat_cooldown_sec <= 0:
+            return None
+        elapsed = time.time() - self.last_flat_fill_ts
+        remaining = self.post_flat_cooldown_sec - elapsed
+        return remaining if remaining > 0 else None
+
+    def in_post_flat_cooldown(self) -> bool:
+        return self.post_flat_cooldown_remaining() is not None
+
+    def gate_reason(self, now: dt.datetime, min_gap_s: int) -> Optional[str]:
+        if self.halted:
+            return "halted"
+        if self.cool_until and now < self.cool_until:
+            return "cooldown"
+        if self.trades >= self.max_trades:
+            return "max_trades"
+        if self.day_R <= -abs(self.loss_cap_R):
+            return "dayR_cap"
+        if self.consec_losses >= self.max_consec_losses:
+            return "consec_losses"
+        if self.in_post_flat_cooldown():
+            return "post_flat_cooldown"
+        if self.last_entry_time and (time.time() - self.last_entry_time) < max(0, min_gap_s):
+            return "min_gap_between_entries"
+        return None
 
     def can_trade(self, now: dt.datetime, min_gap_s: int) -> bool:
-        if self.halted:
-            return False
-        if self.cool_until and now < self.cool_until:
-            return False
-        if self.trades >= self.max_trades:
-            return False
-        if self.day_R <= -abs(self.loss_cap_R):
-            return False
-        if self.consec_losses >= self.max_consec_losses:
-            return False
-        if self.last_entry_time and (time.time() - self.last_entry_time) < max(0, min_gap_s):
-            return False
-        return True
+        return self.gate_reason(now, min_gap_s) is None
 
 
 def iso_week_id(d: dt.date) -> str:
@@ -1314,6 +1337,12 @@ def build_argparser():
 
     # Anti-burst & day/session rails (slower base cadence)
     ap.add_argument("--min-seconds-between-entries", type=int, default=35)
+    ap.add_argument(
+        "--post-flat-cooldown-sec",
+        type=int,
+        default=15,
+        help="Extra cooldown seconds after any flatten/fill before re-entry.",
+    )
     ap.add_argument("--max-trades-per-day", type=int, default=10)
     ap.add_argument("--day-loss-cap-R", type=float, default=3.0)
     ap.add_argument("--weekly-cap-mult", type=float, default=3.0,
@@ -1708,7 +1737,12 @@ def main():
     _last_poll = 0.0
 
     # Risk state
-    risk = DayRisk(args.day_loss_cap_R, args.max_trades_per_day, args.max_consec_losses)
+    risk = DayRisk(
+        args.day_loss_cap_R,
+        args.max_trades_per_day,
+        args.max_consec_losses,
+        args.post_flat_cooldown_sec,
+    )
     last_entry_bar_ts = None
     current_arm: Optional[str] = None
     entry_price: Optional[float] = None
@@ -2243,6 +2277,7 @@ def main():
             mo = MarketOrder(side, qty)
             ib.placeOrder(con, mo)
             log("flatten_market", side=side, qty=qty)
+            risk.last_flat_fill_ts = time.time()
         except Exception as e:
             log("flatten_err", err=str(e))
 
@@ -2678,6 +2713,7 @@ def main():
 
                 # Measure min_seconds_between_entries from *this* flat
                 risk.last_entry_time = time.time()
+                risk.last_flat_fill_ts = risk.last_entry_time
 
                 # --- AI journaling hook ---
                 try:
@@ -3074,16 +3110,21 @@ def main():
                 if has_active_parent_entry(ib, con):
                     idle_reason = "parent_entry_working"
                 elif not risk.can_trade(now, eff_min_gap):
-                    if risk.cool_until and now < risk.cool_until:
+                    gate_reason = risk.gate_reason(now, eff_min_gap)
+                    if gate_reason == "cooldown":
                         idle_reason = "gated:cooldown"
-                    elif risk.trades >= args.max_trades_per_day:
+                    elif gate_reason == "max_trades":
                         idle_reason = "gated:max_trades"
-                    elif risk.day_R <= -abs(args.day_loss_cap_R):
+                    elif gate_reason == "dayR_cap":
                         idle_reason = "gated:dayR_cap"
-                    elif risk.consec_losses >= args.max_consec_losses:
+                    elif gate_reason == "consec_losses":
                         idle_reason = "gated:consec_losses"
-                    else:
+                    elif gate_reason == "post_flat_cooldown":
+                        idle_reason = "gated:post_flat_cooldown"
+                    elif gate_reason == "min_gap_between_entries":
                         idle_reason = "gated:min_gap_between_entries"
+                    else:
+                        idle_reason = f"gated:{gate_reason or 'unknown'}"
                 elif args.require_new_bar_after_start and not startup_bar_seen:
                     idle_reason = "waiting_for_first_new_bar"
                 elif len(C) < 60:
@@ -3180,13 +3221,35 @@ def main():
                 eff_min_gap = int(max(1, args.min_seconds_between_entries * cadence_scale))
                 if not risk.can_trade(now, eff_min_gap):
                     # Hard gate: do NOT consider a new entry yet
+                    gate_reason = risk.gate_reason(now, eff_min_gap)
+                    post_flat_remaining = risk.post_flat_cooldown_remaining()
                     log(
                         "entry_blocked_cooldown",
                         eff_min_gap=eff_min_gap,
                         last_entry_time=risk.last_entry_time,
                         cool_until=str(risk.cool_until) if risk.cool_until else None,
+                        reason=gate_reason,
+                        post_flat_remaining=(
+                            round(post_flat_remaining, 3)
+                            if post_flat_remaining is not None
+                            else None
+                        ),
                     )
-                    hb_update(idle_reason="gated:cooldown_entry_block")
+                    if gate_reason == "post_flat_cooldown":
+                        log(
+                            "gate_skip",
+                            reason="post_flat_cooldown",
+                            remaining=(
+                                round(post_flat_remaining, 3)
+                                if post_flat_remaining is not None
+                                else None
+                            ),
+                        )
+                        hb_update(idle_reason="gated:post_flat_cooldown")
+                    else:
+                        hb_update(
+                            idle_reason=f"gated:{gate_reason or 'cooldown_entry_block'}"
+                        )
                 else:
                     close = C[-1]
                     _atrv = atr(H, L, C, 14)
