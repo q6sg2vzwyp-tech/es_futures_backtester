@@ -1753,6 +1753,9 @@ def main():
     last_entry_bar_ts = None
     current_arm: Optional[str] = None
     entry_price: Optional[float] = None
+    cycle_bracket_entry_price: Optional[float] = None
+    cycle_bracket_stop_dist: Optional[float] = None
+    cycle_bracket_tp_dist: Optional[float] = None
     prev_net_qty = 0
     last_exec_price: Optional[float] = None
     cycle_commission = 0.0
@@ -2111,6 +2114,7 @@ def main():
         signal_name: Optional[str] = None,
     ):
         nonlocal entry_price, last_entry_bar_ts, current_param_arm, cycle_risk_ticks
+        nonlocal cycle_bracket_entry_price, cycle_bracket_stop_dist, cycle_bracket_tp_dist
         nonlocal parent_entry_id, parent_entry_time, last_attempt_ts  # NEW
 
         # ---- hard anti-burst guard (attempt spacing) ----
@@ -2365,6 +2369,9 @@ def main():
 
         # update local state
         entry_price = entry
+        cycle_bracket_entry_price = entry
+        cycle_bracket_stop_dist = abs(entry - sl)
+        cycle_bracket_tp_dist = abs(tp - entry)
         last_entry_bar_ts = last_bar_ts_local
         risk.last_entry_time = time.time()
         eff_cool = int(max(1, args.strategy_cooldown_sec * cadence_scale))
@@ -2804,6 +2811,14 @@ def main():
                     if (avg_cost_raw is not None and px_mult > 0)
                     else (C[-1] if C else None)
                 )
+                if cycle_bracket_entry_price is None:
+                    cycle_bracket_entry_price = entry_price
+                if cycle_bracket_stop_dist is None and cycle_risk_ticks is not None:
+                    cycle_bracket_stop_dist = ticks_to_price_delta(
+                        cycle_risk_ticks, float(args.tick_size)
+                    )
+                if cycle_bracket_tp_dist is None and cycle_bracket_stop_dist is not None:
+                    cycle_bracket_tp_dist = cycle_bracket_stop_dist * float(args.tp_R)
                 cycle_entry_time = now
                 age_forced_flat_done = False
 
@@ -2941,6 +2956,9 @@ def main():
                 cycle_entry_time = None
                 age_forced_flat_done = False
                 cycle_risk_ticks = None  # reset
+                cycle_bracket_entry_price = None
+                cycle_bracket_stop_dist = None
+                cycle_bracket_tp_dist = None
 
             prev_net_qty = net_qty
 
@@ -2972,6 +2990,8 @@ def main():
                         for t in trades
                     )
                     if (not has_stop) or (not has_tp):
+                        existing_stop_price = None
+                        existing_tp_price = None
                         for t in trades:
                             ot = (t.order.orderType or "").upper()
                             act = (t.order.action or "").upper()
@@ -2985,6 +3005,13 @@ def main():
                                 )
                                 safe_cancel(ib, t, note="[prot wrong-side]")
                             elif ot in {"LMT", "STP", "STP LMT"} and act == exit_action:
+                                if existing_stop_price is None and ot.startswith("STP"):
+                                    existing_stop_price = (
+                                        getattr(t.order, "stopPrice", None)
+                                        or getattr(t.order, "auxPrice", None)
+                                    )
+                                if existing_tp_price is None and ot == "LMT":
+                                    existing_tp_price = getattr(t.order, "lmtPrice", None)
                                 meta = _order_log_fields(t.order)
                                 log(
                                     "oco_rescue_cancel",
@@ -2993,26 +3020,62 @@ def main():
                                     **meta,
                                 )
                                 safe_cancel(ib, t, note="[prot refresh]")
-                        if last_px is not None and not math.isnan(last_px):
-                            qty_abs = abs(int(net_qty))
-                            tick = float(args.tick_size)
-                            # use default risk_ticks here for rebuild; could be extended to track per-cycle
-                            risk_px = ticks_to_price_delta(args.risk_ticks, tick)
-                            tp_px = risk_px * float(args.tp_R)
+
+                        qty_abs = abs(int(net_qty))
+                        tick = float(args.tick_size)
+                        entry_basis = cycle_bracket_entry_price or entry_price
+                        risk_ticks = (
+                            cycle_risk_ticks if cycle_risk_ticks is not None else args.risk_ticks
+                        )
+                        default_stop_dist = ticks_to_price_delta(risk_ticks, tick)
+                        default_tp_dist = default_stop_dist * float(args.tp_R)
+                        stop_dist = cycle_bracket_stop_dist or default_stop_dist
+                        tp_dist = cycle_bracket_tp_dist or default_tp_dist
+
+                        stop_price = None
+                        stop_source = None
+                        if entry_basis is not None and stop_dist is not None:
                             if net_qty > 0:
-                                stop_price = round_to_tick(last_px - risk_px - tick, tick)
-                                targ_price = round_to_tick(last_px + tp_px + tick, tick)
+                                stop_price = round_to_tick(entry_basis - stop_dist, tick)
                             else:
-                                stop_price = round_to_tick(last_px + risk_px + tick, tick)
-                                targ_price = round_to_tick(last_px - tp_px - tick, tick)
-                            oca = f"OCO-PROT-{int(time.time())}"
-                            stp = StopOrder(
-                                action=exit_action,
-                                totalQuantity=qty_abs,
-                                stopPrice=stop_price,
-                                tif=args.tif,
-                                outsideRth=bool(args.outsideRth),
+                                stop_price = round_to_tick(entry_basis + stop_dist, tick)
+                            stop_source = "entry"
+                        if stop_price is None and existing_stop_price is not None:
+                            stop_price = round_to_tick(existing_stop_price, tick)
+                            stop_source = "existing_child"
+
+                        targ_price = None
+                        tp_source = None
+                        if entry_basis is not None and tp_dist is not None:
+                            if net_qty > 0:
+                                targ_price = round_to_tick(entry_basis + tp_dist, tick)
+                            else:
+                                targ_price = round_to_tick(entry_basis - tp_dist, tick)
+                            tp_source = "entry"
+                        if targ_price is None and existing_tp_price is not None:
+                            targ_price = round_to_tick(existing_tp_price, tick)
+                            tp_source = "existing_child"
+
+                        if stop_price is None or targ_price is None:
+                            log(
+                                "oco_rebuild_skip",
+                                reason="missing_entry_context",
+                                stop_price=stop_price,
+                                tp_price=targ_price,
+                                entry_basis=entry_basis,
+                                stop_dist=stop_dist,
+                                tp_dist=tp_dist,
                             )
+                            continue
+
+                        oca = f"OCO-PROT-{int(time.time())}"
+                        stp = StopOrder(
+                            action=exit_action,
+                            totalQuantity=qty_abs,
+                            stopPrice=stop_price,
+                            tif=args.tif,
+                            outsideRth=bool(args.outsideRth),
+                        )
                             try:
                                 stp.triggerMethod = 2
                             except Exception:
@@ -3048,6 +3111,7 @@ def main():
                                     side=exit_action,
                                     price=stop_price,
                                     qty=qty_abs,
+                                    source=stop_source,
                                 )
                             except Exception as e:
                                 log(
@@ -3073,6 +3137,7 @@ def main():
                                     side=exit_action,
                                     price=targ_price,
                                     qty=qty_abs,
+                                    source=tp_source,
                                 )
                             except Exception as e:
                                 log(
@@ -3096,6 +3161,11 @@ def main():
                                 oca_group=oca,
                                 stop_order_id=stp_id,
                                 tp_order_id=tp_id,
+                                entry_basis=entry_basis,
+                                stop_dist=stop_dist,
+                                tp_dist=tp_dist,
+                                stop_source=stop_source,
+                                tp_source=tp_source,
                             )
             except Exception as e:
                 log("oco_rescue_err", err=str(e))
