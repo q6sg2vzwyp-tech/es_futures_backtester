@@ -1894,6 +1894,7 @@ def main():
     orphan_sweep_needed = False
     weekend_sweep_done = False  # avoid spamming weekend cancels
     friday_flat_done = False    # NEW: run Friday preclose auto-flat only once
+    friday_flat_last_date: Optional[dt.date] = None  # track the calendar day it last ran
     last_orphan_sweep_time = 0.0  # NEW: throttle unconditional orphan sweeps
 
     def _on_exec(trade, fill):
@@ -2416,6 +2417,17 @@ def main():
     try:
         while True:
             now = ct_now()
+
+            # Auto re-arm the Friday preclose guard once the calendar advances
+            if friday_flat_done and friday_flat_last_date is not None:
+                if now.date() > friday_flat_last_date:
+                    friday_flat_done = False
+                    log(
+                        "friday_preclose_rearm",
+                        last_date=str(friday_flat_last_date),
+                        rearm_date=str(now.date()),
+                    )
+                    friday_flat_last_date = None
 
             # --- Weekly R reset (ISO week) ---
             cur_week_id = iso_week_id(now.date())
@@ -3311,8 +3323,9 @@ def main():
                         weekday=now.weekday(),
                     )
 
-                    # Only run once per Friday
+                    # Only run once per Friday (track the day it tripped)
                     friday_flat_done = True
+                    friday_flat_last_date = now.date()
 
             except Exception as e:
                 log("friday_preclose_err", err=str(e))
