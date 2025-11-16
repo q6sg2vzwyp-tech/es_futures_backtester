@@ -346,6 +346,10 @@ _hb_state: Dict[str, Any] = {
     "trades_today": 0,
     "cool_until": None,
     "orders_disabled_paper_safety": False,
+    "parent_entry_id": None,
+    "parent_to_mkt_limit_sec": None,
+    "parent_to_mkt_age_sec": None,
+    "parent_to_mkt_remaining_sec": None,
 }
 
 
@@ -1378,7 +1382,7 @@ def build_argparser():
     ap.add_argument(
         "--parent-to-mkt-sec",
         type=int,
-        default=12,  # non-zero sane default to avoid stale parents
+        default=5,  # non-zero sane default to avoid stale parents
         help=(
             "If >0, convert a working parent LIMIT entry order to MARKET after "
             "this many seconds if still unfilled."
@@ -1771,6 +1775,21 @@ def main():
     # Track the currently-working parent LIMIT entry (for limitâ†’market promotion)
     parent_entry_id: Optional[int] = None
     parent_entry_time: Optional[float] = None
+    parent_promote_deadline: Optional[float] = None
+    parent_missing_log_next: float = 0.0
+
+    def reset_parent_tracking():
+        nonlocal parent_entry_id, parent_entry_time, parent_promote_deadline, parent_missing_log_next
+        parent_entry_id = None
+        parent_entry_time = None
+        parent_promote_deadline = None
+        parent_missing_log_next = 0.0
+        hb_update(
+            parent_entry_id=None,
+            parent_to_mkt_limit_sec=None,
+            parent_to_mkt_age_sec=None,
+            parent_to_mkt_remaining_sec=None,
+        )
 
     # Sessions (AM/PM segmentation only)
     session_cutovers = parse_ct_list(getattr(args, "session_reset_cts", "08:30,16:00,17:00"))
@@ -2258,6 +2277,32 @@ def main():
         # track this parent LIMIT entry for possible limitâ†’market promotion
         parent_entry_id = parent_id
         parent_entry_time = time.time()
+        parent_promote_deadline = (
+            parent_entry_time + max(1, int(args.parent_to_mkt_sec))
+            if args.parent_to_mkt_sec > 0
+            else None
+        )
+
+        if args.parent_to_mkt_sec > 0:
+            limit_sec = max(1, int(args.parent_to_mkt_sec))
+            hb_update(
+                parent_entry_id=parent_entry_id,
+                parent_to_mkt_limit_sec=limit_sec,
+                parent_to_mkt_age_sec=0,
+                parent_to_mkt_remaining_sec=limit_sec,
+            )
+            log(
+                "parent_to_market_timer_start",
+                orderId=parent_entry_id,
+                limit_sec=limit_sec,
+            )
+        else:
+            hb_update(
+                parent_entry_id=parent_entry_id,
+                parent_to_mkt_limit_sec=None,
+                parent_to_mkt_age_sec=None,
+                parent_to_mkt_remaining_sec=None,
+            )
 
         # update local state
         entry_price = entry
@@ -2530,9 +2575,26 @@ def main():
                 and net_qty == 0
             ):
                 try:
-                    age = time.time() - (parent_entry_time or 0.0)
-                    if age >= max(1, int(args.parent_to_mkt_sec)):
+                    now_ts = time.time()
+                    limit_sec = max(1, int(args.parent_to_mkt_sec))
+                    age = max(0.0, now_ts - (parent_entry_time or now_ts))
+                    remaining = 0
+                    if parent_promote_deadline is not None:
+                        remaining = max(0, int(parent_promote_deadline - now_ts))
+                    else:
+                        remaining = max(0, int(limit_sec - age))
+
+                    hb_update(
+                        parent_entry_id=parent_entry_id,
+                        parent_to_mkt_limit_sec=limit_sec,
+                        parent_to_mkt_age_sec=int(age),
+                        parent_to_mkt_remaining_sec=remaining,
+                    )
+
+                    if age >= limit_sec:
                         found_working = False
+                        confirmed_done = False
+                        promoted = False
                         for t in ib.openTrades():
                             if not is_our_order_or_trade(t):
                                 continue
@@ -2541,9 +2603,16 @@ def main():
 
                             st = (t.orderStatus.status or "").strip()
                             if st not in ACTIVE_STATUSES:
-                                # not working anymore (probably filled/cancelled)
+                                confirmed_done = True
+                                log(
+                                    "parent_to_market_inactive",
+                                    orderId=parent_entry_id,
+                                    status=st,
+                                    age=int(age),
+                                )
                                 break
 
+                            found_working = True
                             o = t.order
                             from_price = getattr(o, "lmtPrice", None)
 
@@ -2554,28 +2623,90 @@ def main():
                             except Exception:
                                 pass
 
-                            ib.placeOrder(con, o)  # modify existing order
-                            log(
-                                "parent_to_market",
-                                orderId=o.orderId,
-                                age=int(age),
-                                from_price=from_price,
-                                side=o.action,
-                            )
-                            found_working = True
+                            try:
+                                trade = ib.placeOrder(con, o)  # modify existing order
+                                ib_status = (
+                                    getattr(trade.orderStatus, "status", None)
+                                    if trade is not None
+                                    else None
+                                )
+                                log(
+                                    "parent_to_market",
+                                    orderId=o.orderId,
+                                    time_in_state_sec=int(age),
+                                    from_price=from_price,
+                                    side=o.action,
+                                    ib_status=ib_status,
+                                )
+                                promoted = True
+                            except Exception as e:
+                                log(
+                                    "parent_to_market_modify_err",
+                                    err=str(e),
+                                    orderId=o.orderId,
+                                    time_in_state_sec=int(age),
+                                    from_price=from_price,
+                                    side=o.action,
+                                )
+                                qty = abs(int(getattr(o, "totalQuantity", 0) or 0))
+                                if qty <= 0:
+                                    qty = 1
+                                try:
+                                    fallback = MarketOrder(o.action, qty)
+                                    trade_fb = ib.placeOrder(con, fallback)
+                                    fb_status = (
+                                        getattr(trade_fb.orderStatus, "status", None)
+                                        if trade_fb is not None
+                                        else None
+                                    )
+                                    log(
+                                        "parent_to_market_fallback",
+                                        parent_order=o.orderId,
+                                        fallback_order_id=(
+                                            getattr(fallback, "orderId", None)
+                                            or (
+                                                getattr(
+                                                    getattr(trade_fb, "order", None),
+                                                    "orderId",
+                                                    None,
+                                                )
+                                                if trade_fb is not None
+                                                else None
+                                            )
+                                        ),
+                                        side=o.action,
+                                        qty=qty,
+                                        ib_status=fb_status,
+                                    )
+                                    promoted = True
+                                except Exception as inner:
+                                    log(
+                                        "parent_to_market_fallback_err",
+                                        err=str(inner),
+                                        side=o.action,
+                                        qty=qty,
+                                    )
+                                finally:
+                                    confirmed_done = True
+                                break
+
                             break
 
-                        # Clear tracking regardless; if it wasn't found, it probably filled/cancelled
-                        parent_entry_id = None
-                        parent_entry_time = None
-
-                        if not found_working:
-                            log("parent_to_market_not_found", age=int(age))
+                        if promoted or confirmed_done:
+                            reset_parent_tracking()
+                        elif not found_working:
+                            now_ts = time.time()
+                            if now_ts >= parent_missing_log_next:
+                                log(
+                                    "parent_to_market_not_found",
+                                    age=int(age),
+                                    orderId=parent_entry_id,
+                                )
+                                parent_missing_log_next = now_ts + 5.0
                 except Exception as e:
                     log("parent_to_market_err", err=str(e))
                     # Don't keep re-trying on repeated errors
-                    parent_entry_id = None
-                    parent_entry_time = None
+                    reset_parent_tracking()
 
             # Execute deferred sibling/orphan actions
             if sibling_cancel_needed:
@@ -2609,8 +2740,7 @@ def main():
             if prev_net_qty == 0 and net_qty != 0:
                 in_trade_cycle = True
                 # parent has done its job (filled); stop tracking the LMTâ†’MKT timer
-                parent_entry_id = None
-                parent_entry_time = None
+                reset_parent_tracking()
 
                 cycle_commission = 0.0
                 cycle_entry_qty = abs(net_qty)
