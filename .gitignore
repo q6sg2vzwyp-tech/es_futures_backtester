@@ -1,23 +1,48 @@
 ﻿# === Python / env ===
 .venv/
 __pycache__/
+*.py[cod]
 *.tmp
 *.bak
+*.lprof
+
+# === OS/editor junk ===
+.DS_Store
+Thumbs.db
 
 # === Generic logs ===
 *.log
 latest_run.log
 watchdog.log
 watchdog.stderr.log
-logging
+logging/
 
 # === Run artifacts & archives (keep locally, ignore in git) ===
-.learnlogs/
-archive/
-results/
+run/
 backups/
-data/
+quarantine/
+results/
+.learnlogs/
 
-# === Logs directory: ignore everything except the trade CSV we care about
+# Your timestamped archive folder(s)
+archive_*/
+archive_20251008_103249/
+
+# If you truly have a generic "archive/" too
+archive/
+
+# === Data handling ===
+# IMPORTANT: do NOT ignore all of data/ unless you are 100% sure nothing in data/ should be committed.
+# Prefer ignoring only runtime/state artifacts. Uncomment ONE of these patterns as appropriate:
+
+# data/**
+
+# Safer default: ignore only obvious runtime/state files (adjust to your repo)
+data/state/*.local*
+data/state/*.tmp*
+data/state/*_snapshot*.json
+data/state/*snapshot*.json
+
+# === Logs directory: ignore everything except the trade CSV we care about ===
 logs/**
 !logs/trades_segmented.csv
