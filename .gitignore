@@ -46,3 +46,21 @@ data/state/*snapshot*.json
 # === Logs directory: ignore everything except the trade CSV we care about ===
 logs/**
 !logs/trades_segmented.csv
+
+# === Repo-generated backups / patches ===
+*.bak_*
+*.busted_*
+*.zip
+
+# === State/runtime artifacts ===
+data/state/backup_*/
+data/state/runtime_state.json
+data/state/daily_restart.json
+
+# === Dependency snapshots (choose ONE approach) ===
+# If you want to KEEP them in git, DO NOT ignore:
+# requirements_lock.txt
+# requirements_runtime.txt
+# If you want them local-only, uncomment:
+# requirements_lock.txt
+# requirements_runtime.txt
