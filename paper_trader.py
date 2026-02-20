@@ -2457,7 +2457,14 @@ def main():
 
             # Startup delay for stability
             if (time.time() - start_ts) < args.startup_delay_sec:
-                hb_update(idle_reason="booting", bars=len(C))
+                now = ct_now()
+                in_sess = within_session(now, args.trade_start_ct, args.trade_end_ct)
+                hb_update(
+                    state=("active" if in_sess else "sleep"),
+                    idle_reason="booting",
+                    in_session_window=in_sess,
+                    bars=len(C),
+                )
                 ib.sleep(0.5)
                 continue
 
@@ -3130,97 +3137,97 @@ def main():
                             tif=args.tif,
                             outsideRth=bool(args.outsideRth),
                         )
-                            try:
-                                stp.triggerMethod = 2
-                            except Exception:
-                                pass
-                            stp.ocaGroup = oca
-                            stp.transmit = False
-                            try:
-                                stp.ocaType = 1
-                            except Exception:
-                                pass
-                            lmt = LimitOrder(
-                                action=exit_action,
-                                totalQuantity=qty_abs,
-                                lmtPrice=targ_price,
-                                tif=args.tif,
-                                outsideRth=bool(args.outsideRth),
-                            )
-                            lmt.ocaGroup = oca
-                            lmt.transmit = True
-                            try:
-                                lmt.ocaType = 1
-                            except Exception:
-                                pass
-                            stp_id = None
-                            try:
-                                ib.placeOrder(con, stp)
-                                stp_id = getattr(stp, "orderId", None)
-                                log(
-                                    "oco_rebuild_child",
-                                    leg="stop",
-                                    orderId=stp_id,
-                                    oca_group=oca,
-                                    side=exit_action,
-                                    price=stop_price,
-                                    qty=qty_abs,
-                                    source=stop_source,
-                                )
-                            except Exception as e:
-                                log(
-                                    "oco_rebuild_err",
-                                    leg="stop",
-                                    err=str(e),
-                                    oca_group=oca,
-                                    side=exit_action,
-                                    price=stop_price,
-                                    qty=qty_abs,
-                                )
-                                continue
-
-                            tp_id = None
-                            try:
-                                ib.placeOrder(con, lmt)
-                                tp_id = getattr(lmt, "orderId", None)
-                                log(
-                                    "oco_rebuild_child",
-                                    leg="take_profit",
-                                    orderId=tp_id,
-                                    oca_group=oca,
-                                    side=exit_action,
-                                    price=targ_price,
-                                    qty=qty_abs,
-                                    source=tp_source,
-                                )
-                            except Exception as e:
-                                log(
-                                    "oco_rebuild_err",
-                                    leg="take_profit",
-                                    err=str(e),
-                                    oca_group=oca,
-                                    side=exit_action,
-                                    price=targ_price,
-                                    qty=qty_abs,
-                                    stop_order_id=stp_id,
-                                )
-                                continue
-
+                        try:
+                            stp.triggerMethod = 2
+                        except Exception:
+                            pass
+                        stp.ocaGroup = oca
+                        stp.transmit = False
+                        try:
+                            stp.ocaType = 1
+                        except Exception:
+                            pass
+                        lmt = LimitOrder(
+                            action=exit_action,
+                            totalQuantity=qty_abs,
+                            lmtPrice=targ_price,
+                            tif=args.tif,
+                            outsideRth=bool(args.outsideRth),
+                        )
+                        lmt.ocaGroup = oca
+                        lmt.transmit = True
+                        try:
+                            lmt.ocaType = 1
+                        except Exception:
+                            pass
+                        stp_id = None
+                        try:
+                            ib.placeOrder(con, stp)
+                            stp_id = getattr(stp, "orderId", None)
                             log(
-                                "oco_rebuilt",
-                                side=exit_action,
-                                stp=stop_price,
-                                lmt=targ_price,
-                                qty=qty_abs,
+                                "oco_rebuild_child",
+                                leg="stop",
+                                orderId=stp_id,
                                 oca_group=oca,
-                                stop_order_id=stp_id,
-                                tp_order_id=tp_id,
-                                entry_basis=entry_basis,
-                                stop_dist=stop_dist,
-                                tp_dist=tp_dist,
-                                stop_source=stop_source,
-                                tp_source=tp_source,
+                                side=exit_action,
+                                price=stop_price,
+                                qty=qty_abs,
+                                source=stop_source,
                             )
+                        except Exception as e:
+                            log(
+                                "oco_rebuild_err",
+                                leg="stop",
+                                err=str(e),
+                                oca_group=oca,
+                                side=exit_action,
+                                price=stop_price,
+                                qty=qty_abs,
+                            )
+                            continue
+
+                        tp_id = None
+                        try:
+                            ib.placeOrder(con, lmt)
+                            tp_id = getattr(lmt, "orderId", None)
+                            log(
+                                "oco_rebuild_child",
+                                leg="take_profit",
+                                orderId=tp_id,
+                                oca_group=oca,
+                                side=exit_action,
+                                price=targ_price,
+                                qty=qty_abs,
+                                source=tp_source,
+                            )
+                        except Exception as e:
+                            log(
+                                "oco_rebuild_err",
+                                leg="take_profit",
+                                err=str(e),
+                                oca_group=oca,
+                                side=exit_action,
+                                price=targ_price,
+                                qty=qty_abs,
+                                stop_order_id=stp_id,
+                            )
+                            continue
+
+                        log(
+                            "oco_rebuilt",
+                            side=exit_action,
+                            stp=stop_price,
+                            lmt=targ_price,
+                            qty=qty_abs,
+                            oca_group=oca,
+                            stop_order_id=stp_id,
+                            tp_order_id=tp_id,
+                            entry_basis=entry_basis,
+                            stop_dist=stop_dist,
+                            tp_dist=tp_dist,
+                            stop_source=stop_source,
+                            tp_source=tp_source,
+                        )
             except Exception as e:
                 log("oco_rescue_err", err=str(e))
 
@@ -3712,7 +3719,6 @@ def main():
 
 if __name__ == "__main__":
     main()
-
 
 
 
