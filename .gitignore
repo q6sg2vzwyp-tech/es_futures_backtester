@@ -60,3 +60,11 @@ data/state/*snapshot*.json
 # If you want to KEEP lock/runtime deps in git, leave these commented.
 # requirements_lock.txt
 # requirements_runtime.txt
+
+# === Generated / runtime / local-only artifacts ===
+
+
+
+# State/runtime files (keep code, ignore runtime state)
+
+# Logs (keep trades csv if you want to track it)
