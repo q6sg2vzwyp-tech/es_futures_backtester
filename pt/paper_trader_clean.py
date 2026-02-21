@@ -1,0 +1,3838 @@
+from __future__ import annotations
+from dataclasses import dataclass, field
+# --- Windows console encoding guard ---
+import sys
+if sys.platform.startswith("win"):
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")
+        sys.stderr.reconfigure(encoding="utf-8")
+    except Exception:
+        pass
+# --------------------------------------
+
+
+# ========================= Atomic Singleton Lock =========================
+# Hard requirement: ONLY ONE paper_trader process may exist.
+# Implementation: atomic exclusive-create lock file using os.open(O_CREAT|O_EXCL).
+# - If lock exists: read PID, check if alive. If alive => exit immediately.
+# - If stale/invalid: delete lock and acquire.
+import atexit
+import os
+import time
+import sys
+from pathlib import Path
+
+_BASE_DIR = Path(__file__).resolve().parent
+_RUN_DIR  = _BASE_DIR / "run"
+_LOCK_PATH = _RUN_DIR / "paper_trader.lock"
+
+def _pid_is_alive(pid: int) -> bool:
+    if pid <= 0:
+        return False
+    try:
+        if os.name != "nt":
+            os.kill(pid, 0)
+            return True
+
+        import ctypes
+        from ctypes import wintypes
+
+        PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
+        STILL_ACTIVE = 259
+
+        k32 = ctypes.WinDLL("kernel32", use_last_error=True)
+
+        OpenProcess = k32.OpenProcess
+        OpenProcess.argtypes = [wintypes.DWORD, wintypes.BOOL, wintypes.DWORD]
+        OpenProcess.restype = wintypes.HANDLE
+
+        GetExitCodeProcess = k32.GetExitCodeProcess
+        GetExitCodeProcess.argtypes = [wintypes.HANDLE, ctypes.POINTER(wintypes.DWORD)]
+        GetExitCodeProcess.restype = wintypes.BOOL
+
+        CloseHandle = k32.CloseHandle
+        CloseHandle.argtypes = [wintypes.HANDLE]
+        CloseHandle.restype = wintypes.BOOL
+
+        h = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, False, int(pid))
+        if not h:
+            return False
+        code = wintypes.DWORD(0)
+        ok = GetExitCodeProcess(h, ctypes.byref(code))
+        CloseHandle(h)
+        if not ok:
+            return False
+        return int(code.value) == STILL_ACTIVE
+    except Exception:
+        # If we cannot prove it's alive, treat as NOT alive so stale locks can clear.
+        return False
+
+def _read_lock_pid(path: Path) -> int | None:
+    try:
+        s = path.read_text(encoding="utf-8", errors="ignore").strip()
+        if not s:
+            return None
+        return int(s.splitlines()[0].strip())
+    except Exception:
+        return None
+
+def _release_lock(my_pid: int) -> None:
+    try:
+        other = _read_lock_pid(_LOCK_PATH)
+        if other == my_pid:
+            _LOCK_PATH.unlink(missing_ok=True)
+    except Exception:
+        pass
+
+def _acquire_singleton_lock() -> int:
+    _RUN_DIR.mkdir(parents=True, exist_ok=True)
+    my_pid = os.getpid()
+
+    flags = os.O_CREAT | os.O_EXCL | os.O_WRONLY
+    # NOTE: On Windows, O_EXCL with O_CREAT is atomic for file creation.
+
+    for _ in range(200):
+        try:
+            fd = os.open(str(_LOCK_PATH), flags)
+            try:
+                os.write(fd, f"{my_pid}\n".encode("utf-8"))
+            finally:
+                os.close(fd)
+            atexit.register(_release_lock, my_pid)
+            return my_pid
+        except FileExistsError:
+            other_pid = _read_lock_pid(_LOCK_PATH)
+            if other_pid is not None and _pid_is_alive(other_pid):
+                # Another trader is active: exit hard.
+                try:
+                    sys.stderr.write(
+                        f"paper_trader: another instance is already running (pid={other_pid}); exiting.\n"
+                    )
+                    sys.stderr.flush()
+                except Exception:
+                    pass
+                raise SystemExit(2)
+
+            # stale/invalid lock -> remove and retry
+            try:
+                _LOCK_PATH.unlink(missing_ok=True)
+            except Exception:
+                time.sleep(0.05)
+            time.sleep(0.02)
+        except Exception:
+            time.sleep(0.05)
+
+    try:
+        sys.stderr.write(f"paper_trader: could not acquire singleton lock: {_LOCK_PATH}\n")
+        sys.stderr.flush()
+    except Exception:
+        pass
+    raise SystemExit(3)
+
+# Acquire immediately on import/launch (before anything else can run)
+_SINGLETON_PID = _acquire_singleton_lock()
+# ==========================================================================
+
+# ========================= Margin / Funds Snapshot =========================
+@dataclass
+class MarginSnap:
+    per_contract_init: float = 0.0   # dollars required to open 1 contract (init margin)
+    available_funds:   float = 0.0   # dollar headroom for trading
+    last_err:          str   = ""
+    last_funds_ts:     float = 0.0
+    last_margin_ts:    float = 0.0
+
+margin_snap = MarginSnap()
+
+def refresh_available_funds(ib=None):
+    import time
+    now = time.time()
+    # throttle to once every 20s
+    if now - margin_snap.last_funds_ts < 20:
+        return
+    try:
+        # Prefer AccountSummary -> AvailableFunds
+        acct = None
+        if hasattr(ib, "wrapper") and getattr(ib.wrapper, "accounts", None):
+            acct = ib.wrapper.accounts[0]
+        vals = []
+        try:
+            vals = ib.accountSummary() if ib else []
+        except Exception:
+            vals = []
+        got = False
+        for v in vals or []:
+            if acct and getattr(v, "account", None) != acct:
+                continue
+            if getattr(v, "tag", "") in ("AvailableFunds",):
+                margin_snap.available_funds = float(v.value)
+                got = True
+                break
+        if not got:
+            # fallback: ib.accountValues()
+            try:
+                for v in (ib.accountValues() if ib else []):
+                    if getattr(v, "tag", "") in ("AvailableFunds","ExcessLiquidity"):
+                        margin_snap.available_funds = float(v.value)
+                        got = True
+                        break
+            except Exception:
+                pass
+        margin_snap.last_funds_ts = now
+    except Exception as e:
+        margin_snap.last_err = f"refresh_available_funds: {e}"
+
+def refresh_per_contract_margin(ib=None, con=None):
+    import time
+    now = time.time()
+    # throttle to once every 8 minutes
+    if now - margin_snap.last_margin_ts < 480:
+        return
+    try:
+        from ib_insync import MarketOrder
+        if ib and con:
+            o = MarketOrder("BUY", 1)
+            o.whatIf = True
+            st = ib.whatIfOrder(con, o)
+            if st and getattr(st, "initMarginChange", None):
+                margin_snap.per_contract_init = abs(float(st.initMarginChange))
+            elif st and getattr(st, "maintMarginChange", None):
+                margin_snap.per_contract_init = abs(float(st.maintMarginChange))
+            else:
+                if margin_snap.per_contract_init <= 0.0:
+                    margin_snap.per_contract_init = 15000.0
+        else:
+            if margin_snap.per_contract_init <= 0.0:
+                margin_snap.per_contract_init = 15000.0
+        margin_snap.last_margin_ts = now
+    except Exception as e:
+        margin_snap.last_err = f"refresh_per_contract_margin: {e}"
+
+"""
+ES Paper Trader (IBKR + ib_insync)
+- Paper-only safety by default
+- Thompson Sampling learner (shadow/advisory/control)
+- Risk profiles: balanced/aggressive/conservative
+- OCO protection builder & audit (orphan sweeps, sibling cancel)
+- VWAP session + optional short guards (VWAP buffer + lower-high)
+- Session cutovers (multi) + persistent day guard
+- Version-safe IB PnL subscription + NetLiq via accountValueEvent
+- 24/5 trading window by default (no TOD blackouts unless provided)
+- News kill switch: file flag + optional TOD windows + IBKR news bulletins
+- 1-second JSON heartbeats with explicit idle reasons & RT status/age/queue
+- Robust RT→Polling fallback (5s bars via historical polling)
+
+NEW (this build):
+- Error logging, market-data warmup, TRADES-starved→MIDPOINT resubscribe
+- Parameter meta-learning (Thompson) over per-trade parameter sets
+- Persistent save/load of learners to JSON (auto-save after each flat)
+- Auto self-backup of this script into .\\backups\\ on startup
+- ClientId-aware order management (ignores ChartTrader/manual orders)
+- Parent LIMIT → MARKET promotion after configurable time
+- Slower base cadence for IBKR + adaptive cadence scaling on stress events
+"""
+
+import sys, os, time, json, math, random, argparse, datetime as dt, re, traceback, threading, shutil
+from typing import Optional, List, Dict, Any, Tuple
+
+# 3rd party
+from ib_insync import IB, Future, Contract, LimitOrder, StopOrder, MarketOrder, Trade
+
+# ---- Global: active API clientId (set after connect) ----
+ACTIVE_CLIENT_ID: Optional[int] = None
+
+# ---------- Utilities ----------
+def utc_now_str() -> str:
+    return dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+
+
+def ct_now() -> dt.datetime:
+    return dt.datetime.now()  # assumes machine in CT
+
+
+def parse_hhmm(s: str) -> dt.time:
+    h, m = s.split(":")
+    return dt.time(int(h), int(m))
+
+
+def clamp(x, lo, hi):
+    return max(lo, min(hi, x))
+
+
+def ticks_to_price_delta(ticks: int, tick_size: float) -> float:
+    return float(ticks) * float(tick_size)
+
+
+def round_to_tick(p: float, tick: float) -> float:
+    return round(p / tick) * tick if tick > 0 else p
+
+
+def log(evt: str, **fields):
+    payload = {"ts": utc_now_str(), "evt": evt}
+    payload.update(fields)
+    print(json.dumps(payload, ensure_ascii=False), flush=True)
+
+
+def _shadow_learn_on_veto(
+    chosen_arm: str,
+    reason: str,
+    reward: float = 0.0,
+    learner=None,
+    strat_path: str | None = None,
+    args=None,
+):
+    """
+    Shadow learning hook for veto/caps cases.
+
+    - Always logs the veto.
+    - If --learn-while-capped is enabled and learn_mode is advisory/control,
+      we update the strategy learner with the given reward (usually 0.0).
+    """
+    try:
+        if not chosen_arm:
+            return
+
+        # Always log the veto
+        log("shadow_learn_capped", arm=chosen_arm, reason=reason, reward=reward)
+
+        # No learner or no args => nothing else to do
+        if learner is None or args is None:
+            return
+
+        # Only learn if the flag is on
+        if not getattr(args, "learn_while_capped", False):
+            return
+
+        # Only meaningful in advisory/control; in pure shadow mode we already don't place orders
+        if getattr(args, "learn_mode", "advisory") not in ("advisory", "control"):
+            return
+
+        # Update the bandit with the shadow reward (usually 0)
+        learner.update(chosen_arm, reward)
+
+        # Persist to disk if we have a path
+        if strat_path:
+            save_thompson(strat_path, learner)
+
+    except Exception:
+        # Never let learning break the main loop
+        pass
+
+# ---------- Self-backup on start ----------
+def self_backup():
+    try:
+        src = os.path.abspath(__file__)
+        bdir = os.path.join(os.path.dirname(src), "backups")
+        os.makedirs(bdir, exist_ok=True)
+        ts = dt.datetime.now().strftime("%Y%m%d_%H%M%S")
+        dst = os.path.join(bdir, f"paper_trader_{ts}.py")
+        shutil.copy2(src, dst)
+        log("self_backup_ok", path=dst)
+    except Exception as e:
+        log("self_backup_warn", err=str(e))
+
+
+# ---------- Math / indicators ----------
+def ema(vals: List[float], span: int) -> float:
+    if not vals:
+        return float("nan")
+    k = 2 / (span + 1)
+    s = vals[0]
+    for v in vals[1:]:
+        s = v * k + s * (1 - k)
+    return s
+
+
+def atr(H: List[float], L: List[float], C: List[float], n: int = 14) -> float:
+    if len(C) < n + 1:
+        return float("nan")
+    trs = []
+    for i in range(1, len(C)):
+        hl = H[i] - L[i]
+        hc = abs(H[i] - C[i - 1])
+        lc = abs(L[i] - C[i - 1])
+        trs.append(max(hl, hc, lc))
+    if len(trs) < n:
+        return float("nan")
+    k = 2 / (n + 1)
+    s = trs[-n]
+    for v in trs[-n + 1:]:
+        s = v * k + s * (1 - k)
+    return s
+
+
+# ---------- Session helpers ----------
+def parse_ct_list(spec: str) -> List[dt.time]:
+    spec = (spec or "").strip()
+    if not spec:
+        return [parse_hhmm("16:10")]
+    out = []
+    for chunk in spec.split(","):
+        chunk = chunk.strip()
+        if not chunk:
+            continue
+        try:
+            out.append(parse_hhmm(chunk))
+        except Exception:
+            pass
+    out = sorted(list({t for t in out}))
+    return out or [parse_hhmm("16:10")]
+
+
+def within_session(now: dt.datetime, start_ct: str, end_ct: str) -> bool:
+    t = now.time()
+    a = parse_hhmm(start_ct)
+    b = parse_hhmm(end_ct)
+    if a <= b:
+        return a <= t <= b
+    return (t >= a) or (t <= b)
+
+
+def parse_blackouts(spec: str) -> List[Tuple[dt.time, dt.time]]:
+    out = []
+    spec = (spec or "").strip()
+    if not spec:
+        return out
+    for chunk in spec.split(","):
+        chunk = chunk.strip()
+        if not chunk:
+            continue
+        try:
+            a, b = chunk.split("-")
+            out.append((parse_hhmm(a), parse_hhmm(b)))
+        except Exception:
+            pass
+    return out
+
+
+def in_tod_blackout(now: dt.datetime, blackouts: List[Tuple[dt.time, dt.time]]) -> bool:
+    if not blackouts:
+        return False
+    t = now.time()
+    for a, b in blackouts:
+        if a <= b:
+            if a <= t <= b:
+                return True
+        else:  # crosses midnight
+            if (t >= a) or (t <= b):
+                return True
+    return False
+
+
+def session_key_multi(now: dt.datetime, reset_times: List[dt.time]) -> str:
+    t = now.time()
+    idx_today = -1
+    for i, ct_ in enumerate(reset_times):
+        if t >= ct_:
+            idx_today = i
+        else:
+            break
+    if idx_today >= 0:
+        base_date = now.date()
+        seg = idx_today
+    else:
+        base_date = (now - dt.timedelta(days=1)).date()
+        seg = len(reset_times) - 1
+    return f"{base_date.strftime('%Y-%m-%d')}-S{seg}"
+
+
+def reset_due_multi(now: dt.datetime, reset_times: List[dt.time], last_reset_marks: Dict[str, str]) -> Optional[str]:
+    today = now.date().strftime("%Y-%m-%d")
+    for ct_ in reset_times:
+        label = ct_.strftime("%H:%M")
+        if last_reset_marks.get(label) == today:
+            continue
+        if now.time() >= ct_:
+            last_reset_marks[label] = today
+            return f"{today}#{label}"
+    return None
+
+
+# ---------- Heartbeat (thread) ----------
+_hb_lock = threading.Lock()
+_hb_state: Dict[str, Any] = {
+    "state": "-",
+    "idle_reason": "starting_or_quiet",
+    "net_qty": 0,
+    "bars": 0,
+    "rt_enabled": False,
+    "rt_status": "disabled",
+    "rt_age_sec": None,
+    "rt_queue_len": 0,
+    "in_session_window": False,
+    "caps": [],
+    "news_kill": False,
+    "dayR": 0.0,
+    "trades_today": 0,
+    "cool_until": None,
+    "orders_disabled_paper_safety": False,
+    "parent_entry_id": None,
+    "parent_to_mkt_limit_sec": None,
+    "parent_to_mkt_age_sec": None,
+    "parent_to_mkt_remaining_sec": None,
+}
+
+
+def hb_update(**kv):
+    with _hb_lock:
+        _hb_state.update(kv)
+
+
+def _hb_loop():
+    while True:
+        with _hb_lock:
+            payload = dict(_hb_state)
+        log("hb", **payload)
+        time.sleep(1.0)
+
+
+def start_heartbeat_thread():
+    t = threading.Thread(target=_hb_loop, daemon=True)
+    t.start()
+
+
+# ---------- AI hooks (journal / advisor / guardrails) ----------
+class AIHooks:
+    """
+    Central place for AI-related behavior:
+    - Journaling (post-trade analysis payloads)
+    - Advisory (shadow decisions/do-not-trade suggestions)
+    - Guardrails (extra veto reasons)
+    For now everything is file-based and side-effect-only; no network calls.
+    """
+
+    def __init__(self, base_dir: str = r".\logs\ai"):
+        self.base_dir = os.path.abspath(base_dir)
+        os.makedirs(self.base_dir, exist_ok=True)
+        self.journal_path = os.path.join(self.base_dir, "trade_journal.jsonl")
+        self.advice_path = os.path.join(self.base_dir, "advice_decisions.jsonl")
+        self.guard_path = os.path.join(self.base_dir, "guardrails.jsonl")
+
+    # --- utilities ---
+    def _append_jsonl(self, path: str, obj: Dict[str, Any]):
+        try:
+            os.makedirs(os.path.dirname(path), exist_ok=True)
+            with open(path, "a", encoding="utf-8") as f:
+                f.write(json.dumps(obj, ensure_ascii=False) + "\n")
+        except Exception as e:
+            log("ai_log_err", path=path, err=str(e))
+
+    # ---------- 1) Post-trade journal ----------
+    def log_flat_cycle(
+        self,
+        context: Dict[str, Any],
+        pnl_dollars: float,
+        reward_R: float,
+        param_arm: Optional[str],
+        strat_arm: Optional[str],
+    ):
+        payload = {
+            "ts": utc_now_str(),
+            "evt": "ai_journal_flat_cycle",
+            "pnl": float(round(pnl_dollars, 2)),
+            "R": float(round(reward_R, 4)),
+            "param_arm": param_arm,
+            "strat_arm": strat_arm,
+            "ctx": context,
+        }
+        self._append_jsonl(self.journal_path, payload)
+
+    # ---------- 2) Advisory (shadow) ----------
+    def advisory_decision(
+        self,
+        snapshot: Dict[str, Any],
+        raw_candidate_arms: List[str],
+        bandit_choice: Optional[str],
+    ) -> Dict[str, Any]:
+        """
+        For now this is a dumb 'AI' – just echoes the bandit choice and logs it.
+        Later you can replace this with a real model call.
+        Returns an advice dict that can be used by guardrails or metrics.
+        """
+        advice = {
+            "ts": utc_now_str(),
+            "evt": "ai_advice",
+            "cand_arms": raw_candidate_arms,
+            "bandit_choice": bandit_choice,
+            "recommended": bandit_choice,  # placeholder for real AI override
+            "reason": "placeholder_advisor",
+            "snapshot": snapshot,
+        }
+        self._append_jsonl(self.advice_path, advice)
+        return advice
+
+    # ---------- 3) Guardrails / veto ----------
+    def guardrails_check(
+        self,
+        snapshot: Dict[str, Any],
+        advice: Optional[Dict[str, Any]] = None,
+    ) -> Tuple[bool, str]:
+        """
+        Returns (allowed, reason_if_blocked).
+        Simple rule-based veto layer on top of bandit decisions.
+        """
+
+        risk = snapshot.get("risk", {}) or {}
+        try:
+            day_R = float(risk.get("day_R", 0.0))
+        except Exception:
+            day_R = 0.0
+        trades_today = int(risk.get("trades_today", 0))
+        consec_losses = int(risk.get("consec_losses", 0))
+
+        # Some context variables if present
+        atrp = snapshot.get("atrp", None)
+        is_trend = bool(snapshot.get("is_trend", False))
+        is_breakout = bool(snapshot.get("is_breakout", False))
+        state = snapshot.get("state", "")
+
+        def _block(reason: str) -> Tuple[bool, str]:
+            payload = {
+                "ts": utc_now_str(),
+                "evt": "ai_guard_block",
+                "reason": reason,
+                "snapshot": snapshot,
+            }
+            if advice:
+                payload["advice"] = advice
+            self._append_jsonl(self.guard_path, payload)
+            return False, reason
+
+        # 1) Soft guardrail: if down more than 4R, pause trading for 15 minutes
+        if day_R <= -25.0:
+            now = dt.datetime.utcnow()
+            pause_until = getattr(self, "_ai_pause_until", None)
+
+            # If there is no pause yet, or the previous pause has expired, start a new one
+            if (pause_until is None) or (now >= pause_until):
+                pause_until = now + dt.timedelta(seconds=900)  # 900s = 15 minutes
+                self._ai_pause_until = pause_until
+
+            # While we're inside the pause window, block entries
+            if now < pause_until:
+                return _block(f"ai_guard:dayR_pause_until:{pause_until.isoformat()}")
+
+        # If a pause window is active from earlier and hasn't expired yet,
+        # keep blocking even if day_R has recovered a bit
+        pause_until = getattr(self, "_ai_pause_until", None)
+        if pause_until is not None and dt.datetime.utcnow() < pause_until:
+            return _block(f"ai_guard:dayR_pause_until:{pause_until.isoformat()}")
+
+        # 2) Soft stop: after 5+ consec losses and still red on the day, stand down
+        if consec_losses >= 5 and day_R < 0.0:
+            return _block("ai_guard:consec_losses_ge5_and_red_day")
+
+        # 3) Very low volatility: block breakout entries if ATRP too small
+        if is_breakout and (atrp is not None):
+            try:
+                atrp_val = float(atrp)
+            except Exception:
+                atrp_val = None
+            if atrp_val is not None and atrp_val < 0.00003:
+                return _block("ai_guard:breakout_in_too_low_atrp")
+
+        # 4) If the top-level state already says caps/wait_rt/sleep, do nothing here
+        #    (the outer rails will block trading anyway)
+        if state in ("caps", "wait_rt", "sleep"):
+            return True, ""
+
+        # Otherwise, allow
+        return True, ""
+
+
+# ---------- Thompson learner ----------
+class ThompsonGaussian:
+    def __init__(self, arms: List[str], decay_gamma: float, prior_mean=0.0, prior_var=0.25):
+        self.arms = arms[:]
+        self.gamma = float(decay_gamma)
+        self.m = {a: float(prior_mean) for a in arms}
+        self.s2 = {a: float(prior_var) for a in arms}
+        self.w = {a: 1e-6 for a in arms}
+        self.last_arm: Optional[str] = None
+
+    def choose(self, cand_arms: List[str], sample: bool) -> Tuple[str, Dict[str, float]]:
+        scores: Dict[str, float] = {}
+        for a in cand_arms:
+            std = math.sqrt(max(1e-6, self.s2[a] / (self.w[a] + 1.0)))
+            scores[a] = random.gauss(self.m[a], std)
+        m = max(scores.values()) if scores else 0.0
+        exps = {a: math.exp(scores[a] - m) for a in cand_arms}
+        s = sum(exps.values()) or 1.0
+        probs = {a: exps[a] / s for a in cand_arms}
+        choice = max(probs.items(), key=lambda kv: kv[1])[0]
+        if sample:
+            r, cum = random.random(), 0.0
+            for a in cand_arms:
+                cum += probs[a]
+                if r <= cum:
+                    choice = a
+                    break
+        return choice, probs
+
+    def update(self, arm: str, reward_R: float):
+        g = self.gamma
+        w_old = self.w[arm]
+        self.w[arm] = g * w_old + 1.0
+        m_old = self.m[arm]
+        m_new = m_old + (reward_R - m_old) / self.w[arm]
+        s2_old = self.s2[arm]
+        s2_new = g * s2_old + (reward_R - m_old) * (reward_R - m_new)
+        self.m[arm] = m_new
+        self.s2[arm] = max(1e-6, s2_new)
+        self.last_arm = arm
+
+    # ---- persistence ----
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "arms": self.arms,
+            "gamma": self.gamma,
+            "m": self.m,
+            "s2": self.s2,
+            "w": self.w,
+            "last_arm": self.last_arm,
+        }
+
+    @staticmethod
+    def from_dict(d: Dict[str, Any]) -> "ThompsonGaussian":
+        obj = ThompsonGaussian(list(d["arms"]), float(d["gamma"]))
+        obj.m = {k: float(v) for k, v in d["m"].items()}
+        obj.s2 = {k: float(v) for k, v in d["s2"].items()}
+        obj.w = {k: float(v) for k, v in d["w"].items()}
+        obj.last_arm = d.get("last_arm")
+        return obj
+
+
+# ---------- VWAP ----------
+class SessionVWAP:
+    def __init__(self):
+        self.pv = 0.0
+        self.v = 0.0
+        self.vwap = float("nan")
+
+    def reset(self):
+        self.pv = 0.0
+        self.v = 0.0
+        self.vwap = float("nan")
+
+    def update_bar(self, close_px: Optional[float], volume: Optional[float]):
+        try:
+            if close_px is None or volume is None:
+                return
+            vol = max(0.0, float(volume))
+            if vol <= 0:
+                return
+            px = float(close_px)
+            self.pv += px * vol
+            self.v += vol
+            if self.v > 0:
+                self.vwap = self.pv / self.v
+        except Exception:
+            pass
+
+
+# ---------- IB helpers ----------
+ACTIVE_STATUSES = {
+    "Submitted",
+    "PreSubmitted",
+    "ApiPending",
+    "PendingSubmit",
+    "PendingCancel",
+}
+CANCELLABLE_STATUSES = {"Submitted", "PreSubmitted", "ApiPending", "PendingSubmit"}
+
+
+def is_our_order_or_trade(obj) -> bool:
+    """
+    True if this order/trade belongs to this script's clientId.
+    When ACTIVE_CLIENT_ID is None (before connect), we treat everything as ours.
+    """
+    try:
+        if ACTIVE_CLIENT_ID is None:
+            return True
+        o = getattr(obj, "order", obj)
+        cid = getattr(o, "clientId", None)
+        return cid == ACTIVE_CLIENT_ID
+    except Exception:
+        return False
+
+
+def list_open_orders_for_contract(ib: IB, con: Contract) -> List[Trade]:
+    """
+    Return all *open trades* for this contract that belong to our clientId.
+    """
+    out: List[Trade] = []
+    try:
+        for t in ib.openTrades():
+            if not is_our_order_or_trade(t):
+                continue
+            if getattr(t.contract, "conId", None) != con.conId:
+                continue
+            st = (t.orderStatus.status or "").strip()
+            if st in ACTIVE_STATUSES:
+                out.append(t)
+    except Exception as e:
+        log("list_open_orders_err", err=str(e))
+    return out
+
+
+def _classify_order_leg(order) -> str:
+    try:
+        ot = (getattr(order, "orderType", "") or "").upper()
+        parent_id = getattr(order, "parentId", None)
+        if parent_id in (None, 0):
+            return "parent"
+        if ot.startswith("STP"):
+            return "stop"
+        if ot == "LMT":
+            return "take_profit"
+    except Exception:
+        pass
+    return "child"
+
+
+def _order_log_fields(order) -> Dict[str, Any]:
+    return {
+        "order_type": (getattr(order, "orderType", "") or "").upper() or None,
+        "side": (getattr(order, "action", "") or "").upper() or None,
+        "qty": float(getattr(order, "totalQuantity", 0) or 0),
+        "parent_id": getattr(order, "parentId", None),
+        "oca_group": (getattr(order, "ocaGroup", "") or "").strip() or None,
+        "transmit": getattr(order, "transmit", None),
+        "order_ref": getattr(order, "orderRef", None),
+        "perm_id": getattr(order, "permId", None),
+        "client_id": getattr(order, "clientId", None),
+        "leg": _classify_order_leg(order),
+    }
+
+
+def safe_cancel(ib: IB, trade: Trade, note: str = "") -> bool:
+    """
+    Cancel a single trade's order, logging any errors.
+    Only cancels if the order is in an active/cancellable state.
+
+    Returns True if the order was already inactive or if a cancel request was
+    submitted to IB.  Returns False if the order is still active and no cancel
+    request could be issued.
+    """
+    meta = {}
+    try:
+        order = trade.order
+        meta = {
+            "orderId": getattr(order, "orderId", None),
+            **_order_log_fields(order),
+            "reason": note,
+        }
+        st = (trade.orderStatus.status or "").strip()
+        if st in CANCELLABLE_STATUSES:
+            ib.cancelOrder(order)
+            log("order_cancel", status=st, **meta)
+            return True
+        # Treat already-done orders as a success so callers can clear tracking.
+        if st not in ACTIVE_STATUSES:
+            log("order_cancel_skip", status=st, already_done=True, **meta)
+            return True
+        log("order_cancel_skip", status=st, already_done=False, **meta)
+    except Exception as e:
+        meta.setdefault("reason", note)
+        log("order_cancel_err", err=str(e), **meta)
+    return False
+
+
+def _parse_ib_date(s: str) -> Optional[dt.date]:
+    try:
+        return dt.datetime.strptime(s, "%Y%m%d").date()
+    except Exception:
+        try:
+            return dt.datetime.strptime(s, "%Y%m%d%H:%M:%S").date()
+        except Exception:
+            return None
+
+
+def qualify_local_symbol(ib: IB, local_symbol: str, exchange="CME"):
+    cds = ib.reqContractDetails(Future(localSymbol=local_symbol, exchange=exchange))
+    if not cds:
+        raise RuntimeError(f"Local symbol {local_symbol} not found on {exchange}")
+    con = cds[0].contract
+    ib.qualifyContracts(con)
+    return con
+
+
+def _pick_by_expiry(cds) -> Contract:
+    """
+    Fallback: choose earliest expiry from reqContractDetails results.
+    """
+    best = None
+    best_date = None
+    for cd in cds:
+        d = _parse_ib_date(cd.contract.lastTradeDateOrContractMonth)
+        if not d:
+            continue
+        if best is None or d < best_date:
+            best = cd.contract
+            best_date = d
+    if best is None:
+        raise RuntimeError("Could not resolve front contract from contractDetails")
+    return best
+
+
+def _daily_volume_for_contract(ib: IB, con: Contract) -> float:
+    """
+    Use recent daily TRADES volume as a liquidity proxy.
+    2 days of 1D bars, take the last bar's volume.
+    """
+    try:
+        hist = ib.reqHistoricalData(
+            con,
+            endDateTime="",
+            durationStr="2 D",
+            barSizeSetting="1 day",
+            whatToShow="TRADES",
+            useRTH=False,
+            keepUpToDate=False,
+        )
+        if not hist:
+            return 0.0
+        last_bar = hist[-1]
+        vol = getattr(last_bar, "volume", 0) or 0
+        return float(vol)
+    except Exception as e:
+        log("roll_vol_err", conId=getattr(con, "conId", None), err=str(e))
+        return 0.0
+
+
+def _oi_for_contract(ib: IB, con: Contract) -> float:
+    """
+    Try to get futures open interest via generic tick 588.
+
+    IMPORTANT:
+    - Use streaming (snapshot=False) because IB does not allow
+      generic ticks on snapshot requests → avoids error 321 spam.
+    - If OI is not available, we just return 0.0 and the roll logic
+      will fall back to volume-only.
+    """
+    try:
+        # Request streaming market data with futures open interest tick (588).
+        tkr = ib.reqMktData(
+            con,
+            genericTickList="588",
+            snapshot=False,
+            regulatorySnapshot=False,
+        )
+        ib.sleep(1.0)
+
+        oi = getattr(tkr, "futuresOpenInterest", None)
+
+        # Stop the stream; we don't need it after reading once
+        try:
+            ib.cancelMktData(con)
+        except Exception:
+            pass
+
+        if oi is None:
+            log(
+                "roll_oi_missing",
+                conId=getattr(con, "conId", None),
+                localSymbol=getattr(con, "localSymbol", None),
+            )
+            return 0.0
+
+        val = float(oi)
+        if math.isnan(val) or val < 0:
+            log(
+                "roll_oi_nan",
+                conId=getattr(con, "conId", None),
+                localSymbol=getattr(con, "localSymbol", None),
+            )
+            return 0.0
+
+        return val
+
+    except Exception as e:
+        log(
+            "roll_oi_err",
+            conId=getattr(con, "conId", None),
+            localSymbol=getattr(con, "localSymbol", None),
+            err=str(e),
+        )
+        return 0.0
+
+
+def _liquidity_metrics_for_contract(ib: IB, con: Contract) -> Tuple[float, float]:
+    """
+    Return (daily_volume, open_interest) for this futures contract.
+    """
+    vol = _daily_volume_for_contract(ib, con)
+    oi = _oi_for_contract(ib, con)
+
+    # Normalize weird values
+    try:
+        oi = float(oi)
+        if math.isnan(oi) or oi < 0:
+            oi = 0.0
+    except Exception:
+        oi = 0.0
+
+    log(
+        "roll_liquidity_metrics",
+        localSymbol=getattr(con, "localSymbol", None),
+        conId=getattr(con, "conId", None),
+        dailyVol=vol,
+        openInterest=oi,
+    )
+    return vol, oi
+
+
+def _pick_by_liquidity(ib: IB, cds, max_candidates: int = 3) -> Contract:
+    """
+    Among the nearest expiries, choose the one with best liquidity using
+    a combined score of normalized daily volume and open interest.
+
+    score = 0.7 * norm_volume + 0.3 * norm_oi
+
+    Fallback to earliest expiry if we cannot compute any metrics.
+    """
+    # Extract (contract, expiry date)
+    contracts: List[Tuple[Contract, dt.date]] = []
+    for cd in cds:
+        d = _parse_ib_date(cd.contract.lastTradeDateOrContractMonth)
+        if not d:
+            continue
+        contracts.append((cd.contract, d))
+
+    if not contracts:
+        raise RuntimeError("No contracts with parsable expiry; cannot roll by liquidity")
+
+    # Sort by expiry ascending and take the nearest N
+    contracts.sort(key=lambda x: x[1])
+    candidates = contracts[: max(1, max_candidates)]
+
+    # Measure liquidity
+    scored: List[Tuple[Contract, float, float, dt.date]] = []
+    max_vol = 0.0
+    max_oi = 0.0
+
+    for con, d in candidates:
+        vol, oi = _liquidity_metrics_for_contract(ib, con)
+        max_vol = max(max_vol, vol)
+        max_oi = max(max_oi, oi)
+        scored.append((con, vol, oi, d))
+
+    if not scored:
+        # Should not happen if cds was non-empty, but just in case.
+        return _pick_by_expiry(cds)
+
+    # Normalize and score
+    vol_weight = 0.7
+    oi_weight = 0.3
+
+    best_con = None
+    best_score = -1.0
+    best_exp = None
+    best_vol = 0.0
+    best_oi = 0.0
+
+    for con, vol, oi, d in scored:
+        norm_vol = (vol / max_vol) if max_vol > 0 else 0.0
+        norm_oi = (oi / max_oi) if max_oi > 0 else 0.0
+        score = vol_weight * norm_vol + oi_weight * norm_oi
+
+        log(
+            "roll_candidate",
+            localSymbol=getattr(con, "localSymbol", None),
+            conId=getattr(con, "conId", None),
+            expiry=str(d),
+            dailyVol=vol,
+            openInterest=oi,
+            normVol=norm_vol,
+            normOi=norm_oi,
+            score=score,
+        )
+
+        # Very basic sanity veto: if both vol and oi are zero, skip this contract.
+        if vol <= 0 and oi <= 0:
+            continue
+
+        if (best_con is None) or (score > best_score) or (
+            math.isclose(score, best_score) and d < best_exp
+        ):
+            best_con = con
+            best_score = score
+            best_exp = d
+            best_vol = vol
+            best_oi = oi
+
+    if best_con is None:
+        # All candidates were dead → fall back to earliest expiry.
+        best = _pick_by_expiry(cds)
+        log(
+            "roll_choice",
+            mode="expiry_fallback",
+            localSymbol=getattr(best, "localSymbol", None),
+            conId=getattr(best, "conId", None),
+            expiry=str(_parse_ib_date(best.lastTradeDateOrContractMonth)),
+        )
+        return best
+
+    log(
+        "roll_choice",
+        mode="liquidity",
+        localSymbol=getattr(best_con, "localSymbol", None),
+        conId=getattr(best_con, "conId", None),
+        expiry=str(best_exp),
+        dailyVol=best_vol,
+        openInterest=best_oi,
+        score=best_score,
+    )
+    return best_con
+
+
+def mk_contract(ib: IB, args) -> Contract:
+    """
+    Contract resolution:
+
+    - If --local-symbol is provided: use that exact contract (no rolling).
+    - Else, use --symbol and exchange=CME, and either:
+        * default earliest-expiry selection, or
+        * if --roll-by-volume: pick by liquidity (volume + OI) among nearest expiries.
+    """
+    # 1) Explicit local symbol wins: no auto-roll.
+    if getattr(args, "local_symbol", None):
+        con = qualify_local_symbol(ib, args.local_symbol, "CME")
+        print(
+            f"[CONTRACT] Using {con.localSymbol} conId={con.conId} "
+            f"exp={con.lastTradeDateOrContractMonth} (fixed local symbol)"
+        )
+        return con
+
+    # 2) Symbol-based lookup (e.g. ES) -> get all listed futures on CME.
+    base_symbol = getattr(args, "symbol", None) or "ES"
+    cds = ib.reqContractDetails(Future(symbol=base_symbol, exchange="CME", currency="USD"))
+    if not cds:
+        raise RuntimeError(f"Symbol {base_symbol} not found on CME; supply --local-symbol")
+
+    # 3) Decide by expiry or liquidity, depending on flag.
+    use_liquidity_roll = bool(getattr(args, "roll_by_volume", False))
+
+    if use_liquidity_roll:
+        con = _pick_by_liquidity(ib, cds, max_candidates=3)
+        mode = "liquidity"
+    else:
+        con = _pick_by_expiry(cds)
+        mode = "expiry"
+
+    ib.qualifyContracts(con)
+    print(
+        f"[CONTRACT] Using {con.localSymbol} conId={con.conId} "
+        f"exp={con.lastTradeDateOrContractMonth} (mode={mode})"
+    )
+    return con
+
+
+def contract_multiplier(ib: IB, con: Contract) -> float:
+    try:
+        cds = ib.reqContractDetails(con)
+        mul = cds[0].contract.multiplier
+        m = float(mul) if mul is not None else 1.0
+        return m if m > 0 else 1.0
+    except Exception:
+        return 1.0
+
+
+def ib_position_truth(ib: IB, con: Contract) -> Tuple[int, Optional[float]]:
+    try:
+        qty = 0
+        avg = None
+        for p in ib.positions():
+            if getattr(p.contract, "conId", None) == con.conId:
+                qty += int(round(p.position))
+                avg = float(p.avgCost)
+        return qty, avg
+    except Exception:
+        return 0, None
+
+
+def has_active_parent_entry(ib: IB, con: Contract) -> bool:
+    """
+    Return True only if there is a *working* parent LIMIT entry order
+    for this contract, belonging to *this* clientId.
+
+    Conditions:
+      - Order is in ib.openOrders() (i.e. actually working in TWS)
+      - Status in a narrow set of active statuses
+      - parentId is None/0 (i.e. not a child)
+      - LMT order
+      - BUY or SELL
+    """
+    try:
+        # Only our own open orders
+        open_ids = {o.orderId for o in ib.openOrders() if is_our_order_or_trade(o)}
+        if not open_ids:
+            return False
+
+        WORKING_PARENT_STATUSES = {
+            "Submitted",
+            "PreSubmitted",
+            "ApiPending",
+            "PendingSubmit",
+        }
+
+        for t in ib.openTrades():
+            if not is_our_order_or_trade(t):
+                continue
+
+            oid = t.order.orderId
+
+            # Must be one of our open orders
+            if oid not in open_ids:
+                continue
+
+            # Must be this contract
+            if getattr(t.contract, "conId", None) != con.conId:
+                continue
+
+            st = (t.orderStatus.status or "").strip()
+            if st not in WORKING_PARENT_STATUSES:
+                continue
+
+            # Parent only (children have parentId set)
+            if t.order.parentId not in (None, 0):
+                continue
+
+            # Must be a limit entry
+            if (t.order.orderType or "").upper() != "LMT":
+                continue
+
+            act = (t.order.action or "").upper()
+            if act not in ("BUY", "SELL"):
+                continue
+
+            # If we got here, we truly have a live parent entry from this script
+            return True
+
+    except Exception as e:
+        log("has_active_parent_err", err=str(e))
+
+    return False
+
+
+def cancel_siblings_for_trade(ib: IB, trade: Trade, con: Contract):
+    """
+    IMPORTANT: Only operates on OCA groups.
+
+    - If the filled order has an OCA group, cancel the other orders in that same group.
+    - If there is no OCA group (e.g., parent entry), DO NOTHING.
+      This avoids accidentally sweeping protective stops/TPs when the entry fills.
+    """
+    try:
+        if not is_our_order_or_trade(trade):
+            return
+
+        ocag = (trade.order.ocaGroup or "").strip()
+        if not ocag:
+            # Parent entry or non-OCO order: do NOT touch siblings.
+            return
+
+        for t in ib.openTrades():
+            if not is_our_order_or_trade(t):
+                continue
+            if getattr(t.contract, "conId", None) != con.conId:
+                continue
+            if (t.order.ocaGroup or "").strip() == ocag:
+                if t.order.orderId != trade.order.orderId:
+                    meta = _order_log_fields(t.order)
+                    log(
+                        "sibling_cancel_request",
+                        orderId=getattr(t.order, "orderId", None),
+                        reason=f"[sibling OCA={ocag}]",
+                        **meta,
+                    )
+                    safe_cancel(ib, t, note=f"[sibling OCA={ocag}]")
+    except Exception as e:
+        log("sibling_cancel_err", err=str(e))
+
+
+def reconcile_orphans(ib: IB, account: str, con: Contract):
+    try:
+        qty, _ = ib_position_truth(ib, con)
+        if qty != 0:
+            return
+        for t in ib.openTrades():
+            if not is_our_order_or_trade(t):
+                continue
+            if getattr(t.contract, "conId", None) != con.conId:
+                continue
+            st = (t.orderStatus.status or "").strip()
+            if st in {"Submitted", "PreSubmitted"}:
+                ot = (t.order.orderType or "").upper()
+                if ot in {"LMT", "STP", "STP LMT"} and (
+                    t.order.parentId not in (None, 0) or t.order.ocaGroup
+                ):
+                    safe_cancel(ib, t, note="[ORPHAN SWEEP]")
+    except Exception as e:
+        log("orphan_sweep_err", err=str(e))
+
+
+# ---------- Risk & sizing ----------
+class DayRisk:
+    def __init__(
+        self,
+        loss_cap_R: float,
+        max_trades: int,
+        max_consec_losses: int,
+        post_flat_cooldown_sec: int,
+    ):
+        self.loss_cap_R = float(loss_cap_R)
+        self.max_trades = int(max_trades)
+        self.max_consec_losses = int(max_consec_losses)
+        self.post_flat_cooldown_sec = int(max(0, post_flat_cooldown_sec))
+        self.reset()
+
+    def reset(self):
+        self.day_R = 0.0
+        self.trades = 0
+        self.cool_until: Optional[dt.datetime] = None
+        self.halted = False
+        self.last_entry_time: Optional[float] = None
+        self.consec_losses = 0
+        self.last_flat_fill_ts: Optional[float] = None
+
+    def post_flat_cooldown_remaining(self) -> Optional[float]:
+        if not self.last_flat_fill_ts or self.post_flat_cooldown_sec <= 0:
+            return None
+        elapsed = time.time() - self.last_flat_fill_ts
+        remaining = self.post_flat_cooldown_sec - elapsed
+        return remaining if remaining > 0 else None
+
+    def in_post_flat_cooldown(self) -> bool:
+        return self.post_flat_cooldown_remaining() is not None
+
+    def gate_reason(self, now: dt.datetime, min_gap_s: int) -> Optional[str]:
+        if self.halted:
+            return "halted"
+        if self.cool_until and now < self.cool_until:
+            return "cooldown"
+        if self.trades >= self.max_trades:
+            return "max_trades"
+        if self.day_R <= -abs(self.loss_cap_R):
+            return "dayR_cap"
+        if self.consec_losses >= self.max_consec_losses:
+            return "consec_losses"
+        if self.in_post_flat_cooldown():
+            return "post_flat_cooldown"
+        if self.last_entry_time and (time.time() - self.last_entry_time) < max(0, min_gap_s):
+            return "min_gap_between_entries"
+        return None
+
+    def can_trade(self, now: dt.datetime, min_gap_s: int) -> bool:
+        return self.gate_reason(now, min_gap_s) is None
+
+
+def iso_week_id(d: dt.date) -> str:
+    y, w, _ = d.isocalendar()
+    return f"{y}-W{int(w):02d}"
+
+
+def decay_factor_from_half_life(hl_trades: float) -> float:
+    hl = max(1.0, float(hl_trades))
+    return math.exp(math.log(0.5) / hl)
+
+
+# ---------- News helpers ----------
+def parse_news_blackouts(spec: str) -> List[Tuple[dt.time, dt.time]]:
+    return parse_blackouts(spec)
+
+
+def read_news_file_flag(path: str) -> Tuple[bool, Optional[dt.datetime]]:
+    try:
+        if not path:
+            return False, None
+        path = path.strip().strip('"').strip("'")
+        if not os.path.exists(path):
+            return False, None
+        with open(path, "r", encoding="utf-8") as f:
+            obj = json.load(f)
+        on = bool(obj.get("on", False))
+        until_s = obj.get("until")
+        until = None
+        if until_s:
+            try:
+                until = dt.datetime.strptime(until_s, "%Y-%m-%d %H:%M")
+            except Exception:
+                pass
+        return on, until
+    except Exception as e:
+        log("news_file_read_err", err=str(e))
+        return False, None
+
+
+# ---------- Param arms parsing ----------
+def parse_param_arms(spec: str) -> Dict[str, Dict[str, float]]:
+    out: Dict[str, Dict[str, float]] = {}
+    spec = (spec or "").strip()
+    if not spec:
+        return out
+    for chunk in spec.split(";"):
+        chunk = chunk.strip()
+        if not chunk:
+            continue
+        try:
+            name, rest = chunk.split(":", 1)
+            kv: Dict[str, float] = {}
+            for part in rest.split(","):
+                part = part.strip()
+                if not part:
+                    continue
+                k, v = part.split("=", 1)
+                kv[k.strip()] = float(v.strip())
+            out[name.strip()] = kv
+        except Exception:
+            pass
+    return out
+
+
+# ---------- Persistence for learners ----------
+def mkdirs(p):
+    if p:
+        os.makedirs(p, exist_ok=True)
+
+
+def learner_paths(base_dir: str, stem: str) -> str:
+    mkdirs(base_dir)
+    return os.path.join(base_dir, f"{stem}.json")
+
+
+def load_thompson(path: str) -> Optional[ThompsonGaussian]:
+    try:
+        if os.path.exists(path):
+            with open(path, "r", encoding="utf-8") as f:
+                d = json.load(f)
+            return ThompsonGaussian.from_dict(d)
+    except Exception as e:
+        log("learner_load_err", path=path, err=str(e))
+    return None
+
+
+def save_thompson(path: str, learner: ThompsonGaussian):
+    try:
+        tmp = path + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(learner.to_dict(), f)
+        os.replace(tmp, path)
+        log("learner_saved", path=path)
+    except Exception as e:
+        log("learner_save_err", path=path, err=str(e))
+
+
+# ---------- CLI ----------
+def build_argparser():
+    ap = argparse.ArgumentParser(description="ES Paper Trader (session-aware + Thompson learner + rails)")
+    ap.add_argument("--host", default="127.0.0.1")
+    ap.add_argument("--port", type=int, default=7497)
+    ap.add_argument("--clientId", type=int, default=111)
+    ap.add_argument("--symbol", default="ES")
+    ap.add_argument("--local-symbol", dest="local_symbol", default="")
+    ap.add_argument("--place-orders", action="store_true")
+    ap.add_argument("--tif", default="GTC")
+    ap.add_argument("--outsideRth", action="store_true")
+
+    # Auto roll / contract selection
+    ap.add_argument(
+        "--roll-by-volume",
+        action="store_true",
+        help=(
+            "When using --symbol (and not --local-symbol), pick the front contract by "
+            "liquidity (recent daily volume + futures open interest) among nearest expiries "
+            "instead of purely earliest expiry."
+        ),
+    )
+
+    # Sizing & Risk
+    ap.add_argument("--acct-base", type=float, default=30000.0)
+    ap.add_argument("--risk-pct", type=float, default=0.015)
+    ap.add_argument("--scale-step", type=float, default=10000.0)
+    ap.add_argument("--start-contracts", type=int, default=2)
+    ap.add_argument("--max-contracts", type=int, default=6)
+    ap.add_argument("--static-size", action="store_true")
+    ap.add_argument("--qty", type=float, default=2.0)
+    ap.add_argument("--risk-ticks", type=int, default=12)
+    ap.add_argument("--tick-size", type=float, default=0.25)
+    ap.add_argument("--tp-R", type=float, default=1.0)
+
+    # Margin awareness
+    ap.add_argument("--margin-per-contract", type=float, default=22000.0)
+    ap.add_argument("--margin-reserve-pct", type=float, default=0.10)
+
+    # Strategy gates
+    ap.add_argument("--enable-arms", default="trend,breakout")
+    ap.add_argument("--gate-adx", type=float, default=19.0)
+    ap.add_argument("--gate-atrp", type=float, default=0.000055)
+    ap.add_argument("--gate-bbbw", type=float, default=0.0)  # 0 disables
+
+    # Anti-burst & day/session rails (slower base cadence)
+    ap.add_argument("--min-seconds-between-entries", type=int, default=35)
+    ap.add_argument(
+        "--post-flat-cooldown-sec",
+        type=int,
+        default=15,
+        help="Extra cooldown seconds after any flatten/fill before re-entry.",
+    )
+    ap.add_argument("--max-trades-per-day", type=int, default=10)
+    ap.add_argument("--day-loss-cap-R", type=float, default=3.0)
+    ap.add_argument("--weekly-cap-mult", type=float, default=3.0,
+                    help="Weekly R cap: -weekly_cap_mult * abs(day_loss_cap_R)")
+    ap.add_argument("--max-consec-losses", type=int, default=3)
+    ap.add_argument("--learn-while-capped", action="store_true",
+                help="Update meta-learner with zero-reward on veto/caps")
+    ap.add_argument("--strategy-cooldown-sec", type=int, default=180)
+
+    # Risk governance extras
+    ap.add_argument("--pos-age-cap-sec", type=int, default=900)
+    ap.add_argument("--pos-age-minR", type=float, default=0.5)
+    ap.add_argument("--hwm-stepdown", action="store_true")
+    ap.add_argument("--hwm-stepdown-dollars", type=float, default=5000.0)
+
+    # Trading window (24/5) + optional TOD blackouts
+    ap.add_argument("--trade-start-ct", default="00:00")
+    ap.add_argument("--trade-end-ct", default="23:59")
+    ap.add_argument("--tod-blackouts", default="")
+    ap.add_argument(
+        "--holidays-file",
+        default=r".\data\calendar\exchange_holidays.txt",
+        help="Optional YYYY-MM-DD list of full exchange holidays (one per line).",
+    )
+
+    # Order behavior
+    ap.add_argument("--entry-slippage-ticks", type=int, default=2)
+    ap.add_argument("--require-new-bar-after-start", action="store_true")
+    ap.add_argument("--startup-delay-sec", type=int, default=0)
+    ap.add_argument("--debounce-one-bar", action="store_true")
+
+    # NEW: auto-promote parent LIMIT entry to MARKET after N seconds
+    ap.add_argument(
+        "--parent-to-mkt-sec",
+        type=int,
+        default=5,  # non-zero sane default to avoid stale parents
+        help=(
+            "If >0, convert a working parent LIMIT entry order to MARKET after "
+            "this many seconds if still unfilled."
+        ),
+    )
+
+    # Session resets (AM/PM segmentation only)
+    ap.add_argument("--session-reset-cts", default="08:30,16:00,17:00")
+    ap.add_argument("--daily-reset-ct", default="16:10")  # legacy
+
+    # Connectivity & data
+    ap.add_argument("--connect-timeout-sec", type=int, default=60)
+    ap.add_argument("--timeout-sec", type=int, default=60)
+    ap.add_argument("--connect-attempts", type=int, default=10)
+    ap.add_argument("--force-delayed", action="store_true")
+    ap.add_argument("--poll-hist-when-no-rt", action="store_true")
+    ap.add_argument("--poll-interval-sec", type=int, default=10)
+    ap.add_argument("--require-rt-before-trading", action="store_true")
+    ap.add_argument("--rt-staleness-sec", type=int, default=45)
+
+    # Learning
+    ap.add_argument("--bandit", choices=["thompson"], default="thompson")
+    ap.add_argument("--learn-mode", choices=["shadow", "advisory", "control"], default="advisory")
+    ap.add_argument("--decay-half-life-trades", type=float, default=200.0)
+    ap.add_argument("--learn-log", action="store_true")
+    ap.add_argument("--learn-log-dir", default=r".\logs\learn")
+    ap.add_argument(
+        "--param-arms",
+        default="",
+        help=(
+            "Semicolon-separated like "
+            "'A:risk_ticks=10,tp_R=1.0,entry_slippage_ticks=1; "
+            "B:risk_ticks=12,tp_R=1.2,entry_slippage_ticks=2'"
+        ),
+    )
+
+    # PnL & equity sync
+    ap.add_argument("--use-ib-pnl", action="store_true")
+    ap.add_argument("--peak-dd-guard-pct", type=float, default=0.0)
+    ap.add_argument("--day-guard-pct", type=float, default=0.0)
+    ap.add_argument("--peak-dd-min-profit", type=float, default=2000.0)
+
+    # Short guard rails & VWAP control (flags kept for compatibility)
+    ap.add_argument("--short-guard-vwap-buffer-ticks", type=int, default=4)
+    ap.add_argument("--short-guard-min-pullback-ticks", type=int, default=6)
+    ap.add_argument("--short-guard-lookback-bars", type=int, default=60)
+    ap.add_argument(
+        "--no-short-guard-lower-high",
+        dest="short_guard_lower_high",
+        action="store_false",
+    )
+    ap.add_argument("--vwap-reset-on-session", action="store_true", default=True)
+    ap.add_argument("--no-vwap-reset-on-session", dest="vwap_reset_on_session", action="store_false")
+
+    # Safety
+    ap.add_argument("--allow_live", action="store_true")
+
+    # Risk profile selector (hook for future presets)
+    ap.add_argument(
+        "--risk-profile",
+        choices=["balanced", "aggressive", "conservative"],
+        default="balanced",
+    )
+
+    # News kill
+    ap.add_argument("--news-file-kill", default=r".\data\kill\news_kill.json")
+    ap.add_argument("--news-flatten-on-kill", action="store_true")
+    ap.add_argument("--news-cancel-only", action="store_true")
+    ap.add_argument("--news-blackouts", default="")
+    ap.add_argument("--news-bulletin-listen", action="store_true")
+    ap.add_argument(
+        "--news-keywords",
+        default=(
+            "FOMC,rate,nonfarm,employment,inflation,CPI,PPI,ISM,PMI,"
+            "Jerome Powell,press conference"
+        ),
+    )
+    ap.add_argument("--news-kill-minutes", type=int, default=15)
+
+    # Optional CSV hook for segmented logs
+    ap.add_argument("--segment-trade-csv", default=r".\logs\trades_segmented.csv")
+    return ap
+
+
+# ---------- Main ----------
+def main():
+    global ACTIVE_CLIENT_ID
+
+    self_backup()  # snapshot the file to .\backups\ at each start
+
+    parser = build_argparser()
+    args, unknown = parser.parse_known_args()
+    if unknown:
+        log("arg_unknown", unknown=unknown)
+
+    # AI hooks (journaling / advisory / guardrails)
+    ai = AIHooks(base_dir=r".\logs\ai")
+
+    # Start HB immediately
+    start_heartbeat_thread()
+    hb_update(
+        state="-",
+        idle_reason="booting",
+        rt_enabled=False,
+        rt_status="disabled",
+        rt_age_sec=None,
+        rt_queue_len=0,
+        bars=0,
+        net_qty=0,
+    )
+
+    # Connect (with retries)
+    ib = IB()
+
+    # ---- Error logging + emergency flat if stop gets rejected ----
+    def _on_err(reqId, code, msg, misc):
+        """
+        Central IB error handler.
+
+        - Always logs the error (ib_error)
+        - If it looks like a STOP order was rejected while we have an open
+          position *without* a protective exit, do an EMERGENCY FLAT.
+        """
+        try:
+            c = int(code)
+        except Exception:
+            c = None
+
+        msg_str = str(msg or "")
+        msg_lower = msg_str.lower()
+
+        # Always log the raw error first
+        try:
+            log("ib_error", reqId=reqId, code=c, msg=msg_str)
+        except Exception:
+            print(f"[IB-ERR] {code} {msg}")
+
+        # --- Heuristic: "stop" + "reject" in the message ⇒ potential naked risk ---
+        # You can add/remove codes here if you see specific ones in your logs.
+        looks_like_stop_reject = (
+            ("stop" in msg_lower and "reject" in msg_lower)
+        )
+
+        if not looks_like_stop_reject:
+            return
+
+        try:
+            # 1) What is our current position?
+            qty_now, _ = ib_position_truth(ib, con)
+            if qty_now == 0:
+                # flat already – nothing to do
+                return
+
+            # 2) Do we have any protective exit orders working?
+            trades = list_open_orders_for_contract(ib, con)
+            exit_action = "SELL" if qty_now > 0 else "BUY"
+
+            has_protective = any(
+                (t.order.action or "").upper() == exit_action
+                and (t.order.orderType or "").upper() in {"STP", "STP LMT", "LMT"}
+                for t in trades
+            )
+
+            if has_protective:
+                # We are *not* naked; no need to emergency flat.
+                log(
+                    "emergency_flat_skip",
+                    reason="protective_orders_present",
+                    qty=qty_now,
+                    code=c,
+                    msg=msg_str,
+                )
+                return
+
+            # 3) No protective orders + stop rejected ⇒ EMERGENCY FLAT
+            try:
+                flatten_market(qty_now)
+                log(
+                    "emergency_flat",
+                    reason="stop_rejected_no_protective",
+                    qty=qty_now,
+                    code=c,
+                    msg=msg_str,
+                )
+            except Exception as e:
+                log(
+                    "emergency_flat_err",
+                    err=str(e),
+                    qty=qty_now,
+                    code=c,
+                    msg=msg_str,
+                )
+
+        except Exception as e:
+            # Never let the error handler blow up the script
+            try:
+                log("ib_error_handler_err", err=str(e), orig_code=c, orig_msg=msg_str)
+            except Exception:
+                print(f"[IB-ERR-HANDLER] {e}")
+
+    ib.errorEvent += _on_err
+
+    def connect_with_retries():
+        base = int(args.clientId)
+        for i in range(max(1, int(args.connect_attempts))):
+            cid = base + i
+            try:
+                print(f"[CONNECT] Attempt {i+1}/{args.connect_attempts} -> clientId={cid}")
+                log("boot_progress", step="connecting")
+                ib.connect(args.host, args.port, clientId=cid, timeout=args.connect_timeout_sec)
+                ib.sleep(0.6)
+                if ib.isConnected():
+                    print(f"Connected (clientId={cid})")
+                    try:
+                        accts = ib.managedAccounts()
+                        print(f"[POST-CONNECT] managedAccounts: {accts}")
+                    except Exception:
+                        pass
+                    return cid
+            except Exception as e:
+                print(f"[CONNECT] Failed: {repr(e)}")
+                try:
+                    ib.disconnect()
+                except Exception:
+                    pass
+                ib.sleep(0.5 + 0.25 * i)
+        return None
+
+    cid = connect_with_retries()
+    if cid is None:
+        print("ERROR [CONNECT] Could not establish connection.")
+        return
+
+    # ---- set active clientId for all the filters ----
+    ACTIVE_CLIENT_ID = cid
+
+    # Paper-only safety
+    if not args.allow_live:
+        try:
+            accts = ib.managedAccounts()
+            acct = accts[0] if accts else None
+        except Exception:
+            acct = None
+        bad_port = getattr(args, "port", None) != 7497
+        bad_acct = acct is not None and not str(acct).upper().startswith("DU")
+        orders_disabled = bad_port or bad_acct
+        hb_update(orders_disabled_paper_safety=orders_disabled)
+        if orders_disabled:
+            print(
+                f"[SAFE] Paper-only: refusing to trade "
+                f"(port={getattr(args,'port',None)}, account={acct})."
+            )
+            return
+
+    # Market data type
+    try:
+        ib.reqMarketDataType(3 if args.force_delayed else 1)
+        print("[MD] DELAYED (3)." if args.force_delayed else "[MD] LIVE (1).")
+        hb_update(rt_enabled=not args.force_delayed, rt_status=("ok" if not args.force_delayed else "disabled"))
+    except Exception as e:
+        print("[MD] marketDataType failed:", repr(e))
+
+    # Contract
+    try:
+        con = mk_contract(ib, args)
+    except Exception as e:
+        print("[CONTRACT] Error:", repr(e))
+        return
+    px_mult = contract_multiplier(ib, con)
+    print(f"[CONTRACT] Multiplier detected: {px_mult:g}")
+
+    # Warm up L1 quotes (non-fatal)
+    try:
+        tkr = ib.reqMktData(con, genericTickList="", snapshot=False, regulatorySnapshot=False)
+        ib.sleep(1.0)
+        ib.cancelMktData(con)
+        log("md_warmup", ok=True)
+    except Exception as e:
+        log("md_warmup_warn", err=str(e))
+
+    # -------- PnL & NetLiq (version-safe) --------
+    ib_acct = None
+    ib_daily_pnl: Optional[float] = None
+    ib_netliq: Optional[float] = None
+
+    if args.use_ib_pnl:
+        try:
+            accts = ib.managedAccounts()
+            if accts:
+                ib_acct = accts[0]
+
+                def _on_pnl(p):
+                    nonlocal ib_daily_pnl
+                    try:
+                        ib_daily_pnl = float(getattr(p, "dailyPnL", 0.0) or 0.0)
+                    except Exception:
+                        pass
+
+                ib.pnlEvent += _on_pnl
+                ib.reqPnL(ib_acct, "")
+
+                def _on_account_value(v):
+                    nonlocal ib_netliq
+                    try:
+                        if v.tag == "NetLiquidation" and (not ib_acct or v.account == ib_acct):
+                            ib_netliq = float(v.value)
+                    except Exception:
+                        pass
+
+                ib.accountValueEvent += _on_account_value
+            else:
+                print("[IB PNL] No managed accounts; IB PnL sync disabled.")
+        except Exception as e:
+            print(f"[IB PNL] Failed to subscribe: {e}")
+
+    # -------- Seed history + RT bars --------
+    H: List[float] = []
+    L: List[float] = []
+    C: List[float] = []
+    V: List[float] = []
+    last_bar_ts = None
+    vwap = SessionVWAP()
+
+    def _bar_ts(b):
+        return getattr(b, "time", None) or getattr(b, "date", None)
+
+    # Historical warmup DISABLED to avoid hanging when IB sends error 366
+    try:
+        log("hist_seed_skipped", reason="disabled_to_avoid_error366")
+        hist = []
+        H.clear()
+        L.clear()
+        C.clear()
+        V.clear()
+        last_bar_ts = None
+        hb_update(bars=0)
+    except Exception as e:
+        log("hist_seed_err", err=repr(e))
+
+    # Subscribe RT bars
+    rt = None
+    rt_mode = "TRADES"
+    try:
+        rt = ib.reqRealTimeBars(con, 5, "TRADES", False)
+        if rt is None:
+            log("rt_subscribe_warn", msg="reqRealTimeBars returned None; polling may be used")
+        else:
+            hb_update(rt_enabled=True, rt_status="ok")
+    except Exception as e:
+        rt = None
+        log("rt_subscribe_err", err=repr(e))
+
+    _rt_last_seen = None
+    poll_enabled = bool(args.poll_hist_when_no_rt)
+    poll_iv = max(5, int(args.poll_interval_sec)) if poll_enabled else 999999
+    _last_poll = 0.0
+
+    # Risk state
+    risk = DayRisk(
+        args.day_loss_cap_R,
+        args.max_trades_per_day,
+        args.max_consec_losses,
+        args.post_flat_cooldown_sec,
+    )
+    risk.day_R = float(restored_day_R)
+    risk.trades = int(restored_trades)
+    risk.consec_losses = int(restored_consec_losses)
+    last_entry_bar_ts = None
+    current_arm: Optional[str] = None
+    entry_price: Optional[float] = None
+    cycle_bracket_entry_price: Optional[float] = None
+    cycle_bracket_stop_dist: Optional[float] = None
+    cycle_bracket_tp_dist: Optional[float] = None
+    prev_net_qty = 0
+    last_exec_price: Optional[float] = None
+    cycle_commission = 0.0
+    in_trade_cycle = False
+    cycle_entry_qty = 0
+    cycle_risk_ticks: Optional[int] = None  # NEW: per-cycle risk ticks for correct R
+    last_attempt_ts: Optional[float] = None  # NEW: gate entry attempts
+    realized_pnl_total = 0.0
+    equity = float(args.acct_base)
+    equity_hwm = equity
+    realized_pnl_day = 0.0
+    cycle_entry_time: Optional[dt.datetime] = None
+    age_forced_flat_done = False
+    week_R = float(restored_week_R)
+    week_halted = False
+    last_week_id = restored_week_id or iso_week_id(ct_now().date())
+    weekly_cap_R = -float(args.weekly_cap_mult) * abs(args.day_loss_cap_R)
+
+    log(
+        "risk_state_restored",
+        day_R=round(risk.day_R, 3),
+        trades=int(risk.trades),
+        consec_losses=int(risk.consec_losses),
+        week_R=round(week_R, 3),
+        week_id=last_week_id,
+        source="disk" if day_state_file_exists else "default",
+    )
+
+    def persist_day_state_snapshot():
+        try:
+            entry_local = ensure_day_state_entry(k)
+            entry_local["day_realized"] = float(day_realized)
+            entry_local["day_peak_realized"] = float(day_peak_realized)
+            entry_local["day_R"] = float(risk.day_R)
+            entry_local["trades"] = int(risk.trades)
+            entry_local["consec_losses"] = int(risk.consec_losses)
+            entry_local["week_R"] = float(week_R)
+            entry_local["last_week_id"] = last_week_id
+            save_day_state(day_state)
+        except Exception as e:
+            log("day_state_snapshot_err", err=str(e))
+
+    # Adaptive cadence scaler (backs off under stress, relaxes when calm)
+    cadence_scale = 1.0
+    last_cadence_event = ct_now()
+
+    # Track the currently-working parent LIMIT entry (for limit→market promotion)
+    parent_entry_id: Optional[int] = None
+    parent_entry_time: Optional[float] = None
+    parent_promote_deadline: Optional[float] = None
+    parent_missing_log_next: float = 0.0
+
+    def reset_parent_tracking():
+        nonlocal parent_entry_id, parent_entry_time, parent_promote_deadline, parent_missing_log_next
+        parent_entry_id = None
+        parent_entry_time = None
+        parent_promote_deadline = None
+        parent_missing_log_next = 0.0
+        hb_update(
+            parent_entry_id=None,
+            parent_to_mkt_limit_sec=None,
+            parent_to_mkt_age_sec=None,
+            parent_to_mkt_remaining_sec=None,
+        )
+
+    # Sessions (AM/PM segmentation only)
+    session_cutovers = parse_ct_list(getattr(args, "session_reset_cts", "08:30,16:00,17:00"))
+    last_reset_marks: Dict[str, str] = {}
+
+    # News kill state
+    news_kill_until: Optional[dt.datetime] = None
+    news_blackouts = parse_news_blackouts(args.news_blackouts)
+    news_keywords = [s.strip().lower() for s in (args.news_keywords or "").split(",") if s.strip()]
+
+    # --- IBKR News Bulletins (optional) ---
+    news_kill_until_ref: Optional[dt.datetime] = None
+
+    def _arm_news_kill(reason: str, minutes: float):
+        nonlocal news_kill_until_ref
+        news_kill_until_ref = ct_now() + dt.timedelta(minutes=max(1.0, float(minutes)))
+        log("news_kill_armed", reason=reason, until=str(news_kill_until_ref))
+
+    if args.news_bulletin_listen:
+        try:
+            def _on_news_bulletin(msgId, newsType, message, exchange):
+                try:
+                    text = f"{message or ''}".lower()
+                    hit_kw = any(k in text for k in news_keywords) if news_keywords else False
+                    if int(newsType) == 1 or hit_kw:
+                        _arm_news_kill(
+                            reason=f"bulletin(type={newsType})",
+                            minutes=args.news_kill_minutes,
+                        )
+                except Exception as e:
+                    log("news_bulletin_err", err=str(e))
+
+            ib.newsBulletinEvent += _on_news_bulletin
+            ib.reqNewsBulletins(True)
+            log("news_bulletins_on", msg="Subscribed to IBKR news bulletins")
+        except Exception as e:
+            log("news_bulletins_unavailable", err=str(e))
+
+    # Learners (with persistence)
+    gamma = decay_factor_from_half_life(args.decay_half_life_trades)
+    arms_enabled = [a.strip() for a in args.enable_arms.split(",") if a.strip()] or ["trend", "breakout"]
+
+    learn_dir = os.path.abspath(getattr(args, "learn_log_dir", r".\logs\learn"))
+    strat_path = learner_paths(learn_dir, "strategy_thompson")
+    param_path = learner_paths(learn_dir, "param_thompson")
+
+    learner = load_thompson(strat_path)
+    if (learner is None) or (set(learner.arms) != set(arms_enabled)):
+        learner = ThompsonGaussian(arms_enabled, gamma)
+
+    param_arms = parse_param_arms(getattr(args, "param_arms", ""))
+    param_learner: Optional[ThompsonGaussian] = None
+    if param_arms:
+        existing = load_thompson(param_path)
+        if existing and set(existing.arms) == set(param_arms.keys()):
+            param_learner = existing
+        else:
+            param_learner = ThompsonGaussian(list(param_arms.keys()), gamma)
+    current_param_arm: Optional[str] = None
+
+    # Safe, deferred sibling/orphan triggers
+    sibling_cancel_needed = False
+    orphan_sweep_needed = False
+    weekend_sweep_done = False  # avoid spamming weekend cancels
+    friday_flat_done = False    # NEW: run Friday preclose auto-flat only once
+    friday_flat_last_date: Optional[dt.date] = None  # track the calendar day it last ran
+    last_orphan_sweep_time = 0.0  # NEW: throttle unconditional orphan sweeps
+
+    def _on_exec(trade, fill):
+        nonlocal last_exec_price, sibling_cancel_needed, orphan_sweep_needed, parent_entry_id
+        if not is_our_order_or_trade(trade):
+            return
+        if getattr(trade.contract, "conId", None) != con.conId:
+            return
+        try:
+            last_exec_price = float(fill.price)
+        except Exception:
+            pass
+        try:
+            st = (trade.orderStatus.status or "").strip()
+            ocag = (trade.order.ocaGroup or "").strip()
+            if st in ("Filled", "PartiallyFilled"):
+                if ocag:
+                    sibling_cancel_needed = True
+                orphan_sweep_needed = True
+        except Exception:
+            pass
+        try:
+            order = getattr(trade, "order", None)
+            if order is None:
+                return
+            meta = {"orderId": getattr(order, "orderId", None), **_order_log_fields(order)}
+            fill_qty = getattr(fill, "shares", None)
+            matches_tracked = bool(
+                parent_entry_id
+                and (
+                    meta.get("orderId") == parent_entry_id
+                    or meta.get("parent_id") == parent_entry_id
+                )
+            )
+            log(
+                "ib_status",
+                event="execDetails",
+                status=(trade.orderStatus.status or "").strip(),
+                fill_price=getattr(fill, "price", None),
+                fill_qty=float(fill_qty) if fill_qty is not None else None,
+                cum_qty=getattr(fill, "cumQty", None),
+                avg_price=getattr(fill, "avgPrice", None),
+                tracked_parent=parent_entry_id,
+                matches_tracked=matches_tracked,
+                **meta,
+            )
+        except Exception as e:
+            log("ib_status_log_err", err=str(e))
+
+    ib.execDetailsEvent += _on_exec
+
+    def _on_status(trade):
+        nonlocal sibling_cancel_needed, orphan_sweep_needed, parent_entry_id
+        if not is_our_order_or_trade(trade):
+            return
+        if getattr(trade.contract, "conId", None) != con.conId:
+            return
+        try:
+            st = (trade.orderStatus.status or "").strip()
+            ocag = (trade.order.ocaGroup or "").strip()
+            if st == "Filled":
+                if ocag:
+                    sibling_cancel_needed = True
+                orphan_sweep_needed = True
+            order = getattr(trade, "order", None)
+            if order is None:
+                return
+            meta = {"orderId": getattr(order, "orderId", None), **_order_log_fields(order)}
+            matches_tracked = bool(
+                parent_entry_id
+                and (
+                    meta.get("orderId") == parent_entry_id
+                    or meta.get("parent_id") == parent_entry_id
+                )
+            )
+            os_obj = trade.orderStatus
+            log(
+                "ib_status",
+                event="orderStatus",
+                status=st,
+                filled=getattr(os_obj, "filled", None),
+                remaining=getattr(os_obj, "remaining", None),
+                avgFillPrice=getattr(os_obj, "avgFillPrice", None),
+                lastFillPrice=getattr(os_obj, "lastFillPrice", None),
+                whyHeld=getattr(os_obj, "whyHeld", None),
+                tracked_parent=parent_entry_id,
+                matches_tracked=matches_tracked,
+                **meta,
+            )
+        except Exception as e:
+            log("ib_status_log_err", err=str(e))
+
+    ib.orderStatusEvent += _on_status
+
+    # Day guard persistence
+    DAY_STATE_PATH = r".\data\state\day_guard.json"
+    day_state_file_exists = os.path.exists(DAY_STATE_PATH)
+
+    def load_day_state() -> Dict[str, Any]:
+        try:
+            if os.path.exists(DAY_STATE_PATH):
+                with open(DAY_STATE_PATH, "r", encoding="utf-8") as f:
+                    return json.load(f)
+        except Exception as e:
+            log("day_state_load_err", err=str(e))
+        return {}
+
+    def save_day_state(data: Dict[str, Any]):
+        try:
+            mkdirs(os.path.dirname(DAY_STATE_PATH))
+            tmp = DAY_STATE_PATH + ".tmp"
+            with open(tmp, "w", encoding="utf-8") as f:
+                json.dump(data, f)
+            os.replace(tmp, DAY_STATE_PATH)
+        except Exception as e:
+            log("day_state_save_err", err=str(e))
+
+    def _seed_start_equity() -> float:
+        seed = float(args.acct_base)
+        if args.use_ib_pnl and (ib_netliq is not None):
+            seed = float(ib_netliq)
+        return seed
+
+    def _default_day_state_payload(seed: Optional[float] = None) -> Dict[str, Any]:
+        if seed is None:
+            seed = _seed_start_equity()
+        week_id = iso_week_id(ct_now().date())
+        return {
+            "start_equity": float(seed),
+            "day_realized": 0.0,
+            "day_peak_realized": 0.0,
+            "day_R": 0.0,
+            "trades": 0,
+            "consec_losses": 0,
+            "week_R": 0.0,
+            "last_week_id": week_id,
+        }
+
+    def ensure_day_state_entry(key: str, seed: Optional[float] = None) -> Dict[str, Any]:
+        if key not in day_state:
+            day_state[key] = _default_day_state_payload(seed)
+            save_day_state(day_state)
+        payload = day_state[key]
+        defaults = _default_day_state_payload(payload.get("start_equity", seed))
+        for fld, default_val in defaults.items():
+            payload.setdefault(fld, default_val)
+        return payload
+
+    day_state = load_day_state()
+    k = session_key_multi(ct_now(), session_cutovers)
+    entry = ensure_day_state_entry(k)
+
+    day_realized = float(entry["day_realized"])
+    day_peak_realized = float(entry["day_peak_realized"])
+    start_of_day_equity = float(entry["start_equity"])
+    restored_day_R = float(entry.get("day_R", 0.0))
+    restored_trades = int(entry.get("trades", 0))
+    restored_consec_losses = int(entry.get("consec_losses", 0))
+    restored_week_R = float(entry.get("week_R", 0.0))
+    restored_week_id = str(entry.get("last_week_id", iso_week_id(ct_now().date())))
+    day_guard_dollars = -float(args.day_guard_pct) * start_of_day_equity
+
+    # Sizing helpers
+    def per_contract_risk_dollars(risk_ticks: Optional[int] = None) -> float:
+        rt = args.risk_ticks if risk_ticks is None else risk_ticks
+        return float(rt) * float(args.tick_size) * float(px_mult)
+
+    def equity_ladder_size(eq: float) -> int:
+        steps = 0 if eq < args.acct_base else math.floor((eq - args.acct_base) / max(1.0, args.scale_step))
+        return int(clamp(args.start_contracts + steps, 1, args.max_contracts))
+
+    def risk_budget_size(eq: float, risk_ticks: Optional[int] = None) -> int:
+        risk_budget = float(eq) * float(args.risk_pct)
+        pc_risk = per_contract_risk_dollars(risk_ticks)
+        if pc_risk <= 0:
+            return 1
+        return int(clamp(math.floor(risk_budget / pc_risk), 1, args.max_contracts))
+
+    def apply_hwm_stepdown(qty_suggested: int) -> int:
+        if not args.hwm_stepdown:
+            return qty_suggested
+        dd = max(0.0, equity_hwm - equity)
+        if args.hwm_stepdown_dollars <= 0:
+            return qty_suggested
+        steps_down = int(math.floor(dd / float(args.hwm_stepdown_dollars)))
+        if steps_down <= 0:
+            return qty_suggested
+        return max(1, qty_suggested - steps_down)
+
+    def margin_cap_qty(eq_now: float) -> int:
+        reserve = max(0.0, float(args.margin_reserve_pct))
+        eff_eq = max(0.0, float(eq_now) * (1.0 - reserve))
+        per = max(1.0, float(args.margin_per_contract))
+        return int(clamp(math.floor(eff_eq / per), 0, args.max_contracts))
+
+    def determine_order_qty(current_net_qty: int, risk_ticks_for_trade: Optional[int] = None) -> int:
+        if args.use_ib_pnl and (ib_netliq is not None):
+            eq_now = float(ib_netliq)
+        else:
+            eq_now = float(equity)
+        if args.static_size:
+            final_qty = int(max(1, round(float(args.qty))))
+            return int(max(0, min(final_qty, args.max_contracts - abs(current_net_qty))))
+        eq_size = equity_ladder_size(eq_now)
+        rb_size = risk_budget_size(eq_now, risk_ticks_for_trade)
+        base_qty = int(clamp(min(eq_size, rb_size), 1, args.max_contracts))
+        stepdown_qty = apply_hwm_stepdown(base_qty)
+        mcap_total = margin_cap_qty(eq_now)
+        desired_total = min(
+            int(clamp(stepdown_qty, 0, args.max_contracts)),
+            int(clamp(mcap_total, 0, args.max_contracts)),
+        )
+        if abs(current_net_qty) >= desired_total:
+            return 0
+        addable = desired_total - abs(int(current_net_qty))
+        final_qty = int(max(0, addable))
+        if (abs(current_net_qty) + final_qty) > args.max_contracts:
+            final_qty = max(0, args.max_contracts - abs(current_net_qty))
+        return int(final_qty)
+
+    # Entry / place
+    def place_bracket(
+        go_long: bool,
+        last_price: float,
+        last_bar_ts_local,
+        net_qty_now: int,
+        signal_name: Optional[str] = None,
+    ):
+        nonlocal entry_price, last_entry_bar_ts, current_param_arm, cycle_risk_ticks
+        nonlocal cycle_bracket_entry_price, cycle_bracket_stop_dist, cycle_bracket_tp_dist
+        nonlocal parent_entry_id, parent_entry_time, last_attempt_ts  # NEW
+
+        # ---- hard anti-burst guard (attempt spacing) ----
+        now_ts = time.time()
+        eff_min_gap = int(max(1, args.min_seconds_between_entries * cadence_scale))
+        entry_signal = signal_name or current_arm or ("long" if go_long else "short")
+
+        def _entry_log(event: str, **fields):
+            base = {
+                "signal": entry_signal,
+                "cadence_scale": round(cadence_scale, 3),
+                "throttle_min_gap": eff_min_gap,
+                "last_attempt_ts": last_attempt_ts,
+            }
+            base.update(fields)
+            log(event, **base)
+
+        if last_attempt_ts is not None and (now_ts - last_attempt_ts) < eff_min_gap:
+            _entry_log(
+                "gate_skip",
+                reason="attempt_gap",
+                since_last=round(now_ts - last_attempt_ts, 3),
+            )
+            return
+        last_attempt_ts = now_ts
+
+        if not args.place_orders:
+            _entry_log("sim_no_place", reason="--place-orders not set")
+            return
+
+        # ---- trust IB position truth: only open if truly flat ----
+        qty_truth, _ = ib_position_truth(ib, con)
+        if qty_truth != 0:
+            _entry_log(
+                "gate_skip",
+                reason="non_flat_ib_truth",
+                qty_truth=int(qty_truth),
+                net_qty_now=int(net_qty_now),
+            )
+            return
+
+        if has_active_parent_entry(ib, con):
+            _entry_log("gate_skip", reason="active_parent_entry")
+            return
+        if (
+            args.debounce_one_bar
+            and last_entry_bar_ts is not None
+            and last_bar_ts_local == last_entry_bar_ts
+        ):
+            _entry_log("gate_skip", reason="debounce_one_bar")
+            return
+
+
+        # ---- parameter meta-learning override (per-entry) ----
+        chosen_params: Dict[str, float] = {}
+        if param_learner:
+            arm, _ = param_learner.choose(list(param_arms.keys()), sample=(args.learn_mode != "shadow"))
+            chosen_params = param_arms.get(arm, {})
+            current_param_arm = arm
+            risk_ticks_local = int(chosen_params.get("risk_ticks", args.risk_ticks))
+            tp_R_local = float(chosen_params.get("tp_R", args.tp_R))
+            entry_slip_local = int(chosen_params.get("entry_slippage_ticks", args.entry_slippage_ticks))
+        else:
+            current_param_arm = None
+            risk_ticks_local = args.risk_ticks
+            tp_R_local = args.tp_R
+            entry_slip_local = args.entry_slippage_ticks
+
+        qty = determine_order_qty(net_qty_now, risk_ticks_local)
+        if qty <= 0:
+            _entry_log("gate_skip", reason="qty_le_0", suggested_qty=qty)
+            return
+
+        tick = float(args.tick_size)
+        slippage = ticks_to_price_delta(risk_ticks_local * 0 + entry_slip_local, tick)  # slippage based on entry_slip_local
+        risk_px = ticks_to_price_delta(risk_ticks_local, tick)
+
+        if go_long:
+            entry = round_to_tick(last_price + slippage, tick)
+            sl = round_to_tick(entry - risk_px, tick)
+            tp = round_to_tick(entry + risk_px * float(tp_R_local), tick)
+            action = "BUY"
+        else:
+            entry = round_to_tick(last_price - slippage, tick)
+            sl = round_to_tick(entry + risk_px, tick)
+            tp = round_to_tick(entry - risk_px * float(tp_R_local), tick)
+            action = "SELL"
+
+        # --- parent entry ---
+        parent = LimitOrder(
+            action=action,
+            totalQuantity=qty,
+            lmtPrice=entry,
+            tif=args.tif,
+            outsideRth=bool(args.outsideRth),
+        )
+        parent.transmit = False
+
+        try:
+            ib.placeOrder(con, parent)
+            parent_id = parent.orderId
+            _entry_log(
+                "entry_parent_order",
+                order_id=parent_id,
+                side=action,
+                qty=qty,
+                price=entry,
+                transmit=parent.transmit,
+                tif=args.tif,
+            )
+        except Exception as e:
+            _entry_log("bracket_parent_error", error=str(e), side=action, qty=qty, price=entry)
+            return
+
+        ib.sleep(0.02)  # let TWS register the parent
+
+        exit_action = "SELL" if action == "BUY" else "BUY"
+        oca = f"OCA-{int(time.time()*1000)}"
+
+        # --- stop-loss leg ---
+        stop_loss = StopOrder(
+            action=exit_action,
+            totalQuantity=qty,
+            stopPrice=sl,
+            tif=args.tif,
+            outsideRth=bool(args.outsideRth),
+        )
+        try:
+            stop_loss.triggerMethod = 2
+        except Exception:
+            pass
+        try:
+            stop_loss.parentId = parent_id
+            stop_loss.ocaGroup = oca
+            stop_loss.transmit = False
+            stop_loss.ocaType = 1
+        except Exception:
+            pass
+
+        # --- take-profit leg ---
+        take_profit = LimitOrder(
+            action=exit_action,
+            totalQuantity=qty,
+            lmtPrice=tp,
+            tif=args.tif,
+            outsideRth=bool(args.outsideRth),
+        )
+        try:
+            take_profit.parentId = parent_id
+            take_profit.ocaGroup = oca
+            take_profit.transmit = True  # transmit whole bracket
+            take_profit.ocaType = 1
+        except Exception:
+            pass
+
+        # Place children
+        stop_order_id = None
+        try:
+            ib.placeOrder(con, stop_loss)
+            stop_order_id = stop_loss.orderId
+            _entry_log(
+                "entry_child_order",
+                child="stop",
+                order_id=stop_order_id,
+                parent_id=parent_id,
+                price=sl,
+                qty=qty,
+                transmit=stop_loss.transmit,
+                oca_group=oca,
+            )
+        except Exception as e:
+            _entry_log(
+                "bracket_children_error",
+                child="stop",
+                error=str(e),
+                parent_id=parent_id,
+                price=sl,
+                qty=qty,
+            )
+            return
+
+        tp_order_id = None
+        try:
+            ib.placeOrder(con, take_profit)
+            tp_order_id = take_profit.orderId
+            _entry_log(
+                "entry_child_order",
+                child="take_profit",
+                order_id=tp_order_id,
+                parent_id=parent_id,
+                price=tp,
+                qty=qty,
+                transmit=take_profit.transmit,
+                oca_group=oca,
+            )
+        except Exception as e:
+            _entry_log(
+                "bracket_children_error",
+                child="take_profit",
+                error=str(e),
+                parent_id=parent_id,
+                price=tp,
+                qty=qty,
+                stop_order_id=stop_order_id,
+            )
+            return
+
+        _entry_log(
+            "bracket_submitted",
+            side=action,
+            qty=qty,
+            entry=entry,
+            stop=sl,
+            tp=tp,
+            param_arm=current_param_arm,
+            params=chosen_params or None,
+            parent_id=parent_id,
+            stop_order_id=stop_order_id,
+            tp_order_id=tp_order_id,
+            oca_group=oca,
+        )
+
+        # track this parent LIMIT entry for possible limit→market promotion
+        parent_entry_id = parent_id
+        parent_entry_time = time.time()
+        parent_promote_deadline = (
+            parent_entry_time + max(1, int(args.parent_to_mkt_sec))
+            if args.parent_to_mkt_sec > 0
+            else None
+        )
+
+        if args.parent_to_mkt_sec > 0:
+            limit_sec = max(1, int(args.parent_to_mkt_sec))
+            hb_update(
+                parent_entry_id=parent_entry_id,
+                parent_to_mkt_limit_sec=limit_sec,
+                parent_to_mkt_age_sec=0,
+                parent_to_mkt_remaining_sec=limit_sec,
+            )
+            log(
+                "parent_to_market_timer_start",
+                orderId=parent_entry_id,
+                limit_sec=limit_sec,
+            )
+        else:
+            hb_update(
+                parent_entry_id=parent_entry_id,
+                parent_to_mkt_limit_sec=None,
+                parent_to_mkt_age_sec=None,
+                parent_to_mkt_remaining_sec=None,
+            )
+
+        # update local state
+        entry_price = entry
+        cycle_bracket_entry_price = entry
+        cycle_bracket_stop_dist = abs(entry - sl)
+        cycle_bracket_tp_dist = abs(tp - entry)
+        last_entry_bar_ts = last_bar_ts_local
+        risk.last_entry_time = time.time()
+        eff_cool = int(max(1, args.strategy_cooldown_sec * cadence_scale))
+        risk.cool_until = ct_now() + dt.timedelta(seconds=eff_cool)
+        risk.trades += 1
+        cycle_risk_ticks = risk_ticks_local  # NEW: remember ticks for this cycle
+        persist_day_state_snapshot()
+
+    def flatten_market(net_qty: int):
+        if not args.place_orders:
+            return
+        side = "SELL" if net_qty > 0 else "BUY"
+        qty = abs(int(net_qty))
+        try:
+            mo = MarketOrder(side, qty)
+            ib.placeOrder(con, mo)
+            log("flatten_market", side=side, qty=qty)
+            risk.last_flat_fill_ts = time.time()
+        except Exception as e:
+            log("flatten_err", err=str(e))
+
+    # Heartbeat/timing vars
+    start_ts = time.time()
+    startup_bar_ts = None
+    startup_bar_seen = not args.require_new_bar_after_start
+    in_caps = False
+    tod_blackouts = parse_blackouts(args.tod_blackouts)
+   
+    # Shadow learning helper for caps (avoid spamming every second)
+    shadow_last_bar_ts = None
+
+    # MAIN LOOP
+    try:
+        while True:
+            now = ct_now()
+
+            # Auto re-arm the Friday preclose guard once the calendar advances
+            if friday_flat_done and friday_flat_last_date is not None:
+                if now.date() > friday_flat_last_date:
+                    friday_flat_done = False
+                    log(
+                        "friday_preclose_rearm",
+                        last_date=str(friday_flat_last_date),
+                        rearm_date=str(now.date()),
+                    )
+                    friday_flat_last_date = None
+
+            # --- Weekly R reset (ISO week) ---
+            cur_week_id = iso_week_id(now.date())
+            if cur_week_id != last_week_id:
+                week_R = 0.0
+                week_halted = False
+                last_week_id = cur_week_id
+                weekly_cap_R = -float(args.weekly_cap_mult) * abs(args.day_loss_cap_R)
+                log("weekly_reset", week_id=cur_week_id)
+                persist_day_state_snapshot()
+
+            # Adaptive cadence relaxation: after 5+ minutes calm, drift back toward 1.0
+            try:
+                if cadence_scale > 1.0:
+                    idle_for = (now - last_cadence_event).total_seconds()
+                    if idle_for >= 300:
+                        old_scale = cadence_scale
+                        cadence_scale = max(1.0, cadence_scale * 0.9)
+                        last_cadence_event = now
+                        log(
+                            "cadence_relax",
+                            from_scale=round(old_scale, 3),
+                            to_scale=round(cadence_scale, 3),
+                        )
+            except Exception as e:
+                log("cadence_relax_err", err=str(e))
+
+            # Startup delay for stability
+            if (time.time() - start_ts) < args.startup_delay_sec:
+                hb_update(idle_reason="booting", bars=len(C))
+                ib.sleep(0.5)
+                continue
+
+            # Session cutover logging / segmentation
+            cutover_hit = reset_due_multi(now, session_cutovers, last_reset_marks)
+            if cutover_hit:
+                risk.reset()
+                realized_pnl_day = 0.0
+                nk = session_key_multi(now, session_cutovers)
+                ensure_day_state_entry(nk, seed=float(ib_netliq or args.acct_base))
+                # keep last few segments
+                keys = sorted(day_state.keys())
+                for old in keys[:-8]:
+                    try:
+                        del day_state[old]
+                    except Exception:
+                        pass
+                save_day_state(day_state)
+                k_local = nk
+                # refresh day guard
+                start_equity = float(day_state[k_local]["start_equity"])
+                day_guard_dollars = -float(args.day_guard_pct) * start_equity
+                day_realized = float(day_state[k_local]["day_realized"])
+                day_peak_realized = float(day_state[k_local]["day_peak_realized"])
+                in_caps = False
+                if args.vwap_reset_on_session:
+                    vwap.reset()
+                log("daily_reset", cutover=cutover_hit)
+                k = k_local  # switch active key
+                persist_day_state_snapshot()
+
+            # ---- News kill checks ----
+            file_on, file_until = read_news_file_flag(args.news_file_kill)
+            if file_on:
+                if (file_until is None) or (now <= file_until):
+                    tgt_until = file_until or (now + dt.timedelta(minutes=args.news_kill_minutes))
+                    news_kill_until = max(news_kill_until or now, tgt_until)
+
+            # TOD news blackouts from news config
+            if in_tod_blackout(now, news_blackouts):
+                news_kill_until = max(news_kill_until or now, now + dt.timedelta(minutes=1))
+
+            # Clear expired bulletin-based kill window
+            if news_kill_until_ref and now > news_kill_until_ref:
+                news_kill_until_ref = None
+
+            # Merge with bulletin kill (if still active)
+            if news_kill_until_ref:
+                news_kill_until = max(news_kill_until or now, news_kill_until_ref)
+
+            news_kill_active = (news_kill_until is not None) and (now <= news_kill_until)
+            if news_kill_active:
+                try:
+                    if args.news_cancel_only or args.news_flatten_on_kill:
+                        c = 0
+                        for t in ib.openTrades():
+                            if not is_our_order_or_trade(t):
+                                continue
+                            st = (getattr(t.orderStatus, "status", "") or "").strip()
+                            if st in ACTIVE_STATUSES:
+                                safe_cancel(ib, t, note="[news_kill]")
+                                c += 1
+                        if c:
+                            log("news_kill_cancel_working", count=c)
+                    if args.news_flatten_on_kill:
+                        qty_now, _ = ib_position_truth(ib, con)
+                        if qty_now != 0:
+                            flatten_market(qty_now)
+                except Exception as e:
+                    log("news_kill_action_err", err=str(e))
+                hb_update(news_kill=True)
+            else:
+                hb_update(news_kill=False)
+
+            # RT ingestion
+            try:
+                if rt and len(rt) > 0:
+                    b = rt[-1]
+                    ts = getattr(b, "time", None) or getattr(b, "date", None)
+                    if last_bar_ts is None or (ts and ts != last_bar_ts):
+                        H.append(b.high)
+                        L.append(b.low)
+                        C.append(b.close)
+                        vol = getattr(b, "volume", None)
+                        V.append(vol if vol is not None else 0.0)
+                        vwap.update_bar(b.close, vol)
+                        last_bar_ts = ts
+
+                        # NEW: new-bar-after-start gating logic
+                        if startup_bar_ts is None:
+                            startup_bar_ts = ts
+                        elif not startup_bar_seen and ts != startup_bar_ts:
+                            startup_bar_seen = True
+
+                        _rt_last_seen = time.time()
+                        hb_update(bars=len(C))
+            except Exception:
+                pass
+
+            # --- Determine RT freshness / starvation ---
+            _now = time.time()
+            rt_seen_age = (_now - _rt_last_seen) if _rt_last_seen else None
+
+            # If we subscribed but have never seen a bar for >8s, treat as starved
+            rt_starved = (rt is not None) and (_rt_last_seen is None) and ((_now - start_ts) > 8.0)
+
+            # Fresh if we've seen a bar within staleness window
+            rt_fresh = (
+                (_rt_last_seen is not None)
+                and (rt_seen_age is not None)
+                and (rt_seen_age <= max(5, int(args.rt_staleness_sec)))
+            )
+
+            # Heartbeat update about RT state
+            if rt is not None:
+                hb_update(
+                    rt_enabled=True,
+                    rt_status=("ok" if rt_fresh else ("starved" if rt_starved else "stale")),
+                    rt_age_sec=(rt_seen_age if _rt_last_seen else None),
+                    rt_queue_len=(len(rt) if rt else 0),
+                )
+            else:
+                hb_update(
+                    rt_enabled=False,
+                    rt_status="disabled",
+                    rt_age_sec=None,
+                    rt_queue_len=0,
+                )
+
+            # --- If TRADES stream is starved, try resubscribing as MIDPOINT once ---
+            if rt_starved and rt_mode == "TRADES":
+                try:
+                    try:
+                        ib.cancelRealTimeBars(rt)
+                    except Exception:
+                        pass
+                    ib.sleep(0.2)
+                    rt = ib.reqRealTimeBars(con, 5, "MIDPOINT", False)
+                    rt_mode = "MIDPOINT"
+                    _rt_last_seen = None
+                    log("rt_resubscribe", what="MIDPOINT")
+                except Exception as e:
+                    log("rt_resubscribe_err", err=str(e))
+
+            # --- Polling fallback: also poll if RT is starved or stale ---
+            poll_active = bool(poll_enabled) or rt_starved or (not rt_fresh)
+            if poll_active and ((_now - _last_poll) >= poll_iv):
+                _last_poll = _now
+                try:
+                    hist = ib.reqHistoricalData(
+                        con,
+                        endDateTime="",
+                        durationStr="60 S",
+                        barSizeSetting="5 secs",
+                        whatToShow=("TRADES" if rt_mode == "TRADES" else "MIDPOINT"),
+                        useRTH=False,
+                        keepUpToDate=False,
+                    )
+                    if hist:
+                        last = hist[-1]
+                        ts = getattr(last, "time", None) or getattr(last, "date", None)
+                        if last_bar_ts is None or (ts and ts > last_bar_ts):
+                            H.append(last.high)
+                            L.append(last.low)
+                            C.append(last.close)
+                            vol = getattr(last, "volume", None)
+                            V.append(vol if vol is not None else 0.0)
+                            vwap.update_bar(last.close, vol)
+                            last_bar_ts = ts
+
+                            # NEW: new-bar-after-start gating logic
+                            if startup_bar_ts is None:
+                                startup_bar_ts = ts
+                            elif not startup_bar_seen and ts != startup_bar_ts:
+                                startup_bar_seen = True
+
+                            hb_update(bars=len(C))
+                            log(
+                                "poll_bar",
+                                time=str(ts),
+                                close=last.close,
+                                total=len(C),
+                                mode=rt_mode,
+                            )
+                    else:
+                        log("poll_bar_empty", note="historical returned 0 bars", mode=rt_mode)
+                except Exception as e:
+                    log("poll_bar_err", err=str(e))
+
+            # Position truth
+            net_qty, avg_cost_raw = ib_position_truth(ib, con)
+            hb_update(net_qty=net_qty)
+
+            # Auto-promote a stale parent LIMIT entry to MARKET
+            if (
+                args.parent_to_mkt_sec > 0
+                and parent_entry_id is not None
+                and net_qty == 0
+            ):
+                try:
+                    now_ts = time.time()
+                    limit_sec = max(1, int(args.parent_to_mkt_sec))
+                    age = max(0.0, now_ts - (parent_entry_time or now_ts))
+                    remaining = 0
+                    if parent_promote_deadline is not None:
+                        remaining = max(0, int(parent_promote_deadline - now_ts))
+                    else:
+                        remaining = max(0, int(limit_sec - age))
+
+                    hb_update(
+                        parent_entry_id=parent_entry_id,
+                        parent_to_mkt_limit_sec=limit_sec,
+                        parent_to_mkt_age_sec=int(age),
+                        parent_to_mkt_remaining_sec=remaining,
+                    )
+
+                    if age >= limit_sec:
+                        found_working = False
+                        should_reset_parent = False
+                        for t in ib.openTrades():
+                            if not is_our_order_or_trade(t):
+                                continue
+                            if t.order.orderId != parent_entry_id:
+                                continue
+
+                            st = (t.orderStatus.status or "").strip()
+                            if st not in ACTIVE_STATUSES:
+                                should_reset_parent = True
+                                log(
+                                    "parent_to_market_inactive",
+                                    orderId=parent_entry_id,
+                                    status=st,
+                                    age=int(age),
+                                )
+                                break
+
+                            found_working = True
+                            o = t.order
+                            from_price = getattr(o, "lmtPrice", None)
+
+                            # Flip the parent to MARKET
+                            o.orderType = "MKT"
+                            try:
+                                o.lmtPrice = 0.0
+                            except Exception:
+                                pass
+
+                            try:
+                                trade = ib.placeOrder(con, o)  # modify existing order
+                                ib_status = (
+                                    getattr(trade.orderStatus, "status", None)
+                                    if trade is not None
+                                    else None
+                                )
+                                log(
+                                    "parent_to_market",
+                                    orderId=o.orderId,
+                                    time_in_state_sec=int(age),
+                                    from_price=from_price,
+                                    side=o.action,
+                                    ib_status=ib_status,
+                                )
+                                should_reset_parent = True
+                            except Exception as e:
+                                log(
+                                    "parent_to_market_modify_err",
+                                    err=str(e),
+                                    orderId=o.orderId,
+                                    time_in_state_sec=int(age),
+                                    from_price=from_price,
+                                    side=o.action,
+                                )
+                                qty = abs(int(getattr(o, "totalQuantity", 0) or 0))
+                                if qty <= 0:
+                                    qty = 1
+                                try:
+                                    fallback = MarketOrder(o.action, qty)
+                                    trade_fb = ib.placeOrder(con, fallback)
+                                    fb_status = (
+                                        getattr(trade_fb.orderStatus, "status", None)
+                                        if trade_fb is not None
+                                        else None
+                                    )
+                                    log(
+                                        "parent_to_market_fallback",
+                                        parent_order=o.orderId,
+                                        fallback_order_id=(
+                                            getattr(fallback, "orderId", None)
+                                            or (
+                                                getattr(
+                                                    getattr(trade_fb, "order", None),
+                                                    "orderId",
+                                                    None,
+                                                )
+                                                if trade_fb is not None
+                                                else None
+                                            )
+                                        ),
+                                        side=o.action,
+                                        qty=qty,
+                                        ib_status=fb_status,
+                                    )
+                                    parent_cancelled = False
+                                    parent_status = (
+                                        getattr(t.orderStatus, "status", "") or ""
+                                    ).strip()
+                                    try:
+                                        if parent_status not in ACTIVE_STATUSES:
+                                            parent_cancelled = True
+                                            log(
+                                                "parent_to_market_fallback_parent_inactive",
+                                                orderId=o.orderId,
+                                                status=parent_status,
+                                            )
+                                        else:
+                                            parent_cancelled = safe_cancel(
+                                                ib, t, note="[parent_to_market_fallback]"
+                                            )
+                                            if parent_cancelled:
+                                                log(
+                                                    "parent_to_market_fallback_parent_cancelled",
+                                                    orderId=o.orderId,
+                                                    status=parent_status,
+                                                )
+                                    except Exception as cancel_err:
+                                        log(
+                                            "parent_to_market_fallback_parent_cancel_err",
+                                            orderId=o.orderId,
+                                            err=str(cancel_err),
+                                            status=parent_status,
+                                        )
+                                    if parent_cancelled:
+                                        should_reset_parent = True
+                                    else:
+                                        log(
+                                            "parent_to_market_fallback_parent_manual_cleanup",
+                                            orderId=o.orderId,
+                                            status=parent_status,
+                                        )
+                                except Exception as inner:
+                                    log(
+                                        "parent_to_market_fallback_err",
+                                        err=str(inner),
+                                        side=o.action,
+                                        qty=qty,
+                                    )
+                                break
+
+                            break
+
+                        if should_reset_parent:
+                            reset_parent_tracking()
+                        elif not found_working:
+                            now_ts = time.time()
+                            if now_ts >= parent_missing_log_next:
+                                log(
+                                    "parent_to_market_not_found",
+                                    age=int(age),
+                                    orderId=parent_entry_id,
+                                )
+                                parent_missing_log_next = now_ts + 5.0
+                except Exception as e:
+                    log("parent_to_market_err", err=str(e))
+                    # Don't keep re-trying on repeated errors
+                    reset_parent_tracking()
+
+            # Execute deferred sibling/orphan actions
+            if sibling_cancel_needed:
+                sibling_cancel_needed = False
+                try:
+                    for t in ib.openTrades():
+                        if not is_our_order_or_trade(t):
+                            continue
+                        if (t.orderStatus.status or "").strip() in ("Filled", "PartiallyFilled"):
+                            cancel_siblings_for_trade(ib, t, con)
+                except Exception as e:
+                    log("sibling_cancel_deferred_err", err=str(e))
+            if orphan_sweep_needed:
+                orphan_sweep_needed = False
+                try:
+                    reconcile_orphans(ib, ib_acct or "", con)
+                    # IB looked stressed enough to create orphans → slow down a bit
+                    old_scale = cadence_scale
+                    cadence_scale = min(cadence_scale * 1.25, 3.0)
+                    last_cadence_event = now
+                    log(
+                        "cadence_bump",
+                        source="orphan_sweep",
+                        from_scale=round(old_scale, 3),
+                        to_scale=round(cadence_scale, 3),
+                    )
+                except Exception as e:
+                    log("orphan_sweep_deferred_err", err=str(e))
+
+             # Trade-cycle transitions
+            if prev_net_qty == 0 and net_qty != 0:
+                in_trade_cycle = True
+                # parent has done its job (filled); stop tracking the LMT→MKT timer
+                reset_parent_tracking()
+
+                cycle_commission = 0.0
+                cycle_entry_qty = abs(net_qty)
+                entry_price = (
+                    (avg_cost_raw / px_mult)
+                    if (avg_cost_raw is not None and px_mult > 0)
+                    else (C[-1] if C else None)
+                )
+                if cycle_bracket_entry_price is None:
+                    cycle_bracket_entry_price = entry_price
+                if cycle_bracket_stop_dist is None and cycle_risk_ticks is not None:
+                    cycle_bracket_stop_dist = ticks_to_price_delta(
+                        cycle_risk_ticks, float(args.tick_size)
+                    )
+                if cycle_bracket_tp_dist is None and cycle_bracket_stop_dist is not None:
+                    cycle_bracket_tp_dist = cycle_bracket_stop_dist * float(args.tp_R)
+                cycle_entry_time = now
+                age_forced_flat_done = False
+
+            if prev_net_qty != 0 and net_qty == 0 and entry_price is not None:
+                exit_px = (
+                    last_exec_price
+                    if last_exec_price is not None
+                    else (C[-1] if C else entry_price)
+                )
+                signed = 1 if prev_net_qty > 0 else -1
+
+                # Use per-cycle risk ticks (fix for param arms)
+                effective_risk_ticks = (
+                    cycle_risk_ticks
+                    if cycle_risk_ticks is not None
+                    else args.risk_ticks
+                )
+                pc_risk = float(effective_risk_ticks) * float(args.tick_size) * float(px_mult)
+                risk_dollars_total = pc_risk * max(1, cycle_entry_qty)
+
+                pnl_dollars = (
+                    (exit_px - entry_price)
+                    * px_mult
+                    * signed
+                    * max(1, cycle_entry_qty)
+                    - cycle_commission
+                )
+                reward_R = (
+                    (pnl_dollars / risk_dollars_total)
+                    if risk_dollars_total > 0
+                    else 0.0
+                )
+
+                realized_pnl_total += pnl_dollars
+                realized_pnl_day += pnl_dollars
+                if ib_netliq is not None and args.use_ib_pnl:
+                    equity = float(ib_netliq)
+                else:
+                    equity = float(args.acct_base) + realized_pnl_total
+                equity_hwm = max(equity_hwm, equity)
+
+                risk.day_R += reward_R
+                risk.consec_losses = (risk.consec_losses + 1) if (reward_R < 0) else 0
+                if risk.consec_losses >= args.max_consec_losses:
+                    risk.halted = True
+                if (reward_R < 0) and not risk.halted:
+                    base = int(max(1, args.strategy_cooldown_sec * cadence_scale))
+                    mult = 2.0 if risk.consec_losses >= 2 else 1.0
+                    tgt = ct_now() + dt.timedelta(seconds=int(base * mult))
+                    if (risk.cool_until is None) or (tgt > risk.cool_until):
+                        risk.cool_until = tgt
+                    log(
+                        "graded_cooldown",
+                        base=base,
+                        mult=mult,
+                        consec=risk.consec_losses,
+                        until=str(risk.cool_until),
+                    )
+
+                week_R += reward_R
+                day_realized += pnl_dollars
+                day_peak_realized = max(day_peak_realized, day_realized)
+                persist_day_state_snapshot()
+
+                try:
+                    if args.learn_mode in ("advisory", "control"):
+                        learner.update(current_arm or "trend", reward_R)
+                        save_thompson(strat_path, learner)
+                except Exception as e:
+                    log("learn_update_err", err=str(e))
+
+                try:
+                    if param_learner and current_param_arm:
+                        param_learner.update(current_param_arm, reward_R)
+                        save_thompson(param_path, param_learner)
+                except Exception as e:
+                    log("param_learn_update_err", err=str(e))
+
+                log(
+                    "flat_cycle",
+                    pnl=round(pnl_dollars, 2),
+                    R=round(reward_R, 3),
+                    comm=round(cycle_commission, 2),
+                    qty=max(1, cycle_entry_qty),
+                    dayR=round(risk.day_R, 3),
+                    consec=risk.consec_losses,
+                    equity=round(equity, 2),
+                    param_arm=current_param_arm,
+                )
+
+                # Measure min_seconds_between_entries from *this* flat
+                risk.last_entry_time = time.time()
+                risk.last_flat_fill_ts = risk.last_entry_time
+
+                # --- AI journaling hook ---
+                try:
+                    journal_ctx = {
+                        "equity": round(equity, 2),
+                        "equity_hwm": round(equity_hwm, 2),
+                        "day_realized": round(day_realized, 2),
+                        "day_peak_realized": round(day_peak_realized, 2),
+                        "week_R": round(week_R, 3),
+                        "risk": {
+                            "day_R": round(risk.day_R, 3),
+                            "trades_today": int(risk.trades),
+                            "consec_losses": int(risk.consec_losses),
+                            "day_loss_cap_R": float(args.day_loss_cap_R),
+                        },
+                        "session_key": k,
+                        "symbol": getattr(con, "localSymbol", None)
+                        or getattr(con, "symbol", None),
+                        "params": {
+                            "risk_ticks": int(effective_risk_ticks),
+                            "tp_R": float(args.tp_R),
+                            "tick_size": float(args.tick_size),
+                            "px_mult": float(px_mult),
+                        },
+                    }
+                    ai.log_flat_cycle(
+                        context=journal_ctx,
+                        pnl_dollars=pnl_dollars,
+                        reward_R=reward_R,
+                        param_arm=current_param_arm,
+                        strat_arm=current_arm,
+                    )
+                except Exception as e:
+                    log("ai_flat_journal_err", err=str(e))
+
+                in_trade_cycle = False
+                entry_price = None
+                current_arm = None
+                current_param_arm = None
+                cycle_entry_qty = 0
+                cycle_commission = 0.0
+                cycle_entry_time = None
+                age_forced_flat_done = False
+                cycle_risk_ticks = None  # reset
+                cycle_bracket_entry_price = None
+                cycle_bracket_stop_dist = None
+                cycle_bracket_tp_dist = None
+
+            prev_net_qty = net_qty
+
+
+            # IB PnL overwrite
+            if args.use_ib_pnl:
+                if ib_daily_pnl is not None:
+                    day_realized = float(ib_daily_pnl)
+                    day_peak_realized = max(day_peak_realized, day_realized)
+                    persist_day_state_snapshot()
+                if ib_netliq is not None:
+                    equity = float(ib_netliq)
+                    equity_hwm = max(equity_hwm, equity)
+
+            # OCO rescue (ensure both stop+tp exist and correct side)
+            last_px = C[-1] if C else None
+            try:
+                if net_qty != 0 and args.place_orders:
+                    trades = list_open_orders_for_contract(ib, con)
+                    exit_action = "SELL" if net_qty > 0 else "BUY"
+                    has_stop = any(
+                        (t.order.orderType or "").upper().startswith("STP")
+                        and (t.order.action or "").upper() == exit_action
+                        for t in trades
+                    )
+                    has_tp = any(
+                        (t.order.orderType or "").upper() == "LMT"
+                        and (t.order.action or "").upper() == exit_action
+                        for t in trades
+                    )
+                    if (not has_stop) or (not has_tp):
+                        existing_stop_price = None
+                        existing_tp_price = None
+                        for t in trades:
+                            ot = (t.order.orderType or "").upper()
+                            act = (t.order.action or "").upper()
+                            if ot in {"LMT", "STP", "STP LMT"} and act != exit_action:
+                                meta = _order_log_fields(t.order)
+                                log(
+                                    "oco_rescue_cancel",
+                                    reason="wrong_side",
+                                    orderId=getattr(t.order, "orderId", None),
+                                    **meta,
+                                )
+                                safe_cancel(ib, t, note="[prot wrong-side]")
+                            elif ot in {"LMT", "STP", "STP LMT"} and act == exit_action:
+                                if existing_stop_price is None and ot.startswith("STP"):
+                                    existing_stop_price = (
+                                        getattr(t.order, "stopPrice", None)
+                                        or getattr(t.order, "auxPrice", None)
+                                    )
+                                if existing_tp_price is None and ot == "LMT":
+                                    existing_tp_price = getattr(t.order, "lmtPrice", None)
+                                meta = _order_log_fields(t.order)
+                                log(
+                                    "oco_rescue_cancel",
+                                    reason="refresh",
+                                    orderId=getattr(t.order, "orderId", None),
+                                    **meta,
+                                )
+                                safe_cancel(ib, t, note="[prot refresh]")
+
+                        qty_abs = abs(int(net_qty))
+                        tick = float(args.tick_size)
+                        entry_basis = cycle_bracket_entry_price or entry_price
+                        risk_ticks = (
+                            cycle_risk_ticks if cycle_risk_ticks is not None else args.risk_ticks
+                        )
+                        default_stop_dist = ticks_to_price_delta(risk_ticks, tick)
+                        default_tp_dist = default_stop_dist * float(args.tp_R)
+                        stop_dist = cycle_bracket_stop_dist or default_stop_dist
+                        tp_dist = cycle_bracket_tp_dist or default_tp_dist
+
+                        stop_price = None
+                        stop_source = None
+                        if entry_basis is not None and stop_dist is not None:
+                            if net_qty > 0:
+                                stop_price = round_to_tick(entry_basis - stop_dist, tick)
+                            else:
+                                stop_price = round_to_tick(entry_basis + stop_dist, tick)
+                            stop_source = "entry"
+                        if stop_price is None and existing_stop_price is not None:
+                            stop_price = round_to_tick(existing_stop_price, tick)
+                            stop_source = "existing_child"
+
+                        targ_price = None
+                        tp_source = None
+                        if entry_basis is not None and tp_dist is not None:
+                            if net_qty > 0:
+                                targ_price = round_to_tick(entry_basis + tp_dist, tick)
+                            else:
+                                targ_price = round_to_tick(entry_basis - tp_dist, tick)
+                            tp_source = "entry"
+                        if targ_price is None and existing_tp_price is not None:
+                            targ_price = round_to_tick(existing_tp_price, tick)
+                            tp_source = "existing_child"
+
+                        if stop_price is None or targ_price is None:
+                            log(
+                                "oco_rebuild_skip",
+                                reason="missing_entry_context",
+                                stop_price=stop_price,
+                                tp_price=targ_price,
+                                entry_basis=entry_basis,
+                                stop_dist=stop_dist,
+                                tp_dist=tp_dist,
+                            )
+                            continue
+
+                        oca = f"OCO-PROT-{int(time.time())}"
+                        stp = StopOrder(
+                        action=exit_action,
+                        totalQuantity=qty_abs,
+                        stopPrice=stop_price,
+                        tif=args.tif,
+                        outsideRth=bool(args.outsideRth),
+                        )
+                        try:
+                            stp.triggerMethod = 2
+                        except Exception:
+                            pass
+                        stp.ocaGroup = oca
+                        stp.transmit = False
+                        try:
+                            stp.ocaType = 1
+                        except Exception:
+                            pass
+                        lmt = LimitOrder(
+                            action=exit_action,
+                            totalQuantity=qty_abs,
+                            lmtPrice=targ_price,
+                            tif=args.tif,
+                            outsideRth=bool(args.outsideRth),
+                        )
+                        lmt.ocaGroup = oca
+                        lmt.transmit = True
+                        try:
+                            lmt.ocaType = 1
+                        except Exception:
+                            pass
+                            stp_id = None
+                            try:
+                                ib.placeOrder(con, stp)
+                                stp_id = getattr(stp, "orderId", None)
+                                log(
+                                    "oco_rebuild_child",
+                                    leg="stop",
+                                    orderId=stp_id,
+                                    oca_group=oca,
+                                    side=exit_action,
+                                    price=stop_price,
+                                    qty=qty_abs,
+                                    source=stop_source,
+                                )
+                            except Exception as e:
+                                log(
+                                    "oco_rebuild_err",
+                                    leg="stop",
+                                    err=str(e),
+                                    oca_group=oca,
+                                    side=exit_action,
+                                    price=stop_price,
+                                    qty=qty_abs,
+                                )
+                                continue
+
+                            tp_id = None
+                            try:
+                                ib.placeOrder(con, lmt)
+                                tp_id = getattr(lmt, "orderId", None)
+                                log(
+                                    "oco_rebuild_child",
+                                    leg="take_profit",
+                                    orderId=tp_id,
+                                    oca_group=oca,
+                                    side=exit_action,
+                                    price=targ_price,
+                                    qty=qty_abs,
+                                    source=tp_source,
+                                )
+                            except Exception as e:
+                                log(
+                                    "oco_rebuild_err",
+                                    leg="take_profit",
+                                    err=str(e),
+                                    oca_group=oca,
+                                    side=exit_action,
+                                    price=targ_price,
+                                    qty=qty_abs,
+                                    stop_order_id=stp_id,
+                                )
+                                continue
+
+                            log(
+                                "oco_rebuilt",
+                                side=exit_action,
+                                stp=stop_price,
+                                lmt=targ_price,
+                                qty=qty_abs,
+                                oca_group=oca,
+                                stop_order_id=stp_id,
+                                tp_order_id=tp_id,
+                                entry_basis=entry_basis,
+                                stop_dist=stop_dist,
+                                tp_dist=tp_dist,
+                                stop_source=stop_source,
+                                tp_source=tp_source,
+                            )
+            except Exception as e:
+                log("oco_rescue_err", err=str(e))
+
+            # Position-age cap
+            if (
+                net_qty != 0
+                and (entry_price is not None)
+                and (cycle_entry_time is not None)
+                and (args.pos_age_minR is not None)
+            ):
+                elapsed = (now - cycle_entry_time).total_seconds()
+                if elapsed >= max(1, int(args.pos_age_cap_sec)) and not age_forced_flat_done:
+                    if last_px is not None and not math.isnan(last_px):
+                        side = 1 if net_qty > 0 else -1
+                        eff_ticks_for_age = cycle_risk_ticks if cycle_risk_ticks is not None else args.risk_ticks
+                        pc_risk_age = float(eff_ticks_for_age) * float(args.tick_size) * float(px_mult)
+                        uR = 0.0
+                        if pc_risk_age > 0:
+                            uR = (
+                                (last_px - entry_price)
+                                * px_mult
+                                * side
+                                * max(1, cycle_entry_qty)
+                            ) / (pc_risk_age * max(1, cycle_entry_qty))
+                        if uR < float(args.pos_age_minR):
+                            flatten_market(net_qty)
+                            age_forced_flat_done = True
+                            eff_cool = int(max(1, args.strategy_cooldown_sec * cadence_scale))
+                            risk.cool_until = ct_now() + dt.timedelta(seconds=eff_cool)
+                            log(
+                                "pos_age_forced_flat",
+                                uR=round(uR, 3),
+                                elapsed=int(elapsed),
+                                cooldown_sec=eff_cool,
+                            )
+
+            # Weekly cap gating
+            if week_R <= weekly_cap_R:
+                week_halted = True
+
+            # Peak DD guard + caps
+            caps_reasons: List[str] = []
+            if risk.day_R <= -abs(args.day_loss_cap_R):
+                caps_reasons.append("dayR_cap")
+            if risk.trades >= args.max_trades_per_day:
+                caps_reasons.append("max_trades")
+            if risk.halted:
+                caps_reasons.append("risk_halted")
+
+            # only check minus_pct_guard if day_guard_pct > 0
+            if args.day_guard_pct > 0 and day_realized <= day_guard_dollars:
+                caps_reasons.append("minus_pct_guard")
+
+            if week_R <= weekly_cap_R:
+                caps_reasons.append("weekly_cap_R")
+            if news_kill_active:
+                caps_reasons.append("news_kill")
+
+            # Determine base state (before weekend/TOD overrides)
+            if caps_reasons:
+                state = "caps"
+            elif args.require_rt_before_trading and not rt_fresh:
+                state = "wait_rt"
+            else:
+                state = "active" if within_session(now, args.trade_start_ct, args.trade_end_ct) else "sleep"
+
+            # --- Friday ~15:55 CT preclose auto-flat (safety) ---
+            try:
+                d_pre = now.weekday()          # Monday=0 ... Friday=4
+                t_pre = now.time()
+
+                if (
+                    not friday_flat_done
+                    and d_pre == 4  # Friday
+                    and parse_hhmm("15:55") <= t_pre < parse_hhmm("16:00")
+                ):
+                    # 1) If we have a position, flatten it to MARKET
+                    if net_qty != 0:
+                        flatten_market(net_qty)
+                        log("friday_preclose_flat", qty=net_qty, t=str(now))
+
+                    # 2) Cancel all working orders from this script
+                    cancelled = 0
+                    for tr in ib.openTrades():
+                        if not is_our_order_or_trade(tr):
+                            continue
+                        st = (getattr(tr.orderStatus, "status", "") or "").strip()
+                        if st in ACTIVE_STATUSES:
+                            safe_cancel(ib, tr, note="[friday_preclose]")
+                            cancelled += 1
+                    if cancelled:
+                        log("friday_preclose_cancel", count=cancelled)
+
+                    # 3) Halt NEW entries after auto-flat
+                    risk.halted = True
+                    risk.cool_until = now + dt.timedelta(minutes=60)
+                    log(
+                        "friday_preclose_cap",
+                        cool_until=str(risk.cool_until),
+                        weekday=now.weekday(),
+                    )
+
+                    # Only run once per Friday (track the day it tripped)
+                    friday_flat_done = True
+                    friday_flat_last_date = now.date()
+
+            except Exception as e:
+                log("friday_preclose_err", err=str(e))
+
+            # ES 24x5 guard (Fri 16:00 → Sun 17:00 = sleep)
+            d = now.weekday()  # Monday=0 ... Sunday=6
+            t = now.time()
+
+            weekend_reason = ""
+
+            if d == 4 and t >= parse_hhmm("16:00"):      # Friday after 16:00
+                state = "sleep"
+                weekend_reason = "fri_after_1600"
+            elif d == 5:                                 # Saturday
+                state = "sleep"
+                weekend_reason = "saturday"
+            elif d == 6 and t < parse_hhmm("17:00"):     # Sunday before 17:00
+                state = "sleep"
+                weekend_reason = "sun_before_1700"
+
+            # Daily time-of-day blackouts (if configured)
+            if in_tod_blackout(now, tod_blackouts):
+                state = "sleep"
+
+            # Heartbeat / caps transitions
+            if state == "caps" and not in_caps:
+                in_caps = True
+                log(
+                    "caps_on",
+                    reasons=caps_reasons,
+                    day_realized=round(day_realized, 2),
+                    day_peak=round(day_peak_realized, 2),
+                    dayR=round(risk.day_R, 3),
+                )
+            if state != "caps" and in_caps:
+                in_caps = False
+
+            if state == "caps" and net_qty == 0:
+                try:
+                    c = 0
+                    for t in ib.openTrades():
+                        if not is_our_order_or_trade(t):
+                            continue
+                        st = (getattr(t.orderStatus, "status", "") or "").strip()
+                        if st in ACTIVE_STATUSES:
+                            safe_cancel(ib, t, note="[cap_sweep]")
+                            c += 1
+                    if c:
+                        log("cap_sweep_all_orders", count=c)
+                except Exception as e:
+                    log("cap_sweep_err", err=str(e))
+
+            # Weekend sweep: once we’re in weekend sleep, cancel all working orders
+            if state == "sleep" and weekend_reason and not weekend_sweep_done:
+                try:
+                    c = 0
+                    for t in ib.openTrades():
+                        if not is_our_order_or_trade(t):
+                            continue
+                        st = (getattr(t.orderStatus, "status", "") or "").strip()
+                        if st in ACTIVE_STATUSES:
+                            safe_cancel(ib, t, note=f"[weekend_sweep:{weekend_reason}]")
+                            c += 1
+                    if c:
+                        log("weekend_sweep_all_orders", count=c, reason=weekend_reason)
+
+                    # NEW: auto-flat at Friday close so we never hold into the weekend
+                    if weekend_reason == "fri_after_1600" and net_qty != 0 and args.place_orders:
+                        flatten_market(net_qty)
+                        log("weekend_auto_flat", reason=weekend_reason, qty=int(net_qty))
+                except Exception as e:
+                    log("weekend_sweep_err", err=str(e))
+                weekend_sweep_done = True
+            elif state == "active":
+                # reset so next weekend we sweep again
+                weekend_sweep_done = False
+
+            # Idle reason for HB
+            if state == "caps":
+                idle_reason = "capped:" + ",".join(caps_reasons)
+            elif state == "wait_rt":
+                idle_reason = "waiting_for_rt_fresh"
+            elif state == "sleep":
+                idle_reason = f"sleep:{weekend_reason or 'outside_trade_window'}"
+            else:
+                # Scale min gap by cadence_scale so we can back off under stress
+                eff_min_gap = int(max(1, args.min_seconds_between_entries * cadence_scale))
+                if has_active_parent_entry(ib, con):
+                    idle_reason = "parent_entry_working"
+                elif not risk.can_trade(now, eff_min_gap):
+                    gate_reason = risk.gate_reason(now, eff_min_gap)
+                    if gate_reason == "cooldown":
+                        idle_reason = "gated:cooldown"
+                    elif gate_reason == "max_trades":
+                        idle_reason = "gated:max_trades"
+                    elif gate_reason == "dayR_cap":
+                        idle_reason = "gated:dayR_cap"
+                    elif gate_reason == "consec_losses":
+                        idle_reason = "gated:consec_losses"
+                    elif gate_reason == "post_flat_cooldown":
+                        idle_reason = "gated:post_flat_cooldown"
+                    elif gate_reason == "min_gap_between_entries":
+                        idle_reason = "gated:min_gap_between_entries"
+                    else:
+                        idle_reason = f"gated:{gate_reason or 'unknown'}"
+                elif args.require_new_bar_after_start and not startup_bar_seen:
+                    idle_reason = "waiting_for_first_new_bar"
+                elif len(C) < 60:
+                    idle_reason = "waiting_for_bars"
+                else:
+                    idle_reason = "active_waiting"
+
+            hb_update(
+                state=state,
+                idle_reason=idle_reason,
+                in_session_window=within_session(now, args.trade_start_ct, args.trade_end_ct),
+                caps=caps_reasons,
+                dayR=round(risk.day_R, 3),
+                trades_today=int(risk.trades),
+                cool_until=(str(risk.cool_until) if risk.cool_until else None),
+            )
+
+            # ===== ENTRY LOGIC (simple example arms) =====
+                        # --- SHADOW LEARNING WHILE CAPPED (no orders placed) ---
+            if (
+                state == "caps"
+                and args.learn_while_capped
+                and learner is not None
+                and len(C) >= 60
+                and net_qty == 0
+                and last_bar_ts is not None
+            ):
+                # Only run once per new bar
+                if shadow_last_bar_ts != last_bar_ts:
+                    shadow_last_bar_ts = last_bar_ts
+
+                    close = C[-1]
+                    _atrv = atr(H, L, C, 14)
+                    _atrp = (_atrv / close) if (not math.isnan(_atrv) and close > 0) else float("nan")
+                    fast = ema(C[-20:], 20)
+                    slow = ema(C[-50:], 50)
+
+                    is_trend = (fast > slow) and (not math.isnan(_atrp)) and _atrp >= args.gate_atrp
+                    is_breakout = (
+                        len(C) >= 30
+                        and (close >= max(C[-20:]) or close <= min(C[-20:]))
+                    )
+
+                    # Optional BBBW gate (same as live entry)
+                    bbbw_ok = True
+                    if args.gate_bbbw > 0:
+                        win = C[-20:]
+                        m = sum(win) / 20.0
+                        var = sum((x - m) * (x - m) for x in win) / 20.0
+                        sd = math.sqrt(max(0.0, var))
+                        if m > 0:
+                            bbbw = (2 * 2.0 * sd) / m
+                            bbbw_ok = bbbw >= float(args.gate_bbbw)
+                        else:
+                            bbbw_ok = False
+
+                    cand: List[str] = []
+                    if "trend" in arms_enabled and is_trend and bbbw_ok:
+                        cand.append("trend")
+                    if "breakout" in arms_enabled and is_breakout and bbbw_ok:
+                        cand.append("breakout")
+
+                    if cand:
+                        if len(cand) == 1:
+                            chosen = cand[0]
+                        else:
+                            chosen, probs = learner.choose(cand, sample=True)
+                            if args.learn_log:
+                                log(
+                                    "shadow_caps_decision",
+                                    cand=cand,
+                                    probs={k: round(v, 3) for k, v in probs.items()},
+                                    chosen=chosen,
+                                    reasons=caps_reasons,
+                                )
+
+                        # 0R reward for "missed" opportunity while capped
+                        _shadow_learn_on_veto(
+                            chosen_arm=str(chosen),
+                            reason="state=caps:" + ",".join(caps_reasons),
+                            reward=0.0,
+                            learner=learner,
+                            strat_path=strat_path,
+                            args=args,
+                        )
+
+            if (
+                state == "active"
+                and len(C) >= 60
+                and not has_active_parent_entry(ib, con)
+                and net_qty == 0
+            ):
+                # Enforce cooldown / spacing here
+                eff_min_gap = int(max(1, args.min_seconds_between_entries * cadence_scale))
+                if not risk.can_trade(now, eff_min_gap):
+                    # Hard gate: do NOT consider a new entry yet
+                    gate_reason = risk.gate_reason(now, eff_min_gap)
+                    post_flat_remaining = risk.post_flat_cooldown_remaining()
+                    log(
+                        "entry_blocked_cooldown",
+                        eff_min_gap=eff_min_gap,
+                        last_entry_time=risk.last_entry_time,
+                        cool_until=str(risk.cool_until) if risk.cool_until else None,
+                        reason=gate_reason,
+                        post_flat_remaining=(
+                            round(post_flat_remaining, 3)
+                            if post_flat_remaining is not None
+                            else None
+                        ),
+                    )
+                    if gate_reason == "post_flat_cooldown":
+                        log(
+                            "gate_skip",
+                            reason="post_flat_cooldown",
+                            remaining=(
+                                round(post_flat_remaining, 3)
+                                if post_flat_remaining is not None
+                                else None
+                            ),
+                        )
+                        hb_update(idle_reason="gated:post_flat_cooldown")
+                    else:
+                        hb_update(
+                            idle_reason=f"gated:{gate_reason or 'cooldown_entry_block'}"
+                        )
+                else:
+                    close = C[-1]
+                    _atrv = atr(H, L, C, 14)
+                    _atrp = (_atrv / close) if (not math.isnan(_atrv) and close > 0) else float("nan")
+                    fast = ema(C[-20:], 20)
+                    slow = ema(C[-50:], 50)
+
+                    is_trend = (fast > slow) and (not math.isnan(_atrp)) and _atrp >= args.gate_atrp
+                    is_breakout = (len(C) >= 30) and (
+                        close >= max(C[-20:]) or close <= min(C[-20:])
+                    )
+
+                    # Optional BBBW gate (disabled by default via --gate-bbbw 0)
+                    bbbw_ok = True
+                    if args.gate_bbbw > 0:
+                        win = C[-20:]
+                        m = sum(win) / 20.0
+                        var = sum((x - m) * (x - m) for x in win) / 20.0
+                        sd = math.sqrt(max(0.0, var))
+                        if m > 0:
+                            bbbw = (2 * 2.0 * sd) / m
+                            bbbw_ok = bbbw >= float(args.gate_bbbw)
+                        else:
+                            bbbw_ok = False
+                        if not bbbw_ok:
+                            hb_update(idle_reason="gated:bbbw_low")
+
+                    # Candidate strategy arms
+                    cand: List[str] = []
+                    if "trend" in arms_enabled and is_trend and bbbw_ok:
+                        cand.append("trend")
+                    if "breakout" in arms_enabled and is_breakout and bbbw_ok:
+                        cand.append("breakout")
+
+                    if cand:
+                        # 1) Bandit choice as before
+                        if len(cand) == 1:
+                            chosen = cand[0]
+                            probs = {chosen: 1.0}
+                        else:
+                            chosen, probs = learner.choose(cand, sample=(args.learn_mode != "shadow"))
+                            if args.learn_mode in ("shadow", "advisory"):
+                                log(
+                                    "learn_decision",
+                                    cand=cand,
+                                    probs={k: round(v, 3) for k, v in probs.items()},
+                                    chosen=chosen,
+                                )
+
+                        # 2) Build snapshot for AI advisory/guardrails
+                        snapshot = {
+                            "ts": utc_now_str(),
+                            "price": float(close),
+                            "atr": float(_atrv) if not math.isnan(_atrv) else None,
+                            "atrp": float(_atrp) if not math.isnan(_atrp) else None,
+                            "fast_ema": float(fast) if not math.isnan(fast) else None,
+                            "slow_ema": float(slow) if not math.isnan(slow) else None,
+                            "is_trend": bool(is_trend),
+                            "is_breakout": bool(is_breakout),
+                            "bbbw_ok": bool(bbbw_ok),
+                            "arms_enabled": arms_enabled,
+                            "bandit_probs": {k: float(v) for k, v in probs.items()},
+                            "risk": {
+                                "day_R": float(risk.day_R),
+                                "trades_today": int(risk.trades),
+                                "consec_losses": int(risk.consec_losses),
+                            },
+                            "state": state,
+                            "session_key": k,
+                        }
+
+                        # 3) AI advisory (shadow only – no hard decisions yet)
+                        advice = None
+                        try:
+                            advice = ai.advisory_decision(
+                                snapshot=snapshot,
+                                raw_candidate_arms=cand,
+                                bandit_choice=chosen,
+                            )
+                        except Exception as e:
+                            log("ai_advisory_err", err=str(e))
+
+                        # 4) AI guardrails veto (optional)
+                        allowed = True
+                        veto_reason = ""
+                        try:
+                            allowed, veto_reason = ai.guardrails_check(snapshot, advice)
+                        except Exception as e:
+                            log("ai_guard_err", err=str(e))
+
+                        if not allowed:
+                            log("ai_entry_veto", reason=veto_reason, chosen=chosen, cand=cand)
+                            try:
+                                _shadow_learn_on_veto(
+                                    chosen_arm=str(chosen),
+                                    reason=f"ai_guard:{veto_reason}",
+                                    reward=0.0,
+                                    learner=learner,
+                                    strat_path=strat_path,
+                                    args=args,
+                                )
+                            except Exception:
+                                pass
+                        else:
+                            # Simple mapping: trend → with trend, breakout → breakout direction
+                            go_long = (
+                                True
+                                if (chosen == "trend" and fast >= slow)
+                                else (close >= max(C[-20:]))
+                            )
+                            if args.learn_mode != "shadow":
+                                place_bracket(go_long, close, last_bar_ts, net_qty, signal_name=chosen)
+                                current_arm = chosen
+
+
+            # Sweep orphans regularly (but only ours) - throttled
+            now_ts = time.time()
+            if now_ts - last_orphan_sweep_time >= 30.0:
+                reconcile_orphans(ib, ib_acct or "", con)
+                last_orphan_sweep_time = now_ts
+
+            ib.sleep(1.0)
+
+
+    except KeyboardInterrupt:
+        print("INFO [CTRL-C] Shutting down...")
+    finally:
+        try:
+            persist_day_state_snapshot()
+        except Exception:
+            pass
+        # Final learner save
+        try:
+            save_thompson(strat_path, learner)
+            if param_learner:
+                save_thompson(param_path, param_learner)
+        except Exception:
+            pass
+        try:
+            sent = getattr(getattr(ib, "client", None), "bytesSent", 0) or 0
+            recv = getattr(getattr(ib, "client", None), "bytesReceived", 0) or 0
+            print(
+                f"Disconnecting from {args.host}:{args.port}, "
+                f"{sent/1024:.0f} kB sent, {recv/1024:.0f} kB received."
+            )
+        except Exception:
+            pass
+        try:
+            ib.disconnect()
+            print("Disconnected.")
+        except Exception:
+            pass
+
+
+if __name__ == "__main__":
+    main()
+
+
+
+

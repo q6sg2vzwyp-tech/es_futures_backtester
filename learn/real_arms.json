@@ -1,0 +1,10 @@
+{
+  "updated": "2025-12-29T09:54:50-06:00",
+  "real_arms": [
+    "trend_ema",
+    "pullback_vwap",
+    "trend_pullback",
+    "range_fade"
+  ],
+  "note": "seeded at startup by paper_trader.py (may be updated by loop_core promotion)"
+}

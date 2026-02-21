@@ -1,0 +1,308 @@
+{
+  "arm_by_regime": {
+    "unknown": {
+      "breakout_adx": {
+        "losses": 45,
+        "mean_R": -0.21535579775280897,
+        "n": 89,
+        "quality": -1.1434909255890977,
+        "std_R": 0.9598809221443846,
+        "winrate": 0.3707865168539326,
+        "wins": 33
+      },
+      "breakout_atr": {
+        "losses": 57,
+        "mean_R": -0.049019605042016814,
+        "n": 119,
+        "quality": -0.4338245184636063,
+        "std_R": 1.0456512112713174,
+        "winrate": 0.36134453781512604,
+        "wins": 43
+      },
+      "mean_revert_ema": {
+        "losses": 18,
+        "mean_R": -0.04687503125,
+        "n": 64,
+        "quality": -0.19567453372596014,
+        "std_R": 1.0366811813684222,
+        "winrate": 0.59375,
+        "wins": 38
+      },
+      "momentum_rsi": {
+        "losses": 0,
+        "mean_R": 0.083333,
+        "n": 1,
+        "quality": 0.05776203399760192,
+        "std_R": 0.0,
+        "winrate": 1.0,
+        "wins": 1
+      },
+      "range_fade": {
+        "losses": 12,
+        "mean_R": -0.02083340000000001,
+        "n": 40,
+        "quality": -0.07736633229447756,
+        "std_R": 1.2027020794955257,
+        "winrate": 0.55,
+        "wins": 22
+      },
+      "range_fade_strict": {
+        "losses": 10,
+        "mean_R": -0.020115,
+        "n": 29,
+        "quality": -0.06841508533213427,
+        "std_R": 1.2615842552632555,
+        "winrate": 0.5517241379310345,
+        "wins": 16
+      },
+      "trend_ema": {
+        "losses": 52,
+        "mean_R": -0.08265025409836065,
+        "n": 122,
+        "quality": -0.5515603825753618,
+        "std_R": 0.9101947703128085,
+        "winrate": 0.39344262295081966,
+        "wins": 48
+      },
+      "trend_ema2": {
+        "losses": 1,
+        "mean_R": -0.5,
+        "n": 1,
+        "quality": -0.45054566736396445,
+        "std_R": 0.0,
+        "winrate": 0.0,
+        "wins": 0
+      },
+      "trend_sma": {
+        "losses": 37,
+        "mean_R": -0.03571428571428572,
+        "n": 84,
+        "quality": -0.33319884423677376,
+        "std_R": 1.1513834053137213,
+        "winrate": 0.36904761904761907,
+        "wins": 31
+      }
+    }
+  },
+  "arm_overall": {
+    "breakout_adx": {
+      "losses": 45,
+      "mean_R": -0.21535579775280897,
+      "n": 89,
+      "quality": -1.1434909255890977,
+      "std_R": 0.9598809221443846,
+      "winrate": 0.3707865168539326,
+      "wins": 33
+    },
+    "breakout_atr": {
+      "losses": 57,
+      "mean_R": -0.049019605042016814,
+      "n": 119,
+      "quality": -0.4338245184636063,
+      "std_R": 1.0456512112713174,
+      "winrate": 0.36134453781512604,
+      "wins": 43
+    },
+    "mean_revert_ema": {
+      "losses": 18,
+      "mean_R": -0.04687503125,
+      "n": 64,
+      "quality": -0.19567453372596014,
+      "std_R": 1.0366811813684222,
+      "winrate": 0.59375,
+      "wins": 38
+    },
+    "momentum_rsi": {
+      "losses": 0,
+      "mean_R": 0.083333,
+      "n": 1,
+      "quality": 0.05776203399760192,
+      "std_R": 0.0,
+      "winrate": 1.0,
+      "wins": 1
+    },
+    "range_fade": {
+      "losses": 12,
+      "mean_R": -0.02083340000000001,
+      "n": 40,
+      "quality": -0.07736633229447756,
+      "std_R": 1.2027020794955257,
+      "winrate": 0.55,
+      "wins": 22
+    },
+    "range_fade_strict": {
+      "losses": 10,
+      "mean_R": -0.020115,
+      "n": 29,
+      "quality": -0.06841508533213427,
+      "std_R": 1.2615842552632555,
+      "winrate": 0.5517241379310345,
+      "wins": 16
+    },
+    "trend_ema": {
+      "losses": 52,
+      "mean_R": -0.08265025409836065,
+      "n": 122,
+      "quality": -0.5515603825753618,
+      "std_R": 0.9101947703128085,
+      "winrate": 0.39344262295081966,
+      "wins": 48
+    },
+    "trend_ema2": {
+      "losses": 1,
+      "mean_R": -0.5,
+      "n": 1,
+      "quality": -0.45054566736396445,
+      "std_R": 0.0,
+      "winrate": 0.0,
+      "wins": 0
+    },
+    "trend_sma": {
+      "losses": 37,
+      "mean_R": -0.03571428571428572,
+      "n": 84,
+      "quality": -0.33319884423677376,
+      "std_R": 1.1513834053137213,
+      "winrate": 0.36904761904761907,
+      "wins": 31
+    }
+  },
+  "buckets": [
+    {
+      "arm": "trend_ema",
+      "losses": 34,
+      "mean_R": -0.06086140449438202,
+      "n": 89,
+      "quality": -0.37245607196723035,
+      "regime": "unknown",
+      "side": "BUY",
+      "std_R": 0.8930996414880634,
+      "winrate": 0.42696629213483145,
+      "wins": 38
+    },
+    {
+      "arm": "trend_sma",
+      "losses": 27,
+      "mean_R": -0.006510437500000004,
+      "n": 64,
+      "quality": -0.16414916971490176,
+      "regime": "unknown",
+      "side": "BUY",
+      "std_R": 1.23908861887856,
+      "winrate": 0.390625,
+      "wins": 25
+    },
+    {
+      "arm": "breakout_atr",
+      "losses": 42,
+      "mean_R": -0.031481488888888895,
+      "n": 90,
+      "quality": -0.33747915204947915,
+      "regime": "unknown",
+      "side": "BUY",
+      "std_R": 1.0782853897871114,
+      "winrate": 0.35555555555555557,
+      "wins": 32
+    },
+    {
+      "arm": "breakout_adx",
+      "losses": 30,
+      "mean_R": -0.21857926229508196,
+      "n": 61,
+      "quality": -1.054336355937322,
+      "regime": "unknown",
+      "side": "BUY",
+      "std_R": 0.9869711483511884,
+      "winrate": 0.3770491803278688,
+      "wins": 23
+    },
+    {
+      "arm": "breakout_atr",
+      "losses": 15,
+      "mean_R": -0.10344824137931036,
+      "n": 29,
+      "quality": -0.47499468946670176,
+      "regime": "unknown",
+      "side": "SELL",
+      "std_R": 0.9529233642586622,
+      "winrate": 0.3793103448275862,
+      "wins": 11
+    },
+    {
+      "arm": "trend_ema",
+      "losses": 18,
+      "mean_R": -0.1414141212121212,
+      "n": 33,
+      "quality": -0.7070530238475733,
+      "regime": "unknown",
+      "side": "SELL",
+      "std_R": 0.9665598652523663,
+      "winrate": 0.30303030303030304,
+      "wins": 10
+    },
+    {
+      "arm": "breakout_adx",
+      "losses": 15,
+      "mean_R": -0.20833325,
+      "n": 28,
+      "quality": -0.8458323624005213,
+      "regime": "unknown",
+      "side": "SELL",
+      "std_R": 0.9155436414858024,
+      "winrate": 0.35714285714285715,
+      "wins": 10
+    },
+    {
+      "arm": "trend_sma",
+      "losses": 10,
+      "mean_R": -0.1291666,
+      "n": 20,
+      "quality": -0.5759219581678516,
+      "regime": "unknown",
+      "side": "SELL",
+      "std_R": 0.8295859060029128,
+      "winrate": 0.3,
+      "wins": 6
+    },
+    {
+      "arm": "mean_revert_ema",
+      "losses": 18,
+      "mean_R": -0.04687503125,
+      "n": 64,
+      "quality": -0.19567453372596014,
+      "regime": "unknown",
+      "side": "BUY",
+      "std_R": 1.0366811813684222,
+      "winrate": 0.59375,
+      "wins": 38
+    },
+    {
+      "arm": "range_fade",
+      "losses": 12,
+      "mean_R": -0.02083340000000001,
+      "n": 40,
+      "quality": -0.07736633229447756,
+      "regime": "unknown",
+      "side": "BUY",
+      "std_R": 1.2027020794955257,
+      "winrate": 0.55,
+      "wins": 22
+    },
+    {
+      "arm": "range_fade_strict",
+      "losses": 10,
+      "mean_R": -0.020115,
+      "n": 29,
+      "quality": -0.06841508533213427,
+      "regime": "unknown",
+      "side": "BUY",
+      "std_R": 1.2615842552632555,
+      "winrate": 0.5517241379310345,
+      "wins": 16
+    }
+  ],
+  "lookback_days": 5,
+  "min_trades": 20,
+  "updated_at": "2025-12-18T18:47:37",
+  "version": "1.3"
+}

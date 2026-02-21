@@ -1,0 +1,9 @@
+ES bot minimal runtime set (stability-first)
+paper_trader.py
+watchdog_single.py
+single.cmdline.txt
+bot_flags.txt
+tools/START_BOT.cmd
+tools/STOP_BOT.cmd
+tools/START.ps1
+tools/STOP.ps1

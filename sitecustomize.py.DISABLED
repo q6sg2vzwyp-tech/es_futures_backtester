@@ -1,0 +1,308 @@
+# sitecustomize.py  (auto-imported by Python at startup via "site")
+# Goal: capture the EXACT call site of any process spawn / self-relaunch
+# IMPORTANT: always logs (child processes may not inherit env vars)
+
+import os, sys, json, time, traceback
+
+# ---- idempotency guard (prevents double-hooking) ----
+if getattr(sys, "_PT_FORENSIC_SITE_INSTALLED", False):
+    # Already executed in this interpreter
+    raise SystemExit
+sys._PT_FORENSIC_SITE_INSTALLED = True
+
+ROOT = os.path.dirname(os.path.abspath(__file__))
+RUN_DIR = os.path.join(ROOT, "run")
+os.makedirs(RUN_DIR, exist_ok=True)
+
+def _now():
+    return time.strftime("%Y-%m-%d %H:%M:%S")
+
+def _stack(limit=80):
+    return "".join(traceback.format_stack(limit=limit))
+
+def _write(tag, payload):
+    # ALWAYS LOG (no env gate) so child processes can't dodge logging
+    rec = {
+        "ts": _now(),
+        "tag": tag,
+        "pid": os.getpid(),
+        "ppid": None,
+        "exe": sys.executable,
+        "argv": sys.argv[:],
+        "cwd": os.getcwd(),
+        "sys_path0": sys.path[0] if sys.path else None,
+        "env_PT_FORENSIC": os.environ.get("PT_FORENSIC"),
+        "payload": payload,
+    }
+
+    # Best-effort PPID on Windows
+    try:
+        import ctypes
+        import ctypes.wintypes as wt
+
+        TH32CS_SNAPPROCESS = 0x00000002
+        CreateToolhelp32Snapshot = ctypes.windll.kernel32.CreateToolhelp32Snapshot
+        Process32FirstW = ctypes.windll.kernel32.Process32FirstW
+        Process32NextW = ctypes.windll.kernel32.Process32NextW
+        CloseHandle = ctypes.windll.kernel32.CloseHandle
+
+        class PROCESSENTRY32W(ctypes.Structure):
+            _fields_ = [
+                ("dwSize", wt.DWORD),
+                ("cntUsage", wt.DWORD),
+                ("th32ProcessID", wt.DWORD),
+                ("th32DefaultHeapID", wt.ULONG_PTR),
+                ("th32ModuleID", wt.DWORD),
+                ("cntThreads", wt.DWORD),
+                ("th32ParentProcessID", wt.DWORD),
+                ("pcPriClassBase", wt.LONG),
+                ("dwFlags", wt.DWORD),
+                ("szExeFile", wt.WCHAR * 260),
+            ]
+
+        snap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0)
+        pe = PROCESSENTRY32W()
+        pe.dwSize = ctypes.sizeof(PROCESSENTRY32W)
+        if Process32FirstW(snap, ctypes.byref(pe)):
+            me = os.getpid()
+            while True:
+                if pe.th32ProcessID == me:
+                    rec["ppid"] = int(pe.th32ParentProcessID)
+                    break
+                if not Process32NextW(snap, ctypes.byref(pe)):
+                    break
+        CloseHandle(snap)
+    except Exception:
+        pass
+
+    path = os.path.join(RUN_DIR, f"forensic_spawn_{os.getpid()}.jsonl")
+    try:
+        with open(path, "a", encoding="utf-8") as f:
+            f.write(json.dumps(rec, ensure_ascii=False) + "\n")
+    except Exception:
+        # last resort: don't crash the program if logging fails
+        pass
+
+# 1) Record interpreter start
+_write("PY_START", {"stack": _stack(40)})
+
+# 2) Audit hook: catches subprocess, os.* spawn, CreateProcess via CPython audit events (when available)
+def _audit(event, args):
+    if event in (
+        "subprocess.Popen",
+        "os.system",
+        "os.startfile",
+        "os.spawn",
+        "os.spawnve",
+        "os.spawnv",
+        "os.exec",
+        "os.execve",
+        "os.fork",
+        "winreg.OpenKey",
+    ):
+        _write("AUDIT:" + event, {"args": repr(args), "stack": _stack(80)})
+
+try:
+    sys.addaudithook(_audit)
+    _write("AUDIT_INSTALLED", {})
+except Exception as e:
+    _write("AUDIT_INSTALL_FAIL", {"err": repr(e)})
+
+# 3) Wrap subprocess safely (do NOT replace subprocess.Popen object)
+try:
+    import subprocess
+
+    _orig_popen_init = subprocess.Popen.__init__
+
+    def _popen_init_wrap(self, *a, **k):
+        try:
+            cmd = None
+            if a:
+                cmd = a[0]
+            else:
+                cmd = k.get("args")
+        except Exception:
+            cmd = "<unreadable>"
+        _write("SUBPROCESS_POPEN_INIT", {"cmd": repr(cmd), "kwargs": repr(k), "stack": _stack(120)})
+        return _orig_popen_init(self, *a, **k)
+
+    subprocess.Popen.__init__ = _popen_init_wrap
+
+    _orig_run = subprocess.run
+    def _run_wrap(*a, **k):
+        _write("SUBPROCESS_RUN", {"args": repr(a), "kwargs": repr(k), "stack": _stack(120)})
+        return _orig_run(*a, **k)
+
+    subprocess.run = _run_wrap
+
+    _write("SUBPROCESS_WRAPPED", {"mode": "Popen.__init__ + run"})
+except Exception as e:
+    _write("SUBPROCESS_WRAP_FAIL", {"err": repr(e)})
+
+
+# 4) Wrap multiprocessing spawn internals (Windows)
+try:
+    import multiprocessing as mp
+    _write("MP_IMPORTED", {"start_method": mp.get_start_method(allow_none=True)})
+
+    _orig_start = mp.Process.start
+    def _start_wrap(self, *a, **k):
+        _write("MP_PROCESS_START", {"process": repr(self), "name": getattr(self, "name", None), "stack": _stack(120)})
+        return _orig_start(self, *a, **k)
+    mp.Process.start = _start_wrap
+
+    try:
+        from multiprocessing import spawn as mp_spawn
+        if hasattr(mp_spawn, "get_command_line"):
+            _orig_gcl = mp_spawn.get_command_line
+            def _gcl_wrap(*a, **k):
+                cl = _orig_gcl(*a, **k)
+                _write("MP_GET_COMMAND_LINE", {"cmdline": repr(cl), "stack": _stack(120)})
+                return cl
+            mp_spawn.get_command_line = _gcl_wrap
+    except Exception as e:
+        _write("MP_SPAWN_PATCH_FAIL", {"err": repr(e)})
+
+    _write("MP_WRAPPED", {})
+except Exception as e:
+    _write("MP_WRAP_FAIL", {"err": repr(e)})
+
+# 5) Optional import trace
+if os.environ.get("PT_IMPORT_TRACE", "0") == "1":
+    import builtins
+    _orig_import = builtins.__import__
+
+    def _import_wrap(name, globals=None, locals=None, fromlist=(), level=0):
+        _write("IMPORT", {"name": name, "fromlist": list(fromlist) if fromlist else [], "level": level, "stack": _stack(40)})
+        return _orig_import(name, globals, locals, fromlist, level)
+
+    builtins.__import__ = _import_wrap
+    _write("IMPORT_WRAPPED", {})
+    
+# --- Win32 CreateProcessW hook: LOG CALLS ---
+try:
+    import ctypes as _ct
+
+    _k32 = _ct.windll.kernel32
+    _CreateProcessW_orig = _k32.CreateProcessW
+
+    def _CreateProcessW_logged(appName, cmdLine, procAttrs, threadAttrs,
+                               inheritHandles, creationFlags, env, cwd,
+                               startupInfo, procInfo):
+        try:
+            _write("K32_CreateProcessW_CALL", {
+                "appName": str(appName),
+                "cmdLine": str(cmdLine),
+                "cwd": str(cwd),
+                "flags": int(creationFlags) if creationFlags is not None else None,
+                "stack": _stack(120),
+            })
+        except Exception:
+            pass
+        return _CreateProcessW_orig(appName, cmdLine, procAttrs, threadAttrs,
+                                   inheritHandles, creationFlags, env, cwd,
+                                   startupInfo, procInfo)
+
+    _k32.CreateProcessW = _CreateProcessW_logged
+    _write("K32_HOOKED_CreateProcessW", {})
+except Exception as e:
+    _write("K32_HOOK_FAIL", {"err": repr(e)})
+
+# --- ShellExecuteW hook: LOG CALLS ---
+try:
+    import ctypes as _ct
+
+    _sh = _ct.windll.shell32
+    _ShellExecuteW_orig = _sh.ShellExecuteW
+
+    def _ShellExecuteW_logged(hwnd, op, file, params, directory, showCmd):
+        try:
+            _write("SHELL_ShellExecuteW_CALL", {
+                "op": str(op),
+                "file": str(file),
+                "params": str(params),
+                "directory": str(directory),
+                "showCmd": int(showCmd) if showCmd is not None else None,
+                "stack": _stack(120),
+            })
+        except Exception:
+            pass
+        return _ShellExecuteW_orig(hwnd, op, file, params, directory, showCmd)
+
+    _sh.ShellExecuteW = _ShellExecuteW_logged
+    _write("SHELL_HOOKED_ShellExecuteW", {})
+except Exception as e:
+    _write("SHELL_HOOK_FAIL", {"err": repr(e)})
+
+    
+# --- ShellExecuteW hook (log CALLS) ---
+try:
+    import ctypes as _ct
+
+    _sh = _ct.windll.shell32
+    _ShellExecuteW_orig = _sh.ShellExecuteW
+
+    def _ShellExecuteW_logged(hwnd, op, file, params, directory, showCmd):
+        try:
+            _write("SHELL_ShellExecuteW_CALL", {
+                "op": str(op),
+                "file": str(file),
+                "params": str(params),
+                "directory": str(directory),
+                "showCmd": int(showCmd) if showCmd is not None else None,
+                "stack": _stack(120),
+            })
+        except Exception:
+            pass
+        return _ShellExecuteW_orig(hwnd, op, file, params, directory, showCmd)
+
+    _sh.ShellExecuteW = _ShellExecuteW_logged
+    _write("SHELL_HOOKED_ShellExecuteW", {})
+except Exception as e:
+    _write("SHELL_HOOK_FAIL", {"err": repr(e)})
+
+
+# 6) Win32 CreateProcessW + ShellExecuteW (catches low-level process creation)
+try:
+    import ctypes as _ct
+    from ctypes import wintypes as _wt
+
+    _k32 = _ct.windll.kernel32
+    _CreateProcessW = _k32.CreateProcessW
+
+    def _CreateProcessW_wrap(appName, cmdLine, *rest):
+        _write("K32_CreateProcessW", {
+            "appName": str(appName),
+            "cmdLine": str(cmdLine),
+            "stack": _stack(140),
+        })
+        return _CreateProcessW(appName, cmdLine, *rest)
+
+    _k32.CreateProcessW = _CreateProcessW_wrap
+    _write("K32_HOOKED_CreateProcessW", {})
+
+except Exception as e:
+    _write("K32_HOOK_FAIL", {"err": repr(e)})
+
+try:
+    import ctypes as _ct
+    from ctypes import wintypes as _wt
+
+    _sh = _ct.windll.shell32
+    _ShellExecuteW = _sh.ShellExecuteW
+
+    def _ShellExecuteW_wrap(hwnd, op, file, params, directory, showcmd):
+        _write("SHELL_ShellExecuteW", {
+            "op": str(op),
+            "file": str(file),
+            "params": str(params),
+            "directory": str(directory),
+            "stack": _stack(140),
+        })
+        return _ShellExecuteW(hwnd, op, file, params, directory, showcmd)
+
+    _sh.ShellExecuteW = _ShellExecuteW_wrap
+    _write("SHELL_HOOKED_ShellExecuteW", {})
+
+except Exception as e:
+    _write("SHELL_HOOK_FAIL", {"err": repr(e)})

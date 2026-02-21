@@ -1,0 +1,50 @@
+{
+  "arms": [
+    "trend_ema",
+    "trend_sma",
+    "breakout_atr",
+    "pullback_vwap",
+    "momentum_rsi",
+    "range_fade",
+    "trend_pullback"
+  ],
+  "counts": {
+    "trend_ema": 2116,
+    "trend_sma": 0,
+    "breakout_atr": 0,
+    "pullback_vwap": 0,
+    "momentum_rsi": 0,
+    "range_fade": 0,
+    "trend_pullback": 0
+  },
+  "mean": {
+    "trend_ema": -0.02873976055450534,
+    "trend_sma": 0.0,
+    "breakout_atr": 0.0,
+    "pullback_vwap": 0.0,
+    "momentum_rsi": 0.0,
+    "range_fade": 0.0,
+    "trend_pullback": 0.0
+  },
+  "var": {
+    "trend_ema": 0.6480374023773746,
+    "trend_sma": 1.0,
+    "breakout_atr": 1.0,
+    "pullback_vwap": 1.0,
+    "momentum_rsi": 1.0,
+    "range_fade": 1.0,
+    "trend_pullback": 1.0
+  },
+  "ema_R": {
+    "trend_ema": -0.6660409375937468,
+    "trend_sma": 0.0,
+    "breakout_atr": 0.0,
+    "pullback_vwap": 0.0,
+    "momentum_rsi": 0.0,
+    "range_fade": 0.0,
+    "trend_pullback": 0.0
+  },
+  "gamma": 0.01,
+  "sigma2": 1.0,
+  "ema_alpha": 0.1
+}
