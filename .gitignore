@@ -1,66 +1,62 @@
-﻿# === Python / env ===
+﻿# === Python / venv / bytecode ===
 .venv/
 __pycache__/
 *.py[cod]
+*.pyd
+*.pyo
 *.tmp
 *.bak
 *.lprof
 
-# === OS/editor junk ===
+# === OS / editor junk ===
 .DS_Store
 Thumbs.db
+*.swp
+*.swo
+.vscode/
+.idea/
 
 # === Generic logs ===
 *.log
-latest_run.log
-watchdog.log
-watchdog.stderr.log
 logging/
 
-# === Run artifacts & archives (keep locally, ignore in git) ===
+# === Runtime outputs (should never be committed) ===
 run/
 backups/
 quarantine/
 results/
 .learnlogs/
 
-# Your timestamped archive folder(s)
-archive_*/
-archive_20251008_103249/
+# Heartbeat / runtime emitted files (your repo writes these)
+heartbeat*.txt
+heartbeat*_kv.txt
+spawn_trace*.log
+paper_trader*.lock
+*.stderr.log
+*.stdout.log
 
-# If you truly have a generic "archive/" too
+# === Archives (local-only) ===
 archive/
+archive_*/
 
-# === Data handling ===
-# IMPORTANT: do NOT ignore all of data/ unless you are 100% sure nothing in data/ should be committed.
-# Prefer ignoring only runtime/state artifacts. Uncomment ONE of these patterns as appropriate:
-
-# data/**
-
-# Safer default: ignore only obvious runtime/state files (adjust to your repo)
-data/state/*.local*
-data/state/*.tmp*
-data/state/*_snapshot*.json
-data/state/*snapshot*.json
+# === "busted"/backup variants produced by patchers ===
+*.bak_*
+*.busted_*
 
 # === Logs directory: ignore everything except the trade CSV we care about ===
 logs/**
 !logs/trades_segmented.csv
 
-# === Repo-generated backups / patches ===
-*.bak_*
-*.busted_*
-*.zip
-
-# === State/runtime artifacts ===
+# === Data handling (CONSERVATIVE) ===
+# Do NOT ignore all data/ by default.
 data/state/backup_*/
 data/state/runtime_state.json
 data/state/daily_restart.json
+data/state/*.local*
+data/state/*.tmp*
+data/state/*snapshot*.json
 
 # === Dependency snapshots (choose ONE approach) ===
-# If you want to KEEP them in git, DO NOT ignore:
-# requirements_lock.txt
-# requirements_runtime.txt
-# If you want them local-only, uncomment:
+# If you want to KEEP lock/runtime deps in git, leave these commented.
 # requirements_lock.txt
 # requirements_runtime.txt
