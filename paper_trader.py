@@ -1608,6 +1608,12 @@ def main():
                     try:
                         accts = ib.managedAccounts()
                         print(f"[POST-CONNECT] managedAccounts: {accts}")
+                        # ---- HARD PAPER SAFETY ABORT ----
+                        acct0 = (accts[0] if isinstance(accts, (list, tuple)) and accts else '') or ''
+                        if acct0 and not str(acct0).upper().startswith('DU'):
+                            hb_update(orders_disabled_paper_safety=True)
+                            log('paper_safety_abort', acct=acct0)
+                            raise RuntimeError('SAFETY ABORT: Non-paper account detected: ' + str(acct0))
                     except Exception:
                         pass
                     return cid
@@ -1635,7 +1641,7 @@ def main():
             acct = accts[0] if accts else None
         except Exception:
             acct = None
-        bad_port = getattr(args, "port", None) != 7497
+        bad_port = getattr(args, "port", None) not in (4002, 7497)
         bad_acct = acct is not None and not str(acct).upper().startswith("DU")
         orders_disabled = bad_port or bad_acct
         hb_update(orders_disabled_paper_safety=orders_disabled)
@@ -1756,6 +1762,12 @@ def main():
         args.max_consec_losses,
         args.post_flat_cooldown_sec,
     )
+    restored_day_R = 0.0
+    restored_trades = 0
+    restored_consec_losses = 0
+    restored_week_R = 0.0
+    restored_week_id = None
+
     risk.day_R = float(restored_day_R)
     risk.trades = int(restored_trades)
     risk.consec_losses = int(restored_consec_losses)
@@ -1785,6 +1797,7 @@ def main():
 
     log(
         "risk_state_restored",
+        day_state_file_exists = False
         day_R=round(risk.day_R, 3),
         trades=int(risk.trades),
         consec_losses=int(risk.consec_losses),
@@ -3125,36 +3138,36 @@ def main():
                         oca = f"OCO-PROT-{int(time.time())}"
                         stp = StopOrder(
                             action=exit_action,
-                            totalQuantity=qty_abs,
-                            stopPrice=stop_price,
-                            tif=args.tif,
-                            outsideRth=bool(args.outsideRth),
+                        totalQuantity=qty_abs,
+                        stopPrice=stop_price,
+                        tif=args.tif,
+                        outsideRth=bool(args.outsideRth),
                         )
-                            try:
+                        try:
                                 stp.triggerMethod = 2
-                            except Exception:
+                        except Exception:
                                 pass
-                            stp.ocaGroup = oca
-                            stp.transmit = False
-                            try:
+                        stp.ocaGroup = oca
+                        stp.transmit = False
+                        try:
                                 stp.ocaType = 1
-                            except Exception:
+                        except Exception:
                                 pass
-                            lmt = LimitOrder(
+                        lmt = LimitOrder(
                                 action=exit_action,
                                 totalQuantity=qty_abs,
                                 lmtPrice=targ_price,
                                 tif=args.tif,
                                 outsideRth=bool(args.outsideRth),
-                            )
-                            lmt.ocaGroup = oca
-                            lmt.transmit = True
-                            try:
+                        )
+                        lmt.ocaGroup = oca
+                        lmt.transmit = True
+                        try:
                                 lmt.ocaType = 1
-                            except Exception:
+                        except Exception:
                                 pass
-                            stp_id = None
-                            try:
+                        stp_id = None
+                        try:
                                 ib.placeOrder(con, stp)
                                 stp_id = getattr(stp, "orderId", None)
                                 log(
@@ -3167,7 +3180,7 @@ def main():
                                     qty=qty_abs,
                                     source=stop_source,
                                 )
-                            except Exception as e:
+                        except Exception as e:
                                 log(
                                     "oco_rebuild_err",
                                     leg="stop",
@@ -3179,8 +3192,8 @@ def main():
                                 )
                                 continue
 
-                            tp_id = None
-                            try:
+                        tp_id = None
+                        try:
                                 ib.placeOrder(con, lmt)
                                 tp_id = getattr(lmt, "orderId", None)
                                 log(
@@ -3193,7 +3206,7 @@ def main():
                                     qty=qty_abs,
                                     source=tp_source,
                                 )
-                            except Exception as e:
+                        except Exception as e:
                                 log(
                                     "oco_rebuild_err",
                                     leg="take_profit",
@@ -3206,7 +3219,7 @@ def main():
                                 )
                                 continue
 
-                            log(
+                        log(
                                 "oco_rebuilt",
                                 side=exit_action,
                                 stp=stop_price,
@@ -3220,7 +3233,7 @@ def main():
                                 tp_dist=tp_dist,
                                 stop_source=stop_source,
                                 tp_source=tp_source,
-                            )
+                        )
             except Exception as e:
                 log("oco_rescue_err", err=str(e))
 
@@ -3712,6 +3725,8 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
 
 
 
