@@ -1797,13 +1797,13 @@ def main():
 
     log(
         "risk_state_restored",
-        day_state_file_exists = False
+        day_state_file_exists=False,
         day_R=round(risk.day_R, 3),
         trades=int(risk.trades),
         consec_losses=int(risk.consec_losses),
         week_R=round(week_R, 3),
         week_id=last_week_id,
-        source="disk" if day_state_file_exists else "default",
+        source="default",
     )
 
     def persist_day_state_snapshot():
