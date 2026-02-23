@@ -12,6 +12,13 @@ set IBHOST=127.0.0.1
 set IBPORT=4002
 set CLIENTID=1111
 
+echo [COMPILE] "%PYEXE%" -m py_compile .\paper_trader.py
+"%PYEXE%" -m py_compile .\paper_trader.py
+IF ERRORLEVEL 1 (
+  echo [FAIL] Compile failed. See syntax above.
+  exit /b 1
+)
+
 echo [START] "%PYEXE%" -u .\paper_trader.py --host %IBHOST% --port %IBPORT% --clientId %CLIENTID%
-"%PYEXE%" -u .\paper_trader.py --host %IBHOST% --port %IBPORT% --clientId %CLIENTID%
+"%PYEXE%" -u .\paper_trader.py --host %IBHOST% --port %IBPORT% --clientId %CLIENTID% 1>> .\run\paper_trader_stdout.txt 2>> .\run\paper_trader_stderr.txt
 exit /b %ERRORLEVEL%
